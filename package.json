@@ -1,0 +1,22 @@
+{
+  "name": "@water-cooler-studios/kintsu-contracts",
+  "type": "module",
+  "private": false,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "cargo test --manifest-path drink_tests/Cargo.toml",
+    "build": "bash build-all.sh",
+    "script": "f() { node --no-warnings=ExperimentalWarning --loader ts-node/esm ./scripts/$1; }; f \"$@\"",
+    "deploy": "pnpm run script deploy"
+  },
+  "devDependencies": {
+    "@polkadot/api": "11.0.3",
+    "@polkadot/api-contract": "11.0.3",
+    "@polkadot/types": "11.0.3",
+    "@polkadot/util": "12.6.2",
+    "@scio-labs/use-inkathon": "0.10.0",
+    "dotenv": "16.4.5",
+    "ts-node": "10.9.2",
+    "typescript": "5.4.5"
+  }
+}

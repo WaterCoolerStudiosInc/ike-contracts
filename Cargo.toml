@@ -1,0 +1,13 @@
+[workspace]
+
+resolver = "1"
+members = [
+    "src/vault",
+    "src/share_token",
+    "src/registry",
+    "src/nomination_agent",
+    "src/mock_nominator",
+]
+exclude = [
+    "drink_tests",
+]

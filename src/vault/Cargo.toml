@@ -1,0 +1,37 @@
+[package]
+name = "vault"
+version = "0.1.0"
+authors = ["Brandon <brandon@kintsu.xyz>", "John <john@kintsu.xyz"]
+edition = "2021"
+
+[dependencies]
+ink = { version = "=4.3.0", default-features = false, features = ["ink-debug"] }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "=2.11.2", default-features = false, features = [
+    "derive",
+], optional = true }
+psp22 = { version = "=0.2.1", default-features = false }
+registry = { path = "../registry", default-features = false, features = [
+    "ink-as-dependency",
+] }
+share_token = { path = "../share_token", default-features = false, features = [
+    "ink-as-dependency",
+] }
+
+[lib]
+name = "vault"
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "scale/std",
+    "scale-info",
+    "scale-info/std",
+    "psp22/std",
+    "registry/std",
+]
+ink-as-dependency = []

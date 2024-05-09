@@ -1,0 +1,26 @@
+[package]
+name = "mock_nominator"
+version = "0.1.0"
+authors = ["Brandon <brandon@kintsu.xyz>", "John <john@kintsu.xyz"]
+edition = "2021"
+publish = false
+
+[dependencies]
+ink = { version = "=4.3.0", default-features = false, features = ["call-runtime"] }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "=2.11.2", default-features = false, features = [
+    "derive",
+], optional = true }
+sp-io = { version = "=34.0.0", default-features = false }
+sp-runtime = { version = "=35.0.0", default-features = false }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = ["ink/std", "scale/std", "scale-info/std", "sp-runtime/std", "sp-io/std"]
+ink-as-dependency = []
+e2e-tests = []

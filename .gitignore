@@ -1,0 +1,18 @@
+# build artifacts
+node_modules/
+target/
+debug/
+
+.idea/
+
+# misc
+.DS_Store
+*.pem
+
+# local deployments
+deployments/**/development.json
+deployments/**/development.ts
+
+# environment files
+*.env*
+!.env*.example
