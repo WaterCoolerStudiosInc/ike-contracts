@@ -1,12 +1,14 @@
 {
   "name": "@water-cooler-studios/kintsu-contracts",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "test": "cargo test --manifest-path drink_tests/Cargo.toml",
     "build": "bash build-all.sh",
     "script": "f() { node --no-warnings=ExperimentalWarning --loader ts-node/esm ./scripts/$1; }; f \"$@\"",
-    "deploy": "pnpm run script deploy"
+    "deploy": "pnpm run script deploy",
+    "copy-ts": "copyfiles -u 1 \"./deployments/**/*.ts\" dist/deployments",
+    "prepublishOnly": "tsc && npm run copy-ts"
   },
   "devDependencies": {
     "@polkadot/api": "11.0.3",
@@ -14,15 +16,16 @@
     "@polkadot/types": "11.0.3",
     "@polkadot/util": "12.6.2",
     "@scio-labs/use-inkathon": "0.10.0",
+    "copyfiles": "^2.4.1",
     "dotenv": "16.4.5",
     "ts-node": "10.9.2",
     "typescript": "5.4.5"
   },
   "files": [
-    "deployments/nomination_agent/*",
-    "deployments/registry/*",
-    "deployments/share_token/*",
-    "deployments/vault/*",
-    "!deployments/*/development.ts"
+    "dist/deployments/nomination_agent/*",
+    "dist/deployments/registry/*",
+    "dist/deployments/share_token/*",
+    "dist/deployments/vault/*",
+    "!dist/deployments/*/development.*"
   ]
 }

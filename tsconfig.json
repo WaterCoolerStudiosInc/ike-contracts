@@ -13,8 +13,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "baseUrl": ".",
-    "composite": true
+    "baseUrl": "."
   },
   "exclude": ["./*/target"],
   "include": ["./deployments/**/*.json", "./deployments/**/*.ts", "./scripts/**/*.ts"]

@@ -2,6 +2,7 @@
 node_modules/
 target/
 debug/
+dist/
 
 .idea/
 
