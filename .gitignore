@@ -2,7 +2,6 @@
 node_modules/
 target/
 debug/
-dist/
 
 .idea/
 
@@ -13,6 +12,11 @@ dist/
 # local deployments
 deployments/**/development.json
 deployments/**/development.ts
+
+
+# tsc files
+*/**/*.js
+*/**/*.js.map
 
 # environment files
 *.env*
