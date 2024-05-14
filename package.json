@@ -1,7 +1,7 @@
 {
   "name": "@water-cooler-studios/kintsu-contracts",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "scripts": {
     "test": "cargo test --manifest-path drink_tests/Cargo.toml",
     "build": "bash build-all.sh",
@@ -27,5 +27,11 @@
     "dist/deployments/share_token/*",
     "dist/deployments/vault/*",
     "!dist/deployments/*/development.*"
-  ]
+  ],
+  "exports": {
+    "./deployments/nomination_agent/": "./dist/deployments/nomination_agent/",
+    "./deployments/registry/": "./dist/deployments/registry/",
+    "./deployments/share_token/": "./dist/deployments/share_token/",
+    "./deployments/vault/": "./dist/deployments/vault/"
+  }
 }
