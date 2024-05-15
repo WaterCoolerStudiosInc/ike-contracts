@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+mod traits;
 pub use crate::registry::RegistryRef;
-
+pub use traits::Registry;
 #[ink::contract]
 pub mod registry {
 

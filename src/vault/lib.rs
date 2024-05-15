@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
+mod traits;
 mod data;
 mod nomination_agent_utils;
-
+pub use traits::Vault;
 #[ink::contract]
 mod vault {
     use crate::data::*;

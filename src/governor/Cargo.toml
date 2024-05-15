@@ -1,0 +1,28 @@
+[package]
+name = "governor"
+version = "0.1.0"
+authors = ["[your_name] <[your_email]>"]
+edition = "2021"
+
+[dependencies]
+ink = { version = "=4.3.0", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "=2.11.2", default-features = false, features = [
+    "derive",
+], optional = true }
+registry = { path = "../registry", default-features = false, features = [
+    "ink-as-dependency",
+] }
+vault = { path = "../vault", default-features = false, features = [
+    "ink-as-dependency",
+] }
+[lib]
+name = "governor"
+path = "lib.rs"
+
+[features]
+default = ["std"]
+std = ["ink/std", "scale/std", "scale-info", "scale-info/std"]
+ink-as-dependency = []
