@@ -205,7 +205,7 @@ pub mod governor {
                 creation_time:Self::env().block_timestamp(),
                 thresh_hold_weight:_weight_threshold,
                 thresh_hold_fees:_fee_threshold,
-                weight_proposals:weight_proposals,
+                weight_proposals,
                 fee_proposals:fee_proposal
             }
         }
@@ -221,7 +221,7 @@ pub mod governor {
             assert_eq!(prop_index,current_prop);
             let mut proposal= self.weight_proposals[prop_index as usize].clone();
             if proposal.vote_points+user_weight > self.thresh_hold_weight{
-                self.update_registry_weights(proposal.accounts,proposal.weights);
+                self.update_registry_weights(proposal.accounts,proposal.weights)?;
             }else{
                 self.weight_proposals[prop_index as usize].vote_points+=user_weight;
             }
@@ -237,7 +237,7 @@ pub mod governor {
             assert_eq!(prop_index,current_prop);
             let mut proposal= self.fee_proposals[prop_index as usize].clone();
             if proposal.vote_points+user_weight > self.thresh_hold_weight{
-                self.update_vault_fees(proposal.new_fee);
+                self.update_vault_fees(proposal.new_fee)?;
             }else{
                 self.fee_proposals[prop_index as usize].vote_points+=user_weight;
             }
