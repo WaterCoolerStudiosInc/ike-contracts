@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 mod traits;
 
-pub use traits::ShareToken;
+
 pub use crate::token::TokenRef;
 
 #[ink::contract]
@@ -16,9 +16,13 @@ mod token {
         operator: AccountId,
         name: Option<String>,
         symbol: Option<String>,
+        
         decimals: u8,
     }
-
+    pub struct LastReceived{
+        amount:u128,
+        timestamp:u64
+    }
     impl Token {
         #[ink(constructor)]
         pub fn new(name: Option<String>, symbol: Option<String>) -> Self {

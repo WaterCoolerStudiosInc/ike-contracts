@@ -5,14 +5,13 @@ pub mod governor {
     };
     use::registry::{Registry,registry::RegistryError};
     use::vault::{Vault};
-   
+    use psp22::{ PSP22};
     #[ink(storage)]
     pub struct Governor {
         // List of all nomination agents including their deployment and relative weight
         pub vault: AccountId,
         pub registry: AccountId,
-        pub executor:AccountId,
-        pub owner:AccountId,
+        pub governance_token:AccountId,       
         pub epoch:u64,
         pub creation_time:u64,
         pub thresh_hold_weight:u128,
@@ -121,7 +120,9 @@ pub mod governor {
             (current_time-self.creation_time)/self.epoch
         }
         fn get_vote_weight(&self,epoch:u64,user:AccountId)->u128{
-            1_u128
+            let mut token: contract_ref!(PSP22) = self.governance_token.into();
+            token.balance_of(user)
+            
         }
         fn get_current_prop(&self,epoch:u64)->u16{
             1_u16
@@ -171,9 +172,8 @@ pub mod governor {
         #[ink(constructor)]
         pub fn new(
             _vault: AccountId,
-            _registry: AccountId,    
-            _executor:AccountId,
-            _owner:AccountId,
+            _registry: AccountId,  
+             token:AccountId,           
             _weight_threshold:u128,
             _fee_threshold:u128,
             _fees:Vec<u16>,
@@ -199,8 +199,7 @@ pub mod governor {
             Self {
                 vault:_vault,
                 registry:_registry,
-                executor:_executor,
-                owner:Self::env().caller(),
+                governance_token:token,                
                 epoch:DAY*3,
                 creation_time:Self::env().block_timestamp(),
                 thresh_hold_weight:_weight_threshold,

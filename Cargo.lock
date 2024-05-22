@@ -1001,11 +1001,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 
 [[package]]
+name = "governance_nft"
+version = "0.1.0"
+dependencies = [
+ "ink",
+ "parity-scale-codec",
+ "psp34",
+ "scale-info",
+]
+
+[[package]]
+name = "governance_staking"
+version = "0.1.0"
+dependencies = [
+ "governance_nft",
+ "ink",
+ "parity-scale-codec",
+ "psp22",
+ "psp34",
+ "scale-info",
+]
+
+[[package]]
 name = "governor"
 version = "0.1.0"
 dependencies = [
  "ink",
  "parity-scale-codec",
+ "psp22",
  "registry",
  "scale-info",
  "vault",
@@ -1886,6 +1909,15 @@ dependencies = [
  "ink",
  "parity-scale-codec",
  "scale-info",
+]
+
+[[package]]
+name = "psp34"
+version = "0.2.1"
+source = "git+https://github.com/Cardinal-Cryptography/PSP34.git#05714b04748bc2485772a3913e5129d57b0fcbc2"
+dependencies = [
+ "ink",
+ "parity-scale-codec",
 ]
 
 [[package]]

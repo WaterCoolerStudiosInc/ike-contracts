@@ -1,5 +1,5 @@
 [package]
-name = "governor"
+name = "governance_nft"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -12,17 +12,10 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
-registry = { path = "../registry", default-features = false, features = [
-    "ink-as-dependency",
-] }
-vault = { path = "../vault", default-features = false, features = [
-    "ink-as-dependency",
-] }
-
-psp22 = { version = "=0.2.1", default-features = false }
+psp34 = { git = "https://github.com/Cardinal-Cryptography/PSP34.git", default-features = false }
 
 [lib]
-name = "governor"
+name = "governance_nft"
 path = "lib.rs"
 
 [features]
