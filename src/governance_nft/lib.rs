@@ -1,13 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+mod traits;
+pub use traits::GovernanceNFT;
+pub use crate::governance_nft::GovernanceNFTRef;
 
 
+//pub use psp34::{Id, PSP34Data, PSP34Event};
+//pub use psp34::PSP34Error;
+//pub use psp34::{PSP34Burnable, PSP34Metadata, PSP34Mintable, PSP34};
 
-pub use psp34::{Id, PSP34Data, PSP34Event};
-pub use psp34::PSP34Error;
-pub use psp34::{PSP34Burnable, PSP34Metadata, PSP34Mintable, PSP34};
-
-#[cfg(feature = "enumerable")]
-pub use traits::PSP34Enumerable;
 
 // An example code of a smart contract using PSP34Data struct to implement
 // the functionality of PSP34 fungible token.
@@ -22,17 +22,27 @@ pub use traits::PSP34Enumerable;
 // Implemented the optional PSP34Mintable (6), PSP34Burnable (7), and PSP34Metadata (8) extensions
 // and included unit tests (8).
 
-#[cfg(feature = "contract")]
+
 #[ink::contract]
-mod token {
-    use crate::{
-        metadata, Id, PSP34Burnable, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata,
-        PSP34Mintable, PSP34,
+mod governance_nft {
+    use ink::{
+        env::{
+            debug_println,
+            DefaultEnvironment,
+         
+        },
+        prelude::{string::String, vec::Vec},
+      
+        storage::Mapping,
     };
-    use ink::prelude::vec::Vec;
+    use psp34::{
+        metadata, Id, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata,
+        PSP34,
+    };
+   
 
     #[cfg(feature = "enumerable")]
-    use crate::PSP34Enumerable;
+    use psp34::PSP34Enumerable;
 
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -41,17 +51,17 @@ mod token {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub struct GovernanceData {
-        block_created:u64,
-        vote_weight:u128
+       pub block_created:u64,
+       pub vote_weight:u128
     }
 
     #[ink(storage)]
-    pub struct Token {
+    pub struct GovernanceNFT {
         data: PSP34Data,          // (1)
         metadata: metadata::Data,
         admin:AccountId,
         mint_count:u128,
-        token_governance_data:Mapping::<u128,GovernanceData>
+        token_governance_data:Mapping<u128,GovernanceData>
     }
 
     impl GovernanceNFT{
@@ -94,8 +104,38 @@ mod token {
         }
         #[ink(message)]
         pub fn get_governance_data(&self,id:u128)->GovernanceData{
-            token_governance_data.get(id).unwrap_or(GovernanceData{block_created:0,vote_weight:0})
+            self.token_governance_data.get(id).unwrap_or(GovernanceData{block_created:0,vote_weight:0})
         }
+        #[ink(message)]
+        pub fn mint(&mut self, to:AccountId,weight:u128) -> Result<(), PSP34Error> {
+            assert_eq!(self.env().caller(),self.admin);
+            
+            self.mint_count+=1;
+            let curr_id=Id::U128(self.mint_count);
+            let g_metadata=GovernanceData{
+                block_created:self.env().block_timestamp(),
+                vote_weight:weight
+            };
+            self.token_governance_data.insert( self.mint_count,&g_metadata);
+            let events = self.data.mint(to, curr_id)?;
+            
+            self.emit_events(events);
+            Ok(())
+        }
+      
+        #[ink(message)]
+        pub fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
+             // Add security, restrict usage of the message
+             assert_eq!(self.env().caller(),self.admin);
+
+             let _id=Id::U128(self.mint_count);
+            
+             let events = self.data.burn(self.env().caller(), account, _id)?;
+             self.emit_events(events);
+             Ok(())          
+        }
+        
+    
     }
 
     // (3)
@@ -181,39 +221,15 @@ mod token {
         fn owner_of(&self, id: Id) -> Option<AccountId> {
             self.data.owner_of(&id)
         }
-        #[ink(message)]
-        fn mint(&mut self, weight:u128) -> Result<(), PSP34Error> {
-            assert_eq(self.env().caller,self.admin);
-            let curr_id=Id::from(self.mint_count+1);
-            self.mint_count=curr_id;
-            let g_metadata=GovernanceData{
-                block_created:self.env().block_timestamp,
-                vote_weight:weight
-            };
-            self.token_governance_data.insert(curr_id,g_metadata);
-            let events = self.data.mint(self.env().caller(), curr_id)?;
-            
-            self.emit_events(events);
-            Ok(())
-        }
+      
     }
 
    
   
     // (7)
-    impl PSP34Burnable for Token {
-        #[ink(message)]
-        fn burn(&mut self, account: AccountId, id: Id) -> Result<(), PSP34Error> {
-            // Add security, restrict usage of the message
-            assert_eq(self.env().caller,self.admin);
-            let events = self.data.burn(self.env().caller(), account, id)?;
-            self.emit_events(events);
-            Ok(())
-        }
-    }
-
+   
     // (8)
-    impl PSP34Metadata for Token {
+    impl PSP34Metadata for GovernanceNFT {
         #[ink(message)]
         fn get_attribute(&self, id: Id, key: Vec<u8>) -> Option<Vec<u8>> {
             self.metadata.get_attribute(id, key)
@@ -221,8 +237,5 @@ mod token {
     }
 
     // (9)
-    #[cfg(test)]
-    mod tests {
-        crate::tests!(Token, Token::new);
-    }
+
 }

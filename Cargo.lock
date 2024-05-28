@@ -1918,6 +1918,7 @@ source = "git+https://github.com/Cardinal-Cryptography/PSP34.git#05714b04748bc24
 dependencies = [
  "ink",
  "parity-scale-codec",
+ "scale-info",
 ]
 
 [[package]]
