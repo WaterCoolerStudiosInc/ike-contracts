@@ -1023,6 +1023,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "governance_token"
+version = "0.1.0"
+dependencies = [
+ "ink",
+ "parity-scale-codec",
+ "psp22",
+ "scale-info",
+]
+
+[[package]]
 name = "governor"
 version = "0.1.0"
 dependencies = [

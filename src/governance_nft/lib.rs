@@ -102,11 +102,26 @@ mod governance_nft {
                 }
             }
         }
-        #[ink(message)]
+        #[ink(message,selector = 31337)]
         pub fn get_governance_data(&self,id:u128)->GovernanceData{
             self.token_governance_data.get(id).unwrap_or(GovernanceData{block_created:0,vote_weight:0})
         }
-        #[ink(message)]
+        #[ink(message,selector = 88)]
+        pub fn increment_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>{
+            assert_eq!(self.env().caller(),self.admin);
+            let mut curr=self.token_governance_data.get(id).unwrap();
+            curr.vote_weight+=weight;
+            Ok(())
+        }
+        #[ink(message,selector = 99)]
+        pub fn decrement_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>{
+            assert_eq!(self.env().caller(),self.admin);
+            let mut curr=self.token_governance_data.get(id).unwrap();
+            assert!(curr.vote_weight>=weight);
+            curr.vote_weight-=weight;
+            Ok(())
+        }
+        #[ink(message,selector = 1337)]
         pub fn mint(&mut self, to:AccountId,weight:u128) -> Result<(), PSP34Error> {
             assert_eq!(self.env().caller(),self.admin);
             
@@ -123,7 +138,7 @@ mod governance_nft {
             Ok(())
         }
       
-        #[ink(message)]
+        #[ink(message,selector = 8057)]
         pub fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
              // Add security, restrict usage of the message
              assert_eq!(self.env().caller(),self.admin);
@@ -133,8 +148,7 @@ mod governance_nft {
              let events = self.data.burn(self.env().caller(), account, _id)?;
              self.emit_events(events);
              Ok(())          
-        }
-        
+        }       
     
     }
 

@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x6b0f81b5b9238fc532da1eb7c1d265e67e6af7cb28a0b09ba5fe4b519378c360",
+    "hash": "0xca265568f576c35d0d1e7c9487823e11624ecdab3e40cab1e2e95e5ebe3494a2",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -14,11 +14,10 @@
     }
   },
   "contract": {
-    "name": "nomination_agent",
+    "name": "governance_staking",
     "version": "0.1.0",
     "authors": [
-      "Brandon <brandon@kintsu.xyz>",
-      "John <john@kintsu.xyz"
+      "[your_name] <[your_email]>"
     ]
   },
   "spec": {
@@ -26,7 +25,7 @@
       {
         "args": [
           {
-            "label": "vault_",
+            "label": "governance_token",
             "type": {
               "displayName": [
                 "AccountId"
@@ -35,34 +34,25 @@
             }
           },
           {
-            "label": "admin_",
+            "label": "governance_nft_hash",
             "type": {
               "displayName": [
-                "AccountId"
+                "Hash"
               ],
-              "type": 0
-            }
-          },
-          {
-            "label": "pool_id_",
-            "type": {
-              "displayName": [
-                "u32"
-              ],
-              "type": 3
+              "type": 5
             }
           }
         ],
         "default": false,
         "docs": [],
         "label": "new",
-        "payable": true,
+        "payable": false,
         "returnType": {
           "displayName": [
             "ink_primitives",
             "ConstructorResult"
           ],
-          "type": 5
+          "type": 6
         },
         "selector": "0x9bae9d5e"
       }
@@ -85,26 +75,26 @@
         "displayName": [
           "BlockNumber"
         ],
-        "type": 3
+        "type": 16
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 19
+        "type": 17
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 17
+        "type": 5
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 18
+        "type": 15
       }
     },
     "events": [],
@@ -113,29 +103,13 @@
         "ink",
         "LangError"
       ],
-      "type": 7
+      "type": 8
     },
     "messages": [
       {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "deposit",
-        "mutates": true,
-        "payable": true,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 8
-        },
-        "selector": "0x00000001"
-      },
-      {
         "args": [
           {
-            "label": "amount",
+            "label": "token_value",
             "type": {
               "displayName": [
                 "u128"
@@ -146,7 +120,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "start_unbond",
+        "label": "wrap_tokens",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -154,41 +128,34 @@
             "ink",
             "MessageResult"
           ],
-          "type": 8
+          "type": 9
         },
-        "selector": "0x00000002"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "withdraw_unbonded",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 8
-        },
-        "selector": "0x00000003"
+        "selector": "0x4265f279"
       },
       {
         "args": [
           {
-            "label": "incentive_percentage",
+            "label": "token_value",
             "type": {
               "displayName": [
-                "u16"
+                "u128"
               ],
-              "type": 11
+              "type": 4
+            }
+          },
+          {
+            "label": "nft_id",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "compound",
+        "label": "add_token_value",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -196,55 +163,34 @@
             "ink",
             "MessageResult"
           ],
-          "type": 12
+          "type": 9
         },
-        "selector": "0x00000004"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "get_pool_id",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 15
-        },
-        "selector": "0x0000000b"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "get_staked_value",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 16
-        },
-        "selector": "0x0000000c"
+        "selector": "0xfe3c30f7"
       },
       {
         "args": [
           {
-            "label": "code_hash",
+            "label": "token_value",
             "type": {
-              "displayName": [],
-              "type": 1
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "nft_id",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "set_code",
+        "label": "remove_token_value",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -252,9 +198,35 @@
             "ink",
             "MessageResult"
           ],
-          "type": 8
+          "type": 9
         },
-        "selector": "0x00000063"
+        "selector": "0xac5d83a0"
+      },
+      {
+        "args": [
+          {
+            "label": "token_id",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "unwrap",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0x67a449d0"
       }
     ]
   },
@@ -270,7 +242,7 @@
                   "ty": 0
                 }
               },
-              "name": "vault"
+              "name": "owner"
             },
             {
               "layout": {
@@ -279,28 +251,33 @@
                   "ty": 0
                 }
               },
-              "name": "admin"
+              "name": "governance_token"
             },
             {
               "layout": {
                 "leaf": {
                   "key": "0x00000000",
-                  "ty": 3
+                  "ty": 0
                 }
               },
-              "name": "pool_id"
+              "name": "nft"
             },
             {
               "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 4
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0xc3baba04",
+                      "ty": 3
+                    }
+                  },
+                  "root_key": "0xc3baba04"
                 }
               },
-              "name": "staked"
+              "name": "governance_nfts"
             }
           ],
-          "name": "NominationAgent"
+          "name": "Staking"
         }
       },
       "root_key": "0x00000000"
@@ -350,7 +327,9 @@
       "id": 3,
       "type": {
         "def": {
-          "primitive": "u32"
+          "sequence": {
+            "type": 4
+          }
         }
       }
     },
@@ -364,370 +343,6 @@
     },
     {
       "id": 5,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 6
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 6
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 6,
-      "type": {
-        "def": {
-          "tuple": []
-        }
-      }
-    },
-    {
-      "id": 7,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "index": 1,
-                "name": "CouldNotReadInput"
-              }
-            ]
-          }
-        },
-        "path": [
-          "ink_primitives",
-          "LangError"
-        ]
-      }
-    },
-    {
-      "id": 8,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 9
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 9
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 9,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 6
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 10
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 6
-          },
-          {
-            "name": "E",
-            "type": 10
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 10,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "index": 0,
-                "name": "CallRuntimeFailed"
-              },
-              {
-                "index": 1,
-                "name": "Unauthorized"
-              }
-            ]
-          }
-        },
-        "path": [
-          "nomination_agent",
-          "nomination_agent",
-          "RuntimeError"
-        ]
-      }
-    },
-    {
-      "id": 11,
-      "type": {
-        "def": {
-          "primitive": "u16"
-        }
-      }
-    },
-    {
-      "id": 12,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 13
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 13
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 13,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 14
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 10
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 14
-          },
-          {
-            "name": "E",
-            "type": 10
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 14,
-      "type": {
-        "def": {
-          "tuple": [
-            4,
-            4
-          ]
-        }
-      }
-    },
-    {
-      "id": 15,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 3
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 3
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 16,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 4
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 4
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 17,
       "type": {
         "def": {
           "composite": {
@@ -747,7 +362,312 @@
       }
     },
     {
-      "id": 18,
+      "id": 6,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 7
+          },
+          {
+            "name": "E",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 10
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 10
+          },
+          {
+            "name": "E",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 11
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 7
+          },
+          {
+            "name": "E",
+            "type": 11
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Invalid"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 12,
+                    "typeName": "PSP34Error"
+                  }
+                ],
+                "index": 1,
+                "name": "NFTError"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 14,
+                    "typeName": "PSP22Error"
+                  }
+                ],
+                "index": 2,
+                "name": "TokenError"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governance_staking",
+          "staking",
+          "StakingError"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 13,
+                    "typeName": "String"
+                  }
+                ],
+                "index": 0,
+                "name": "Custom"
+              },
+              {
+                "index": 1,
+                "name": "SelfApprove"
+              },
+              {
+                "index": 2,
+                "name": "NotApproved"
+              },
+              {
+                "index": 3,
+                "name": "TokenExists"
+              },
+              {
+                "index": 4,
+                "name": "TokenNotExists"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 13,
+                    "typeName": "String"
+                  }
+                ],
+                "index": 5,
+                "name": "SafeTransferCheckFailed"
+              }
+            ]
+          }
+        },
+        "path": [
+          "psp34",
+          "errors",
+          "PSP34Error"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 13,
+                    "typeName": "String"
+                  }
+                ],
+                "index": 0,
+                "name": "Custom"
+              },
+              {
+                "index": 1,
+                "name": "InsufficientBalance"
+              },
+              {
+                "index": 2,
+                "name": "InsufficientAllowance"
+              },
+              {
+                "index": 3,
+                "name": "ZeroRecipientAddress"
+              },
+              {
+                "index": 4,
+                "name": "ZeroSenderAddress"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 13,
+                    "typeName": "String"
+                  }
+                ],
+                "index": 5,
+                "name": "SafeTransferCheckFailed"
+              }
+            ]
+          }
+        },
+        "path": [
+          "psp22",
+          "errors",
+          "PSP22Error"
+        ]
+      }
+    },
+    {
+      "id": 15,
       "type": {
         "def": {
           "primitive": "u64"
@@ -755,7 +675,15 @@
       }
     },
     {
-      "id": 19,
+      "id": 16,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
+      "id": 17,
       "type": {
         "def": {
           "variant": {}

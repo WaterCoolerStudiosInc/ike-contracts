@@ -9,7 +9,8 @@ members = [
     "src/mock_nominator",
     "src/governor",
     "src/governance_nft",
-    "src/governance_staking"
+    "src/governance_staking",
+    "src/governance_token"
 ]
 exclude = [
     "drink_tests",

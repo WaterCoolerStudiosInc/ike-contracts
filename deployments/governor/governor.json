@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x6b0f81b5b9238fc532da1eb7c1d265e67e6af7cb28a0b09ba5fe4b519378c360",
+    "hash": "0x06192a446c6278a8311d134770eb09b01db4839e3d70d90f39f72de82f8225b5",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -14,11 +14,10 @@
     }
   },
   "contract": {
-    "name": "nomination_agent",
+    "name": "governor",
     "version": "0.1.0",
     "authors": [
-      "Brandon <brandon@kintsu.xyz>",
-      "John <john@kintsu.xyz"
+      "[your_name] <[your_email]>"
     ]
   },
   "spec": {
@@ -26,7 +25,7 @@
       {
         "args": [
           {
-            "label": "vault_",
+            "label": "_vault",
             "type": {
               "displayName": [
                 "AccountId"
@@ -35,7 +34,7 @@
             }
           },
           {
-            "label": "admin_",
+            "label": "_registry",
             "type": {
               "displayName": [
                 "AccountId"
@@ -44,25 +43,61 @@
             }
           },
           {
-            "label": "pool_id_",
+            "label": "token",
             "type": {
               "displayName": [
-                "u32"
+                "AccountId"
               ],
-              "type": 3
+              "type": 0
+            }
+          },
+          {
+            "label": "_weight_threshold",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "_fee_threshold",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "_fees",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 12
+            }
+          },
+          {
+            "label": "_weights",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 13
             }
           }
         ],
         "default": false,
         "docs": [],
         "label": "new",
-        "payable": true,
+        "payable": false,
         "returnType": {
           "displayName": [
             "ink_primitives",
             "ConstructorResult"
           ],
-          "type": 5
+          "type": 15
         },
         "selector": "0x9bae9d5e"
       }
@@ -85,99 +120,59 @@
         "displayName": [
           "BlockNumber"
         ],
-        "type": 3
+        "type": 22
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 19
+        "type": 23
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 17
+        "type": 21
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 18
+        "type": 3
       }
     },
-    "events": [],
-    "lang_error": {
-      "displayName": [
-        "ink",
-        "LangError"
-      ],
-      "type": 7
-    },
-    "messages": [
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "deposit",
-        "mutates": true,
-        "payable": true,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 8
-        },
-        "selector": "0x00000001"
-      },
+    "events": [
       {
         "args": [
           {
-            "label": "amount",
+            "docs": [],
+            "indexed": false,
+            "label": "id",
             "type": {
               "displayName": [
-                "u128"
+                "Balance"
               ],
               "type": 4
             }
           }
         ],
-        "default": false,
         "docs": [],
-        "label": "start_unbond",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 8
-        },
-        "selector": "0x00000002"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "withdraw_unbonded",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 8
-        },
-        "selector": "0x00000003"
-      },
+        "label": "Update"
+      }
+    ],
+    "lang_error": {
+      "displayName": [
+        "ink",
+        "LangError"
+      ],
+      "type": 17
+    },
+    "messages": [
       {
         "args": [
           {
-            "label": "incentive_percentage",
+            "label": "prop_index",
             "type": {
               "displayName": [
                 "u16"
@@ -188,7 +183,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "compound",
+        "label": "proposal_weight_vote",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -196,55 +191,25 @@
             "ink",
             "MessageResult"
           ],
-          "type": 12
+          "type": 18
         },
-        "selector": "0x00000004"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "get_pool_id",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 15
-        },
-        "selector": "0x0000000b"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "get_staked_value",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 16
-        },
-        "selector": "0x0000000c"
+        "selector": "0x69e996b7"
       },
       {
         "args": [
           {
-            "label": "code_hash",
+            "label": "prop_index",
             "type": {
-              "displayName": [],
-              "type": 1
+              "displayName": [
+                "u16"
+              ],
+              "type": 11
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "set_code",
+        "label": "fee_weight_vote",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -252,9 +217,9 @@
             "ink",
             "MessageResult"
           ],
-          "type": 8
+          "type": 18
         },
-        "selector": "0x00000063"
+        "selector": "0x8f99abee"
       }
     ]
   },
@@ -279,7 +244,16 @@
                   "ty": 0
                 }
               },
-              "name": "admin"
+              "name": "registry"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "governance_token"
             },
             {
               "layout": {
@@ -288,7 +262,16 @@
                   "ty": 3
                 }
               },
-              "name": "pool_id"
+              "name": "epoch"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 3
+                }
+              },
+              "name": "creation_time"
             },
             {
               "layout": {
@@ -297,10 +280,37 @@
                   "ty": 4
                 }
               },
-              "name": "staked"
+              "name": "thresh_hold_weight"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "thresh_hold_fees"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "weight_proposals"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 9
+                }
+              },
+              "name": "fee_proposals"
             }
           ],
-          "name": "NominationAgent"
+          "name": "Governor"
         }
       },
       "root_key": "0x00000000"
@@ -350,7 +360,7 @@
       "id": 3,
       "type": {
         "def": {
-          "primitive": "u32"
+          "primitive": "u64"
         }
       }
     },
@@ -366,12 +376,163 @@
       "id": 5,
       "type": {
         "def": {
+          "sequence": {
+            "type": 6
+          }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "accounts",
+                "type": 7,
+                "typeName": "Vec<AccountId>"
+              },
+              {
+                "name": "weights",
+                "type": 8,
+                "typeName": "Vec<u64>"
+              },
+              {
+                "name": "vote_points",
+                "type": 4,
+                "typeName": "u128"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governor",
+          "governor",
+          "WeightProposal"
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 0
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 10
+          }
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "new_fee",
+                "type": 11,
+                "typeName": "u16"
+              },
+              {
+                "name": "vote_points",
+                "type": 4,
+                "typeName": "u128"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governor",
+          "governor",
+          "FeeProposal"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "primitive": "u16"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 11
+          }
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 14
+          }
+        }
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "accounts",
+                "type": 7,
+                "typeName": "Vec<AccountId>"
+              },
+              {
+                "name": "weights",
+                "type": 8,
+                "typeName": "Vec<u64>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governor",
+          "governor",
+          "WeightUpdate"
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
           "variant": {
             "variants": [
               {
                 "fields": [
                   {
-                    "type": 6
+                    "type": 16
                   }
                 ],
                 "index": 0,
@@ -380,7 +541,7 @@
               {
                 "fields": [
                   {
-                    "type": 7
+                    "type": 17
                   }
                 ],
                 "index": 1,
@@ -392,11 +553,11 @@
         "params": [
           {
             "name": "T",
-            "type": 6
+            "type": 16
           },
           {
             "name": "E",
-            "type": 7
+            "type": 17
           }
         ],
         "path": [
@@ -405,7 +566,7 @@
       }
     },
     {
-      "id": 6,
+      "id": 16,
       "type": {
         "def": {
           "tuple": []
@@ -413,7 +574,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 17,
       "type": {
         "def": {
           "variant": {
@@ -432,7 +593,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 18,
       "type": {
         "def": {
           "variant": {
@@ -440,7 +601,7 @@
               {
                 "fields": [
                   {
-                    "type": 9
+                    "type": 19
                   }
                 ],
                 "index": 0,
@@ -449,7 +610,7 @@
               {
                 "fields": [
                   {
-                    "type": 7
+                    "type": 17
                   }
                 ],
                 "index": 1,
@@ -461,11 +622,11 @@
         "params": [
           {
             "name": "T",
-            "type": 9
+            "type": 19
           },
           {
             "name": "E",
-            "type": 7
+            "type": 17
           }
         ],
         "path": [
@@ -474,7 +635,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 19,
       "type": {
         "def": {
           "variant": {
@@ -482,7 +643,7 @@
               {
                 "fields": [
                   {
-                    "type": 6
+                    "type": 16
                   }
                 ],
                 "index": 0,
@@ -491,7 +652,7 @@
               {
                 "fields": [
                   {
-                    "type": 10
+                    "type": 20
                   }
                 ],
                 "index": 1,
@@ -503,11 +664,11 @@
         "params": [
           {
             "name": "T",
-            "type": 6
+            "type": 16
           },
           {
             "name": "E",
-            "type": 10
+            "type": 20
           }
         ],
         "path": [
@@ -516,218 +677,39 @@
       }
     },
     {
-      "id": 10,
+      "id": 20,
       "type": {
         "def": {
           "variant": {
             "variants": [
               {
                 "index": 0,
-                "name": "CallRuntimeFailed"
+                "name": "RegistryFailure"
               },
               {
                 "index": 1,
+                "name": "VaultFailure"
+              },
+              {
+                "index": 2,
                 "name": "Unauthorized"
-              }
-            ]
-          }
-        },
-        "path": [
-          "nomination_agent",
-          "nomination_agent",
-          "RuntimeError"
-        ]
-      }
-    },
-    {
-      "id": 11,
-      "type": {
-        "def": {
-          "primitive": "u16"
-        }
-      }
-    },
-    {
-      "id": 12,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 13
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
               },
               {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
+                "index": 3,
+                "name": "InvalidInput"
               }
             ]
           }
         },
-        "params": [
-          {
-            "name": "T",
-            "type": 13
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
         "path": [
-          "Result"
+          "governor",
+          "governor",
+          "GovernorError"
         ]
       }
     },
     {
-      "id": 13,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 14
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 10
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 14
-          },
-          {
-            "name": "E",
-            "type": 10
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 14,
-      "type": {
-        "def": {
-          "tuple": [
-            4,
-            4
-          ]
-        }
-      }
-    },
-    {
-      "id": 15,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 3
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 3
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 16,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 4
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 4
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 17,
+      "id": 21,
       "type": {
         "def": {
           "composite": {
@@ -747,15 +729,15 @@
       }
     },
     {
-      "id": 18,
+      "id": 22,
       "type": {
         "def": {
-          "primitive": "u64"
+          "primitive": "u32"
         }
       }
     },
     {
-      "id": 19,
+      "id": 23,
       "type": {
         "def": {
           "variant": {}

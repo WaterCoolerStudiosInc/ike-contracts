@@ -96,32 +96,43 @@ mod staking{
 
         }
         
-        #[ink(message)]
-       pub fn wrap(&mut self, token_value:u128)-> Result<(), StakingError>{
+       #[ink(message)]
+       pub fn wrap_tokens(&mut self, token_value:u128)-> Result<(), StakingError>{
         let caller = Self::env().caller();
         //let now = Self::env().block_timestamp();
 
         self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
-        let mut gtoken: contract_ref!(GovernanceNFT) = self.nft.into();
+        
         self.mint_psp34(caller,token_value)?;
         Ok(())
         }
       #[ink(message)]
-       pub fn add_value(&mut self, token_value:u128,nft_id:u128)-> Result<(), StakingError>{
+       pub fn add_token_value(&mut self, token_value:u128,nft_id:u128)-> Result<(), StakingError>{
         let caller = Self::env().caller();
         self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
+        let mut token: contract_ref!(GovernanceNFT) = self.nft.into();
+        if let Err(e) = token.increment_weight(nft_id,token_value) {
+                return Err(StakingError::NFTError(e));
+        }
         Ok(())
+        }
+        #[ink(message)]
+        pub fn remove_token_value(&mut self, token_value:u128,nft_id:u128)-> Result<(), StakingError>{
+         let caller = Self::env().caller();         
+         let mut token: contract_ref!(GovernanceNFT) = self.nft.into();
+         if let Err(e) = token.decrement_weight(nft_id,token_value) {
+                return Err(StakingError::NFTError(e));
+         }
+         self.transfer_psp22_from(&Self::env().account_id(), &caller,token_value)?;
+         Ok(())
         }
        #[ink(message)]
        pub fn unwrap(&mut self, token_id:u128)-> Result<(), StakingError>{
         let caller = Self::env().caller();
         let mut gtoken: contract_ref!(GovernanceNFT) = self.nft.into();
         let data= gtoken.get_governance_data(token_id);
-
-        self.transfer_psp22_from( &Self::env().account_id(),&caller, data.vote_weight)?;
-        
+        self.transfer_psp22_from( &Self::env().account_id(),&caller, data.vote_weight)?;        
         self.burn_psp34(caller,token_id)?;
-
         Ok(())
         }       
     }

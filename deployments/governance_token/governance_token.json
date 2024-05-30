@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xad8d57e831cf7f0d641d9d2513c4c58cd74992bf05e95d41657e943edf0afe2e",
+    "hash": "0x9e0d9fc9d65d18f16f7b839e485faf75b22ef75e01e63273c17655994b6b972c",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -14,11 +14,10 @@
     }
   },
   "contract": {
-    "name": "registry",
+    "name": "governance_token",
     "version": "0.1.0",
     "authors": [
-      "Brandon <brandon@kintsu.xyz>",
-      "John <john@kintsu.xyz"
+      "jjj <jjj17@protonmail.com"
     ]
   },
   "spec": {
@@ -26,30 +25,21 @@
       {
         "args": [
           {
-            "label": "role_add",
+            "label": "name",
             "type": {
               "displayName": [
-                "AccountId"
+                "Option"
               ],
-              "type": 2
+              "type": 5
             }
           },
           {
-            "label": "role_update",
+            "label": "symbol",
             "type": {
               "displayName": [
-                "AccountId"
+                "Option"
               ],
-              "type": 2
-            }
-          },
-          {
-            "label": "role_remove",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 2
+              "type": 5
             }
           }
         ],
@@ -73,38 +63,38 @@
         "displayName": [
           "AccountId"
         ],
-        "type": 2
+        "type": 1
       },
       "balance": {
         "displayName": [
           "Balance"
         ],
-        "type": 19
+        "type": 0
       },
       "blockNumber": {
         "displayName": [
           "BlockNumber"
         ],
-        "type": 21
+        "type": 20
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 22
+        "type": 21
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 20
+        "type": 18
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 5
+        "type": 19
       }
     },
     "events": [
@@ -113,94 +103,60 @@
           {
             "docs": [],
             "indexed": true,
-            "label": "agent",
+            "label": "owner",
             "type": {
               "displayName": [
                 "AccountId"
               ],
-              "type": 2
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
             }
           },
           {
             "docs": [],
             "indexed": false,
-            "label": "weight",
+            "label": "amount",
             "type": {
               "displayName": [
-                "u64"
+                "u128"
               ],
-              "type": 5
+              "type": 0
             }
           }
         ],
         "docs": [],
-        "label": "AgentAdded"
+        "label": "Approval"
       },
       {
         "args": [
           {
             "docs": [],
             "indexed": true,
-            "label": "agent",
+            "label": "from",
             "type": {
               "displayName": [
-                "AccountId"
+                "Option"
               ],
-              "type": 2
+              "type": 17
             }
           },
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "old_weight",
-            "type": {
-              "displayName": [
-                "u64"
-              ],
-              "type": 5
-            }
-          },
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "new_weight",
-            "type": {
-              "displayName": [
-                "u64"
-              ],
-              "type": 5
-            }
-          }
-        ],
-        "docs": [],
-        "label": "AgentUpdated"
-      },
-      {
-        "args": [
           {
             "docs": [],
             "indexed": true,
-            "label": "agent",
+            "label": "to",
             "type": {
               "displayName": [
-                "AccountId"
-              ],
-              "type": 2
-            }
-          }
-        ],
-        "docs": [],
-        "label": "AgentDeleted"
-      },
-      {
-        "args": [
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "role_type",
-            "type": {
-              "displayName": [
-                "RoleType"
+                "Option"
               ],
               "type": 17
             }
@@ -208,45 +164,17 @@
           {
             "docs": [],
             "indexed": false,
-            "label": "new_account",
+            "label": "value",
             "type": {
               "displayName": [
-                "AccountId"
+                "u128"
               ],
-              "type": 2
+              "type": 0
             }
           }
         ],
         "docs": [],
-        "label": "RoleAccountChanged"
-      },
-      {
-        "args": [
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "role_type",
-            "type": {
-              "displayName": [
-                "RoleType"
-              ],
-              "type": 17
-            }
-          },
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "new_account",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 2
-            }
-          }
-        ],
-        "docs": [],
-        "label": "RoleAdminChanged"
+        "label": "Transfer"
       }
     ],
     "lang_error": {
@@ -260,32 +188,18 @@
       {
         "args": [
           {
-            "label": "account",
+            "label": "new_owner",
             "type": {
               "displayName": [
                 "AccountId"
               ],
-              "type": 2
-            }
-          },
-          {
-            "label": "new_weight",
-            "type": {
-              "displayName": [
-                "u64"
-              ],
-              "type": 5
+              "type": 1
             }
           }
         ],
         "default": false,
-        "docs": [
-          " Add a new nomination agent",
-          "",
-          " Caller must have the AddAgent role.",
-          " Cannot add the same nomination agent twice."
-        ],
-        "label": "add_agent",
+        "docs": [],
+        "label": "transfer_ownership",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -295,21 +209,149 @@
           ],
           "type": 9
         },
-        "selector": "0x229abe21"
+        "selector": "0x107e33ea"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_owner",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 12
+        },
+        "selector": "0x07fcd0b1"
       },
       {
         "args": [
           {
-            "label": "accounts",
+            "label": "value",
             "type": {
               "displayName": [
-                "Vec"
+                "u128"
               ],
-              "type": 13
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "PSP22Burnable::burn",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0x7a9da510"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "PSP22::total_supply",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0x162df8c2"
+      },
+      {
+        "args": [
+          {
+            "label": "owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "PSP22::balance_of",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0x6568382f"
+      },
+      {
+        "args": [
+          {
+            "label": "owner",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
             }
           },
           {
-            "label": "new_weights",
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "PSP22::allowance",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 13
+        },
+        "selector": "0x4d47d921"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "_data",
             "type": {
               "displayName": [
                 "Vec"
@@ -319,12 +361,8 @@
           }
         ],
         "default": false,
-        "docs": [
-          " Update existing nomination agents",
-          "",
-          " Caller must have the UpdateAgents role."
-        ],
-        "label": "update_agents",
+        "docs": [],
+        "label": "PSP22::transfer",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -334,30 +372,50 @@
           ],
           "type": 9
         },
-        "selector": "0xf62a0391"
+        "selector": "0xdb20f9f5"
       },
       {
         "args": [
           {
-            "label": "account",
+            "label": "from",
             "type": {
               "displayName": [
                 "AccountId"
               ],
-              "type": 2
+              "type": 1
+            }
+          },
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "_data",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 14
             }
           }
         ],
         "default": false,
-        "docs": [
-          " Removes a nomination agent",
-          "",
-          " Caller must have the RemoveAgent role.",
-          " This is intended to remove fully deprecated agents to save gas during iteration.",
-          " Agent must have a weight set of 0.",
-          " Agent should have sufficient time to unbond all staked AZERO."
-        ],
-        "label": "remove_agent",
+        "docs": [],
+        "label": "PSP22::transfer_from",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -367,13 +425,118 @@
           ],
           "type": 9
         },
-        "selector": "0x9d0d64d9"
+        "selector": "0x54b3c76e"
+      },
+      {
+        "args": [
+          {
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "PSP22::approve",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0xb20f1bbd"
+      },
+      {
+        "args": [
+          {
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "delta_value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "PSP22::increase_allowance",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0x96d6b57a"
+      },
+      {
+        "args": [
+          {
+            "label": "spender",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "label": "delta_value",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "PSP22::decrease_allowance",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0xfecb57d5"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_agents",
+        "label": "PSP22Metadata::token_name",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -383,130 +546,13 @@
           ],
           "type": 15
         },
-        "selector": "0xbcfc087a"
+        "selector": "0x3d261bd4"
       },
       {
-        "args": [
-          {
-            "label": "role_type",
-            "type": {
-              "displayName": [
-                "RoleType"
-              ],
-              "type": 17
-            }
-          },
-          {
-            "label": "new_account",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 2
-            }
-          }
-        ],
-        "default": false,
-        "docs": [
-          " ================================ Update Role Methods ================================",
-          " Transfers role to a new account",
-          "",
-          " Caller must be the admin for the role"
-        ],
-        "label": "transfer_role",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0xad87f611"
-      },
-      {
-        "args": [
-          {
-            "label": "role_type",
-            "type": {
-              "displayName": [
-                "RoleType"
-              ],
-              "type": 17
-            }
-          },
-          {
-            "label": "new_account",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 2
-            }
-          }
-        ],
-        "default": false,
-        "docs": [
-          " Transfers administration of role to a new account",
-          "",
-          " Caller must be the admin for the role"
-        ],
-        "label": "transfer_role_admin",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0xd5466068"
-      },
-      {
-        "args": [
-          {
-            "label": "role_type",
-            "type": {
-              "displayName": [
-                "RoleType"
-              ],
-              "type": 17
-            }
-          }
-        ],
-        "default": false,
-        "docs": [
-          " ================================ View Only Role Methods ================================"
-        ],
-        "label": "get_role",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 18
-        },
-        "selector": "0x85f65d55"
-      },
-      {
-        "args": [
-          {
-            "label": "role_type",
-            "type": {
-              "displayName": [
-                "RoleType"
-              ],
-              "type": 17
-            }
-          }
-        ],
+        "args": [],
         "default": false,
         "docs": [],
-        "label": "get_role_admin",
+        "label": "PSP22Metadata::token_symbol",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -514,9 +560,25 @@
             "ink",
             "MessageResult"
           ],
-          "type": 18
+          "type": 15
         },
-        "selector": "0x553f5414"
+        "selector": "0x34205be5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "PSP22Metadata::token_decimals",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x7271b782"
       }
     ]
   },
@@ -527,57 +589,138 @@
           "fields": [
             {
               "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 0
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "leaf": {
+                          "key": "0x00000000",
+                          "ty": 0
+                        }
+                      },
+                      "name": "total_supply"
+                    },
+                    {
+                      "layout": {
+                        "root": {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x45c746d4",
+                              "ty": 0
+                            }
+                          },
+                          "root_key": "0x45c746d4"
+                        }
+                      },
+                      "name": "balances"
+                    },
+                    {
+                      "layout": {
+                        "root": {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00efb3a1",
+                              "ty": 0
+                            }
+                          },
+                          "root_key": "0x00efb3a1"
+                        }
+                      },
+                      "name": "allowances"
+                    }
+                  ],
+                  "name": "PSP22Data"
                 }
               },
-              "name": "agents"
+              "name": "data"
             },
             {
               "layout": {
                 "leaf": {
                   "key": "0x00000000",
-                  "ty": 5
+                  "ty": 1
                 }
               },
-              "name": "total_weight"
+              "name": "owner"
             },
             {
               "layout": {
-                "root": {
-                  "layout": {
-                    "struct": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 1
+                }
+              },
+              "name": "operator"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
                       "fields": [
                         {
                           "layout": {
                             "leaf": {
-                              "key": "0x7cbec49f",
-                              "ty": 2
+                              "key": "0x00000000",
+                              "ty": 4
                             }
                           },
-                          "name": "admin"
-                        },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
+                }
+              },
+              "name": "name"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
                         {
                           "layout": {
                             "leaf": {
-                              "key": "0x7cbec49f",
-                              "ty": 2
+                              "key": "0x00000000",
+                              "ty": 4
                             }
                           },
-                          "name": "account"
+                          "name": "0"
                         }
                       ],
-                      "name": "Role"
+                      "name": "Some"
                     }
-                  },
-                  "root_key": "0x7cbec49f"
+                  }
                 }
               },
-              "name": "roles"
+              "name": "symbol"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 3
+                }
+              },
+              "name": "decimals"
             }
           ],
-          "name": "Registry"
+          "name": "Token"
         }
       },
       "root_key": "0x00000000"
@@ -588,9 +731,7 @@
       "id": 0,
       "type": {
         "def": {
-          "sequence": {
-            "type": 1
-          }
+          "primitive": "u128"
         }
       }
     },
@@ -601,33 +742,7 @@
           "composite": {
             "fields": [
               {
-                "name": "address",
                 "type": 2,
-                "typeName": "AccountId"
-              },
-              {
-                "name": "weight",
-                "type": 5,
-                "typeName": "u64"
-              }
-            ]
-          }
-        },
-        "path": [
-          "registry",
-          "registry",
-          "Agent"
-        ]
-      }
-    },
-    {
-      "id": 2,
-      "type": {
-        "def": {
-          "composite": {
-            "fields": [
-              {
-                "type": 3,
                 "typeName": "[u8; 32]"
               }
             ]
@@ -641,18 +756,18 @@
       }
     },
     {
-      "id": 3,
+      "id": 2,
       "type": {
         "def": {
           "array": {
             "len": 32,
-            "type": 4
+            "type": 3
           }
         }
       }
     },
     {
-      "id": 4,
+      "id": 3,
       "type": {
         "def": {
           "primitive": "u8"
@@ -660,11 +775,44 @@
       }
     },
     {
+      "id": 4,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
       "id": 5,
       "type": {
         "def": {
-          "primitive": "u64"
-        }
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 4
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          }
+        ],
+        "path": [
+          "Option"
+        ]
       }
     },
     {
@@ -827,50 +975,48 @@
           "variant": {
             "variants": [
               {
+                "fields": [
+                  {
+                    "type": 4,
+                    "typeName": "String"
+                  }
+                ],
                 "index": 0,
-                "name": "InvalidInput"
+                "name": "Custom"
               },
               {
                 "index": 1,
-                "name": "DuplicateAgent"
+                "name": "InsufficientBalance"
               },
               {
                 "index": 2,
-                "name": "AgentNotFound"
+                "name": "InsufficientAllowance"
               },
               {
                 "index": 3,
-                "name": "ActiveAgent"
+                "name": "ZeroRecipientAddress"
               },
               {
                 "index": 4,
-                "name": "InvalidPermissions"
-              },
-              {
-                "index": 5,
-                "name": "InvalidRole"
-              },
-              {
-                "index": 6,
-                "name": "NoChange"
+                "name": "ZeroSenderAddress"
               },
               {
                 "fields": [
                   {
-                    "type": 12,
+                    "type": 4,
                     "typeName": "String"
                   }
                 ],
-                "index": 7,
-                "name": "InkEnvError"
+                "index": 5,
+                "name": "SafeTransferCheckFailed"
               }
             ]
           }
         },
         "path": [
-          "registry",
-          "registry",
-          "RegistryError"
+          "psp22",
+          "errors",
+          "PSP22Error"
         ]
       }
     },
@@ -878,40 +1024,12 @@
       "id": 12,
       "type": {
         "def": {
-          "primitive": "str"
-        }
-      }
-    },
-    {
-      "id": 13,
-      "type": {
-        "def": {
-          "sequence": {
-            "type": 2
-          }
-        }
-      }
-    },
-    {
-      "id": 14,
-      "type": {
-        "def": {
-          "sequence": {
-            "type": 5
-          }
-        }
-      }
-    },
-    {
-      "id": 15,
-      "type": {
-        "def": {
           "variant": {
             "variants": [
               {
                 "fields": [
                   {
-                    "type": 16
+                    "type": 1
                   }
                 ],
                 "index": 0,
@@ -932,7 +1050,101 @@
         "params": [
           {
             "name": "T",
-            "type": 16
+            "type": 1
+          },
+          {
+            "name": "E",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 3
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 5
           },
           {
             "name": "E",
@@ -948,51 +1160,12 @@
       "id": 16,
       "type": {
         "def": {
-          "tuple": [
-            5,
-            0
-          ]
-        }
-      }
-    },
-    {
-      "id": 17,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "index": 0,
-                "name": "AddAgent"
-              },
-              {
-                "index": 1,
-                "name": "UpdateAgents"
-              },
-              {
-                "index": 2,
-                "name": "RemoveAgent"
-              }
-            ]
-          }
-        },
-        "path": [
-          "registry",
-          "registry",
-          "RoleType"
-        ]
-      }
-    },
-    {
-      "id": 18,
-      "type": {
-        "def": {
           "variant": {
             "variants": [
               {
                 "fields": [
                   {
-                    "type": 2
+                    "type": 3
                   }
                 ],
                 "index": 0,
@@ -1013,7 +1186,7 @@
         "params": [
           {
             "name": "T",
-            "type": 2
+            "type": 3
           },
           {
             "name": "E",
@@ -1026,21 +1199,46 @@
       }
     },
     {
-      "id": 19,
+      "id": 17,
       "type": {
         "def": {
-          "primitive": "u128"
-        }
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 1
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 1
+          }
+        ],
+        "path": [
+          "Option"
+        ]
       }
     },
     {
-      "id": 20,
+      "id": 18,
       "type": {
         "def": {
           "composite": {
             "fields": [
               {
-                "type": 3,
+                "type": 2,
                 "typeName": "[u8; 32]"
               }
             ]
@@ -1054,7 +1252,15 @@
       }
     },
     {
-      "id": 21,
+      "id": 19,
+      "type": {
+        "def": {
+          "primitive": "u64"
+        }
+      }
+    },
+    {
+      "id": 20,
       "type": {
         "def": {
           "primitive": "u32"
@@ -1062,7 +1268,7 @@
       }
     },
     {
-      "id": 22,
+      "id": 21,
       "type": {
         "def": {
           "variant": {}
