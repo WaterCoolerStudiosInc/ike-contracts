@@ -25,13 +25,13 @@ mod token {
     }
     impl Token {
         #[ink(constructor)]
-        pub fn new(name: Option<String>, symbol: Option<String>) -> Self {
+        pub fn new() -> Self {
             Self {
                 owner: Self::env().caller(),
                 operator: Self::env().caller(),
-                data: PSP22Data::new(100000000000000, Self::env().caller()), // (2)
-                name,
-                symbol,
+                data: PSP22Data::new(100_000_000_000_000_000_000_000, Self::env().caller()), // (2)
+                name:Some(String::from("Governance Token")),
+                symbol:Some(String::from("GT")),
                 decimals: 18_u8,
             }
         }
