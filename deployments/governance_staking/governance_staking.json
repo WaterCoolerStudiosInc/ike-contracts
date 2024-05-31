@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xca265568f576c35d0d1e7c9487823e11624ecdab3e40cab1e2e95e5ebe3494a2",
+    "hash": "0xe2759745f8fa7f9f70eca38cda3a621c96342611c26f57ac4a7a7915b4e589fb",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -75,13 +75,13 @@
         "displayName": [
           "BlockNumber"
         ],
-        "type": 16
+        "type": 17
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 17
+        "type": 18
       },
       "hash": {
         "displayName": [
@@ -94,7 +94,7 @@
         "displayName": [
           "Timestamp"
         ],
-        "type": 15
+        "type": 16
       }
     },
     "events": [],
@@ -106,6 +106,22 @@
       "type": 8
     },
     "messages": [
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_governance_nft",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0x083b8d8c"
+      },
       {
         "args": [
           {
@@ -128,7 +144,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 10
         },
         "selector": "0x4265f279"
       },
@@ -163,7 +179,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 10
         },
         "selector": "0xfe3c30f7"
       },
@@ -198,7 +214,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 10
         },
         "selector": "0xac5d83a0"
       },
@@ -224,7 +240,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 10
         },
         "selector": "0x67a449d0"
       }
@@ -439,7 +455,7 @@
               {
                 "fields": [
                   {
-                    "type": 10
+                    "type": 0
                   }
                 ],
                 "index": 0,
@@ -460,7 +476,7 @@
         "params": [
           {
             "name": "T",
-            "type": 10
+            "type": 0
           },
           {
             "name": "E",
@@ -481,6 +497,48 @@
               {
                 "fields": [
                   {
+                    "type": 11
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 8
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 11
+          },
+          {
+            "name": "E",
+            "type": 8
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
                     "type": 7
                   }
                 ],
@@ -490,7 +548,7 @@
               {
                 "fields": [
                   {
-                    "type": 11
+                    "type": 12
                   }
                 ],
                 "index": 1,
@@ -506,7 +564,7 @@
           },
           {
             "name": "E",
-            "type": 11
+            "type": 12
           }
         ],
         "path": [
@@ -515,7 +573,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 12,
       "type": {
         "def": {
           "variant": {
@@ -527,7 +585,7 @@
               {
                 "fields": [
                   {
-                    "type": 12,
+                    "type": 13,
                     "typeName": "PSP34Error"
                   }
                 ],
@@ -537,7 +595,7 @@
               {
                 "fields": [
                   {
-                    "type": 14,
+                    "type": 15,
                     "typeName": "PSP22Error"
                   }
                 ],
@@ -555,7 +613,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 13,
       "type": {
         "def": {
           "variant": {
@@ -563,7 +621,7 @@
               {
                 "fields": [
                   {
-                    "type": 13,
+                    "type": 14,
                     "typeName": "String"
                   }
                 ],
@@ -589,7 +647,7 @@
               {
                 "fields": [
                   {
-                    "type": 13,
+                    "type": 14,
                     "typeName": "String"
                   }
                 ],
@@ -607,7 +665,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "type": {
         "def": {
           "primitive": "str"
@@ -615,7 +673,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "type": {
         "def": {
           "variant": {
@@ -623,7 +681,7 @@
               {
                 "fields": [
                   {
-                    "type": 13,
+                    "type": 14,
                     "typeName": "String"
                   }
                 ],
@@ -649,7 +707,7 @@
               {
                 "fields": [
                   {
-                    "type": 13,
+                    "type": 14,
                     "typeName": "String"
                   }
                 ],
@@ -667,7 +725,7 @@
       }
     },
     {
-      "id": 15,
+      "id": 16,
       "type": {
         "def": {
           "primitive": "u64"
@@ -675,7 +733,7 @@
       }
     },
     {
-      "id": 16,
+      "id": 17,
       "type": {
         "def": {
           "primitive": "u32"
@@ -683,7 +741,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 18,
       "type": {
         "def": {
           "variant": {}

@@ -17,6 +17,7 @@ mod tests {
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token:AccountId32,
+        gov_nft:AccountId32,
         stake_contract:AccountId32,
         alice: AccountId32,
         bob: AccountId32,
@@ -76,6 +77,14 @@ mod tests {
 
         sess.upload(bytes_governance_nft()).expect("Session should upload registry bytes");
 
+        sess.chain_api().add_tokens(alice.clone(), 100_000_000e10 as u128);
+        sess.chain_api().add_tokens(bob.clone(), 100_000_000e10 as u128);
+        sess.chain_api().add_tokens(charlie.clone(), 100_000_000e10 as u128);
+        sess.chain_api().add_tokens(dave.clone(), 100_000_000e10 as u128);
+        sess.chain_api().add_tokens(ed.clone(), 100_000_000e10 as u128);
+
+     
+
         let stake_contract=sess.deploy(
             bytes_governance_staking(),
             "new",
@@ -86,8 +95,24 @@ mod tests {
             None,
             &transcoder_governance_staking().unwrap(),
         )?;
-        println!("{:?}",stake_contract);
-        println!("{:?}",gov_token);
+        sess.set_transcoder(stake_contract.clone(),&transcoder_governance_staking().unwrap());
+
+        let mut sess = call_function(
+            sess,
+            &stake_contract,
+            &bob,
+            String::from("get_governance_nft"),
+            None,
+            None,
+            transcoder_governance_staking(),
+        ).unwrap();
+        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let gov_nft = rr.unwrap();
+
+
+        println!("{:?}",stake_contract.to_string());
+        println!("{:?}",gov_token.to_string());
+        println!("{:?}",gov_nft.to_string());
         let sess=call_function(
             sess,
             &gov_token,
@@ -129,6 +154,7 @@ mod tests {
         Ok(TestContext {
             sess,
             gov_token,
+            gov_nft,
             stake_contract,            
             alice,
             bob,
@@ -139,8 +165,32 @@ mod tests {
         
     }
     #[test]
-    fn test_deploy() -> Result<(), Box<dyn Error>> {
+    fn test_wrap() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
+        // Bob approves Ed to transfer 1k sAZERO
+        
+        let mut sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.bob,
+            String::from("PSP22::approve"),
+            Some(vec![ctx.stake_contract.to_string(), 100_000_000_000_000_u128.to_string()]),
+            None,
+            transcoder_governance_token(),
+        ).unwrap();
+
+         
+        let  sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("wrap_tokens"),
+            Some(vec![100_000_000_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ).unwrap();
+
+
         Ok(())
     }
 }

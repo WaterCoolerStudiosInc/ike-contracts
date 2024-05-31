@@ -77,7 +77,7 @@ mod staking{
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let nft_ref = GovernanceNFTRef::new(caller)
+            let nft_ref = GovernanceNFTRef::new(Self::env().account_id())
                 .endowment(0)
                 .code_hash(governance_nft_hash)
                 .salt_bytes(
@@ -95,7 +95,10 @@ mod staking{
             }
 
         }
-        
+        #[ink(message)]
+        pub fn get_governance_nft(&self)->AccountId{
+            self.nft
+        }
        #[ink(message)]
        pub fn wrap_tokens(&mut self, token_value:u128)-> Result<(), StakingError>{
         let caller = Self::env().caller();
