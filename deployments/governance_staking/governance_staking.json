@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xe2759745f8fa7f9f70eca38cda3a621c96342611c26f57ac4a7a7915b4e589fb",
+    "hash": "0x678527b0ca5f1eae76640d6d585b9451c2ba3cb42dc6c44f7bcf8a6c90cb8057",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -271,9 +271,29 @@
             },
             {
               "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 0
+                "struct": {
+                  "fields": [
+                    {
+                      "layout": {
+                        "struct": {
+                          "fields": [
+                            {
+                              "layout": {
+                                "leaf": {
+                                  "key": "0x00000000",
+                                  "ty": 0
+                                }
+                              },
+                              "name": "account_id"
+                            }
+                          ],
+                          "name": "CallBuilder"
+                        }
+                      },
+                      "name": "inner"
+                    }
+                  ],
+                  "name": "GovernanceNFTRef"
                 }
               },
               "name": "nft"

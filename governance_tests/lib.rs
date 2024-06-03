@@ -116,7 +116,7 @@ mod tests {
         let sess=call_function(
             sess,
             &gov_token,
-            &bob, // not bob
+            &bob,
             String::from("PSP22::transfer_from"),
             Some(vec![ bob.to_string(),alice.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
             None,
@@ -125,7 +125,7 @@ mod tests {
         let sess=call_function(
             sess,
             &gov_token,
-            &bob, // not bob
+            &bob, 
             String::from("PSP22::transfer_from"),
             Some(vec![bob.to_string(), charlie.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
             None,
@@ -134,7 +134,7 @@ mod tests {
         let sess=call_function(
             sess,
             &gov_token,
-            &bob, // not bob
+            &bob, 
             String::from("PSP22::transfer_from"),
             Some(vec![bob.to_string(), dave.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
             None,
@@ -143,7 +143,7 @@ mod tests {
         let sess=call_function(
             sess,
             &gov_token,
-            &bob, // not bob
+            &bob, 
             String::from("PSP22::transfer_from"),
             Some(vec![bob.to_string(), ed.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
             None,
@@ -168,7 +168,6 @@ mod tests {
     fn test_wrap() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
         // Bob approves Ed to transfer 1k sAZERO
-        
         let mut sess = call_function(
             ctx.sess,
             &ctx.gov_token,
@@ -179,13 +178,29 @@ mod tests {
             transcoder_governance_token(),
         ).unwrap();
 
+        
+        /*let mut sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("PSP34::total_supply"),
+            Some(vec![]),
+            None,
+            transcoder_governance_nft(),
+        ).unwrap();
+        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let total_supply = rr.unwrap();
+
+
+        println!("{:?}",total_supply);
+        */
          
         let  sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.bob,
             String::from("wrap_tokens"),
-            Some(vec![100_000_000_u128.to_string()]),
+            Some(vec![100_000_000_u128.to_string(),None.to_string()]),
             None,
             transcoder_governance_staking(),
         ).unwrap();
