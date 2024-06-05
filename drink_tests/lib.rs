@@ -108,11 +108,11 @@ mod tests {
         sess.set_actor(bob.clone());
 
         // FUND DEFAULT ACCOUNTS
-        sess.chain_api().add_tokens(alice.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(bob.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(charlie.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(dave.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(ed.clone(), 100_000_000e10 as u128);
+        sess.chain_api().add_tokens(alice.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(bob.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(charlie.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(dave.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(ed.clone(), 100_000_000e12 as u128);
 
         // ADD AGENTS
         let sess = helpers::call_add_agent(
@@ -558,6 +558,66 @@ mod tests {
         assert_eq!(redeemed, 10_000e10 as u128 + 32 - fees);
 
         Ok(())
+    }
+    #[test]
+    fn test_send_batch_ids_panic_because_descending_order() {
+        let ctx = setup().unwrap();
+        let sess = ctx.sess;
+
+        // Stake 1 million AZERO
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e12 as u128).unwrap();
+
+        // Request unlocking of 100 sAZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (first_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        // Request unlocking of 100 sAZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (second_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        assert_eq!(second_batch > first_batch, true);
+
+        match helpers::call_send_batch_unlock_requests(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            vec![second_batch, first_batch],
+        ) {
+            Ok(_) => panic!("Should panic because batch ids are specified in descending order"),
+            Err(_) => (),
+        }
+    }
+    #[test]
+    fn test_send_batch_ids_panic_because_duplicate() {
+        let ctx = setup().unwrap();
+        let sess = ctx.sess;
+
+        // Stake 1 million AZERO
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e12 as u128).unwrap();
+
+        // Request unlocking of 100 AZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (first_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        // Request unlocking of 100 AZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (second_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        assert_eq!(second_batch > first_batch, true);
+
+        match helpers::call_send_batch_unlock_requests(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            vec![first_batch, second_batch, first_batch],
+        ) {
+            Ok(_) => panic!("Should panic because batch ids contain duplicate"),
+            Err(_) => (),
+        }
     }
     #[test]
     fn test_unlock_cancellation() -> Result<(), Box<dyn Error>> {

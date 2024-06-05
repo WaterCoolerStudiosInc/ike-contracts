@@ -347,15 +347,23 @@ mod vault {
         ///
         /// Cannot be called for a batch that has not concluded
         /// Cannot be called for a batch that has already been redeemed
+        /// Batch IDs must be specified in ascending order (for gas efficient duplicate check)
         #[ink(message)]
         pub fn send_batch_unlock_requests(&mut self, batch_ids: Vec<u64>) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
             let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
 
-            // Cannot send current batch unlock request
-            if batch_ids.iter().any(|&batch_id| batch_id >= current_batch_unlock_id) {
-                return Err(VaultError::InvalidBatchUnlockRequest);
+            // Validate batch_ids
+            for (i, &batch_id) in batch_ids.iter().enumerate() {
+                // Cannot send current batch unlock request
+                if batch_id >= current_batch_unlock_id {
+                    return Err(VaultError::InvalidBatchUnlockRequest);
+                }
+                // Cannot send duplicate batch id (requires `batch_ids` is sorted in asc order)
+                if i > 0 && batch_id <= batch_ids[i-1] {
+                    return Err(VaultError::Duplication);
+                }
             }
 
             let batches: Vec<UnlockRequestBatch> = batch_ids
@@ -371,6 +379,7 @@ mod vault {
             // Update fees before calculating redemption ratio and burning shares
             self.data.update_fees(now);
 
+            let total_shares_virtual_ = self.data.total_shares_virtual; // shadow
             let mut aggregate_batch_spot_value: Balance = 0;
             let mut aggregate_total_shares: Balance = 0;
 
@@ -390,7 +399,7 @@ mod vault {
                     Self::env(),
                     Event::BatchUnlockSent(BatchUnlockSent {
                         shares: batch.total_shares,
-                        virtual_shares: self.data.total_shares_virtual,
+                        virtual_shares: total_shares_virtual_,
                         spot_value: batch_spot_value,
                         batch_id,
                     }),
