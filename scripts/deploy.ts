@@ -1,9 +1,9 @@
 import { ContractPromise } from '@polkadot/api-contract'
 import { deployContract, contractTx, decodeOutput, contractQuery } from '@scio-labs/use-inkathon'
 import * as dotenv from 'dotenv'
-import { getDeploymentData } from './utils/getDeploymentData'
-import { initPolkadotJs } from './utils/initPolkadotJs'
-import { writeContractAddresses } from './utils/writeContractAddresses'
+import { getDeploymentData } from './utils/getDeploymentData.js'
+import { initPolkadotJs } from './utils/initPolkadotJs.js'
+import { writeContractAddresses } from './utils/writeContractAddresses.js'
 
 // Dynamic environment variables
 const chainId = process.env.CHAIN || 'development'
@@ -14,10 +14,25 @@ dotenv.config({
 /**
  * Deploys and configures contracts
  */
-const main = async (pool_ids: number[]) => {
+const main = async (validators: string[]) => {
+  if (!validators || validators.length === 0) {
+    throw new Error(`Must specify validator addresses`)
+  }
+  if (new Set(validators).size !== validators.length) {
+    throw new Error(`Duplicate validator addresses`)
+  }
+
   // Initialization
   const initParams = await initPolkadotJs()
   const { api, chain, account } = initParams
+
+  const minNominatorBondCodec = await api.query.staking.minNominatorBond()
+  const minNominatorBond = BigInt(minNominatorBondCodec.toString())
+  console.log(`Minimum nomination bond: ${minNominatorBond}`)
+
+  const existentialDepositCodec = api.consts.balances.existentialDeposit
+  const existentialDeposit = BigInt(existentialDepositCodec.toString())
+  console.log(`Existential deposit: ${existentialDeposit}`)
 
   console.log('===== Contract Deployment =====')
 
@@ -64,16 +79,21 @@ const main = async (pool_ids: number[]) => {
 
   // Deploy agents for testing
   const nomination_agents = []
-  for (const pool_id of pool_ids) {
+  for (const validator of validators) {
+    const lastPoolIdCodec = await api.query.nominationPools.lastPoolId()
+    const nextPoolId = BigInt(lastPoolIdCodec.toString()) + 1n
     const nominator_data = await getDeploymentData('nomination_agent')
-    console.log(`Deploying contract: 'nomination_agent' (PID #${pool_id}) ...`)
+    console.log(`Deploying contract: 'nomination_agent' (validator: ${validator} & PID #${nextPoolId}) ...`)
     const nominator = await deployContract(
       api,
       account,
       nominator_data.abi,
       nominator_data.wasm,
       'new',
-      [vault.address, account.address, pool_id],
+      [vault.address, account.address, validator, nextPoolId, minNominatorBond, existentialDeposit],
+      {
+        value: minNominatorBond + existentialDeposit,
+      },
     )
     console.log('Deployed!')
     nomination_agents.push(nominator)
@@ -124,9 +144,7 @@ const main = async (pool_ids: number[]) => {
   })
 }
 
-const POOL_IDS = [1, 2]
-
-main(POOL_IDS)
+main(process.env.VALIDATOR_ADDRESSES?.split(',') ?? [])
   .catch((error) => {
     console.error(error)
     process.exit(1)

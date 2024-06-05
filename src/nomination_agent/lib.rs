@@ -13,6 +13,7 @@ mod nomination_agent {
     pub struct NominationAgent {
         vault: AccountId,
         admin: AccountId,
+        validator: AccountId,
         pool_id: u32,
         staked: u128,
     }
@@ -35,13 +36,49 @@ mod nomination_agent {
 
     impl NominationAgent {
         #[ink(constructor, payable)]
-        pub fn new(vault_: AccountId, admin_: AccountId, pool_id_: u32) -> Self {
-            NominationAgent {
+        pub fn new(
+            vault_: AccountId,
+            admin_: AccountId,
+            validator_: AccountId,
+            pool_id_: u32,
+            pool_create_amount: Balance,
+            existential_deposit: Balance,
+        ) -> Self {
+            let account_id = Self::env().account_id();
+
+            if Self::env().transferred_value() != pool_create_amount + existential_deposit {
+                panic!("Insufficient transferred value");
+            }
+
+            let nomination_agent = NominationAgent {
                 vault: vault_,
                 admin: admin_,
+                validator: validator_,
                 pool_id: pool_id_,
-                staked: 0,
-            }
+                staked: pool_create_amount,
+            };
+
+            // Create nomination pool
+            nomination_agent.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::Create {
+                        amount: pool_create_amount,
+                        root: MultiAddress::Id(account_id),
+                        nominator: MultiAddress::Id(account_id),
+                        bouncer: MultiAddress::Id(account_id),
+                    }
+                )).unwrap();
+
+            // Nominate to validator
+            nomination_agent.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::Nominate {
+                        pool_id: pool_id_,
+                        validators: [validator_].to_vec(),
+                    }
+                )).unwrap();
+
+            nomination_agent
         }
 
         #[ink(message, payable, selector = 1)]
@@ -176,14 +213,29 @@ mod nomination_agent {
             Ok((compound_amount, incentive))
         }
 
-        #[ink(message, selector = 11)]
-        pub fn get_pool_id(&self) -> u32 {
-            self.pool_id
-        }
-
         #[ink(message, selector = 12)]
         pub fn get_staked_value(&self) -> Balance {
             self.staked
+        }
+
+        #[ink(message)]
+        pub fn get_vault(&self) -> AccountId {
+            self.vault
+        }
+
+        #[ink(message)]
+        pub fn get_admin(&self) -> AccountId {
+            self.admin
+        }
+
+        #[ink(message)]
+        pub fn get_validator(&self) -> AccountId {
+            self.validator
+        }
+
+        #[ink(message)]
+        pub fn get_pool_id(&self) -> u32 {
+            self.pool_id
         }
 
         #[ink(message, selector = 99)]
