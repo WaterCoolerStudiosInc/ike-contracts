@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x451e28c8f5f3a78b352a30f788acffa4df9311c4a268ac888ac2cbf34eecb999",
+    "hash": "0xce7490c1b78610d49c1863cc2b3df1ed031df743a2fa799969ae41ac088197bf",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -685,7 +685,8 @@
           " Burns associated sAZERO",
           "",
           " Cannot be called for a batch that has not concluded",
-          " Cannot be called for a batch that has already been redeemed"
+          " Cannot be called for a batch that has already been redeemed",
+          " Batch IDs must be specified in ascending order (for gas efficient duplicate check)"
         ],
         "label": "send_batch_unlock_requests",
         "mutates": true,
@@ -2001,46 +2002,50 @@
             "variants": [
               {
                 "index": 0,
-                "name": "InvalidPercent"
+                "name": "Duplication"
               },
               {
                 "index": 1,
-                "name": "InvalidBatchUnlockRequest"
+                "name": "InvalidPercent"
               },
               {
                 "index": 2,
-                "name": "InvalidUserUnlockRequest"
+                "name": "InvalidBatchUnlockRequest"
               },
               {
                 "index": 3,
-                "name": "CooldownPeriod"
+                "name": "InvalidUserUnlockRequest"
               },
               {
                 "index": 4,
-                "name": "InvalidPermissions"
+                "name": "CooldownPeriod"
               },
               {
                 "index": 5,
-                "name": "NoChange"
+                "name": "InvalidPermissions"
               },
               {
                 "index": 6,
-                "name": "ZeroDepositing"
+                "name": "NoChange"
               },
               {
                 "index": 7,
-                "name": "ZeroUnbonding"
+                "name": "ZeroDepositing"
               },
               {
                 "index": 8,
-                "name": "ZeroTotalWeight"
+                "name": "ZeroUnbonding"
               },
               {
                 "index": 9,
-                "name": "ZeroCompounding"
+                "name": "ZeroTotalWeight"
               },
               {
                 "index": 10,
+                "name": "ZeroCompounding"
+              },
+              {
+                "index": 11,
                 "name": "MinimumStake"
               },
               {
@@ -2050,7 +2055,7 @@
                     "typeName": "String"
                   }
                 ],
-                "index": 11,
+                "index": 12,
                 "name": "InkEnvError"
               },
               {
@@ -2060,7 +2065,7 @@
                     "typeName": "RuntimeError"
                   }
                 ],
-                "index": 12,
+                "index": 13,
                 "name": "InternalError"
               },
               {
@@ -2070,11 +2075,11 @@
                     "typeName": "PSP22Error"
                   }
                 ],
-                "index": 13,
+                "index": 14,
                 "name": "TokenError"
               },
               {
-                "index": 14,
+                "index": 15,
                 "name": "InternalTokenError"
               }
             ]
