@@ -42,6 +42,19 @@ pub enum NominationCall {
         member_account: MultiAddress<AccountId, ()>,
         num_slashing_spans: u32,
     },
+    #[codec(index = 6)]
+    Create {
+        #[codec(compact)]
+        amount: u128,
+        root: MultiAddress<AccountId, ()>,
+        nominator: MultiAddress<AccountId, ()>,
+        bouncer: MultiAddress<AccountId, ()>,
+    },
+    #[codec(index = 8)]
+    Nominate {
+        pool_id: u32,
+        validators: Vec<AccountId>,
+    },
 }
 #[derive(scale::Encode)]
 pub enum RuntimeCall {

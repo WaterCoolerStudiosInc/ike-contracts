@@ -16,6 +16,8 @@ use ink::{
     primitives::AccountId,
     storage::Mapping,
 };
+use num_bigint::BigUint;
+use num_traits::cast::ToPrimitive;
 use psp22::PSP22Error;
 use registry::{registry::Agent, RegistryRef};
 type Balance = <DefaultEnvironment as Environment>::Balance;
@@ -167,7 +169,7 @@ impl VaultData {
         for a in agents.into_iter() {
             let staked_amount_current = query_staked_value(a.address) as i128;
             let staked_amount_optimal = if total_weight > 0 {
-                ((a.weight as u128 * total_pooled) / total_weight as u128) as i128
+                self.pro_rata(a.weight as u128, total_pooled, total_weight as u128) as i128
             } else {
                 0
             };
@@ -216,7 +218,7 @@ impl VaultData {
             // Distribute to under-allocated agents
             // Weighted by agent imbalance
             let phase1_amount = if imbalances[i] < 0 {
-                phase1 * (-imbalances[i] as u128) / neg_diff
+                self.pro_rata(phase1, -imbalances[i] as u128, neg_diff)
             } else {
                 0
             };
@@ -224,7 +226,7 @@ impl VaultData {
             // Distribute remaining amount equitably to all agents
             // Weighted by agent weight
             let phase2_amount = if phase2 > 0 {
-                phase2 * (agents[i].weight as u128) / (total_weight as u128)
+                self.pro_rata(phase2, agents[i].weight as u128, total_weight as u128)
             } else {
                 0
             };
@@ -299,7 +301,7 @@ impl VaultData {
             // Unbond from over-allocated agents
             // Weighted by agent imbalance
             let phase1_amount = if imbalances[i] > 0 {
-                phase1 * (imbalances[i] as u128) / pos_diff
+                self.pro_rata(phase1, imbalances[i] as u128, pos_diff)
             } else {
                 0
             };
@@ -307,7 +309,7 @@ impl VaultData {
             // Unbond remaining amount equitably from all agents
             // Weighted by agent remaining stake
             let phase2_amount = if phase2 > 0 {
-                phase2 * (stakes[i] - phase1_amount) / total_staked_after_phase1
+                self.pro_rata(phase2, stakes[i] - phase1_amount, total_staked_after_phase1)
             } else {
                 0
             };
@@ -417,8 +419,8 @@ impl VaultData {
 
         // Calculate fee accumulation since last update
         if time > 0 {
-            let virtual_shares = self.total_shares_minted * self.fee_percentage as u128 / BIPS as u128;
-            let time_weighted_virtual_shares = virtual_shares * time as u128 / YEAR as u128;
+            let virtual_shares = self.pro_rata(self.total_shares_minted, self.fee_percentage as u128, BIPS as u128);
+            let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
 
             self.total_shares_virtual += time_weighted_virtual_shares;
             self.last_fee_update = current_time;
@@ -432,12 +434,18 @@ impl VaultData {
 
         if time > 0 {
             // Calculate fee accumulation since last update
-            let virtual_shares = self.total_shares_minted * self.fee_percentage as u128 / BIPS as u128;
-            let time_weighted_virtual_shares = virtual_shares * time as u128 / YEAR as u128;
+            let virtual_shares = self.pro_rata(self.total_shares_minted, self.fee_percentage as u128, BIPS as u128);
+            let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
             self.total_shares_virtual + time_weighted_virtual_shares
         } else {
             // No additional fee accumulation is required
             self.total_shares_virtual
         }
+    }
+
+    /// Performs the u128 operations: a * b / c
+    pub fn pro_rata(&self, a: u128, b: u128, c: u128) -> u128 {
+        let result = BigUint::from(a) * BigUint::from(b) / BigUint::from(c);
+        BigUint::to_u128(&result).unwrap()
     }
 }
