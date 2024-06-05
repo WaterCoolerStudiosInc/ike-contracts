@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xc89ba0d620f228b812681f03d9ebec57776f95c8223f03a8c1c8b157de4439a2",
+    "hash": "0xf51de2cb9530dc767fdaf90c210192015668ce773fdaa83799ccba54d189615b",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -44,12 +44,39 @@
             }
           },
           {
+            "label": "validator_",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
             "label": "pool_id_",
             "type": {
               "displayName": [
                 "u32"
               ],
               "type": 3
+            }
+          },
+          {
+            "label": "pool_create_amount",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "existential_deposit",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 4
             }
           }
         ],
@@ -91,20 +118,20 @@
         "displayName": [
           "ChainExtension"
         ],
-        "type": 19
+        "type": 20
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 17
+        "type": 18
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 18
+        "type": 19
       }
     },
     "events": [],
@@ -204,7 +231,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_pool_id",
+        "label": "get_staked_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -214,13 +241,13 @@
           ],
           "type": 15
         },
-        "selector": "0x0000000b"
+        "selector": "0x0000000c"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_staked_value",
+        "label": "get_vault",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -230,7 +257,55 @@
           ],
           "type": 16
         },
-        "selector": "0x0000000c"
+        "selector": "0x4f96cf6c"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_admin",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x57b8a8a7"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_validator",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x35219e73"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_pool_id",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0xfc52e849"
       },
       {
         "args": [
@@ -280,6 +355,15 @@
                 }
               },
               "name": "admin"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "validator"
             },
             {
               "layout": {
@@ -651,48 +735,6 @@
               {
                 "fields": [
                   {
-                    "type": 3
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 3
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 16,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
                     "type": 4
                   }
                 ],
@@ -727,7 +769,91 @@
       }
     },
     {
+      "id": 16,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
       "id": 17,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 3
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 18,
       "type": {
         "def": {
           "composite": {
@@ -747,7 +873,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "type": {
         "def": {
           "primitive": "u64"
@@ -755,7 +881,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "type": {
         "def": {
           "variant": {}

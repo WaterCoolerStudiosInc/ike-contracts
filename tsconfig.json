@@ -14,6 +14,5 @@
     "allowJs": true,
     "baseUrl": "."
   },
-  "exclude": ["./*/target"],
-  "include": ["./deployments/**/*.json", "./deployments/**/*.ts", "./scripts/**/*.ts"]
+  "include": ["./deployments/**/*.json", "./deployments/**/*.ts"]
 }
