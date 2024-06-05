@@ -452,7 +452,11 @@ mod vault {
             self.data.user_unlock_requests.insert(user, &user_unlock_requests);
 
             // Send AZERO to user
-            let azero = share_amount * batch_unlock_request.value_at_redemption.unwrap() / batch_unlock_request.total_shares;
+            let azero = self.data.pro_rata(
+                share_amount,
+                batch_unlock_request.value_at_redemption.unwrap(),
+                batch_unlock_request.total_shares,
+            );
             Self::env().transfer(user, azero)?;
 
             Self::emit_event(
@@ -811,7 +815,7 @@ mod vault {
                 // Also known as 1:1 redemption ratio
                 azero
             } else {
-                azero * self.get_total_shares() / total_pooled_
+                self.data.pro_rata(azero, self.get_total_shares(), total_pooled_)
             }
         }
 
@@ -823,7 +827,7 @@ mod vault {
                 // This should never happen
                 0
             } else {
-                shares * self.data.total_pooled / total_shares
+                self.data.pro_rata(shares, self.data.total_pooled, total_shares)
             }
         }
 
