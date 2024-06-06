@@ -864,7 +864,7 @@ mod vault {
         }
 
         #[ink(message)]
-        pub fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, u128, Vec<u128>, Vec<i128>) {
+        pub fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>) {
             let (total_weight, agents) = self.data.registry_contract.get_agents();
             self.data.get_weight_imbalances(&agents, total_weight, total_pooled)
         }

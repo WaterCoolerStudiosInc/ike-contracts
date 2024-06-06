@@ -21,12 +21,6 @@ pub enum BondExtra {
 }
 #[derive(scale::Encode)]
 pub enum NominationCall {
-    #[codec(index = 0)]
-    Join {
-        #[codec(compact)]
-        amount: u128,
-        pool_id: u32,
-    },
     #[codec(index = 1)]
     BondExtra { extra: BondExtra },
     #[codec(index = 2)]

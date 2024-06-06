@@ -148,7 +148,6 @@ impl VaultData {
     ///
     /// # Returns
     ///
-    /// `total_staked` - Total AZERO staked across all agents
     /// `pos_diff` - Total positive difference; zero indicates no over-allocations
     /// `neg_diff` - Total negative difference; zero indicates no under-allocations
     /// `stakes` - Amount of AZERO staked in each agent
@@ -160,8 +159,7 @@ impl VaultData {
         agents: &Vec<Agent>,
         total_weight: u64,
         total_pooled: u128,
-    ) -> (u128, u128, u128, Vec<u128>, Vec<i128>) {
-        let mut total_staked = 0_u128;
+    ) -> (u128, u128, Vec<u128>, Vec<i128>) {
         let mut pos_diff = 0_u128;
         let mut neg_diff = 0_u128;
         let mut stakes = Vec::new();
@@ -180,12 +178,11 @@ impl VaultData {
             } else if diff < 0 {
                 neg_diff += -diff as u128;
             }
-            total_staked += staked_amount_current as u128;
             stakes.push(staked_amount_current as u128);
             imbalances.push(diff);
         }
 
-        (total_staked, pos_diff, neg_diff, stakes, imbalances)
+        (pos_diff, neg_diff, stakes, imbalances)
     }
 
     /// Deposits a given amount to nominator agents splitting deposits by nominator weights and stake imbalances
@@ -202,7 +199,7 @@ impl VaultData {
 
         let new_total_pooled = self.total_pooled + azero;
 
-        let (_total_staked, _pos_diff, neg_diff, _stakes, imbalances) = self
+        let (_pos_diff, neg_diff, _stakes, imbalances) = self
             .get_weight_imbalances(&agents, total_weight, new_total_pooled);
 
         // Amount to distribute to under-allocated agents
@@ -281,9 +278,11 @@ impl VaultData {
     pub fn delegate_unbonding(&mut self, azero: Balance) -> Result<(), VaultError> {
         let (total_weight, agents) = self.registry_contract.get_agents();
 
-        let new_total_pooled = self.total_pooled - azero;
+        let total_pooled_ = self.total_pooled; // shadow
 
-        let (total_staked, pos_diff, _neg_diff, stakes, imbalances) = self
+        let new_total_pooled = total_pooled_ - azero;
+
+        let (pos_diff, _neg_diff, stakes, imbalances) = self
             .get_weight_imbalances(&agents, total_weight, new_total_pooled);
 
         // Amount to withdraw from over-allocated agents
@@ -292,7 +291,7 @@ impl VaultData {
         // Remaining amount to withdraw equitably from all agents
         let phase2 = azero - phase1;
 
-        let total_staked_after_phase1 = total_staked - phase1;
+        let total_staked_after_phase1 = total_pooled_ - phase1;
 
         let n = agents.len();
         let mut unbond_amounts: Vec<Balance> = Vec::with_capacity(n);

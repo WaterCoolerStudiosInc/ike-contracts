@@ -55,7 +55,7 @@ mod nomination_agent {
                 admin: admin_,
                 validator: validator_,
                 pool_id: pool_id_,
-                staked: pool_create_amount,
+                staked: 0,
             };
 
             // Create nomination pool
@@ -90,28 +90,17 @@ mod nomination_agent {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            if self.staked == 0 {
-                // Join nomination pool
-                self.env()
-                    .call_runtime(&RuntimeCall::NominationPools(
-                        NominationCall::Join {
-                            amount: deposit_amount,
-                            pool_id: self.pool_id,
-                        }
-                    ))?;
-            } else {
-                // Bond extra AZERO to nomination pool
-                self.env()
-                    .call_runtime(&RuntimeCall::NominationPools(
-                        NominationCall::BondExtra {
-                            extra: BondExtra::FreeBalance {
-                                balance: deposit_amount,
-                            }
-                        }
-                    ))?;
-            }
-
             self.staked += deposit_amount;
+
+            // Bond extra AZERO to nomination pool
+            self.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::BondExtra {
+                        extra: BondExtra::FreeBalance {
+                            balance: deposit_amount,
+                        }
+                    }
+                ))?;
 
             Ok(())
         }
@@ -139,7 +128,7 @@ mod nomination_agent {
 
         #[ink(message, selector = 3)]
         pub fn withdraw_unbonded(&mut self) -> Result<(), RuntimeError> {
-            let vault = self.vault;
+            let vault = self.vault; // shadow
 
             // Restricted to vault
             if Self::env().caller() != vault {
