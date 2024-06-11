@@ -419,7 +419,11 @@ impl VaultData {
 
         // Calculate fee accumulation since last update
         if time > 0 {
-            let virtual_shares = self.pro_rata(self.total_shares_minted, self.fee_percentage as u128, BIPS as u128);
+            let virtual_shares = self.pro_rata(
+                self.total_shares_minted + self.total_shares_virtual,
+                self.fee_percentage as u128,
+                BIPS as u128,
+            );
             let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
 
             self.total_shares_virtual += time_weighted_virtual_shares;
@@ -434,7 +438,11 @@ impl VaultData {
 
         if time > 0 {
             // Calculate fee accumulation since last update
-            let virtual_shares = self.pro_rata(self.total_shares_minted, self.fee_percentage as u128, BIPS as u128);
+            let virtual_shares = self.pro_rata(
+                self.total_shares_minted + self.total_shares_virtual,
+                self.fee_percentage as u128,
+                BIPS as u128,
+            );
             let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
             self.total_shares_virtual + time_weighted_virtual_shares
         } else {
