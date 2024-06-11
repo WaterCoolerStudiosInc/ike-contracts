@@ -1,6 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 pub use crate::registry::RegistryRef;
 
+mod nomination_agent_utils;
+
 #[ink::contract]
 pub mod registry {
 
@@ -8,6 +10,10 @@ pub mod registry {
         env::{debug_println, Error as InkEnvError},
         prelude::{format, string::String, vec::Vec},
         storage::Mapping,
+    };
+    use crate::nomination_agent_utils::{
+        query_staked_value,
+        query_unbonded_value,
     };
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -201,11 +207,11 @@ pub mod registry {
         }
 
         /// Removes a nomination agent
+        /// This is intended to remove fully deprecated agents to save gas during iteration.
         ///
         /// Caller must have the RemoveAgent role.
-        /// This is intended to remove fully deprecated agents to save gas during iteration.
-        /// Agent must have a weight set of 0.
-        /// Agent should have sufficient time to unbond all staked AZERO.
+        /// Agent must have no AZERO staked (excludes initial bond).
+        /// Agent must have no AZERO unbonding.
         #[ink(message)]
         pub fn remove_agent(
             &mut self,
@@ -218,14 +224,21 @@ pub mod registry {
             }
 
             if let Some(index) = self.agents.iter().position(|a| a.address == account) {
-                let weight = self.agents[index].weight;
-
-                // Do not delete agents with active weight (and possible bonded AZERO)
-                if weight > 0 {
+                // Do not delete agents with staked AZERO
+                if query_staked_value(account) > 0 {
                     return Err(RegistryError::ActiveAgent);
                 }
 
-                self.total_weight -= weight;
+                // Do not delete agents with unbonding AZERO
+                if query_unbonded_value(account) > 0 {
+                    return Err(RegistryError::ActiveAgent);
+                }
+
+                let weight = self.agents[index].weight;
+                if weight > 0 {
+                    self.total_weight -= weight;
+                }
+
                 self.agents.remove(index);
 
                 Self::env().emit_event(

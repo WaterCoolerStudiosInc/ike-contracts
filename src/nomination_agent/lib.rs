@@ -4,7 +4,7 @@ mod data;
 
 #[ink::contract]
 mod nomination_agent {
-    use crate::data::{BondExtra, MultiAddress, NominationCall, RuntimeCall};
+    use crate::data::{BondExtra, MultiAddress, NominationCall, PoolState, RuntimeCall};
     use ink::env::Error as EnvError;
 
     const BIPS: u128 = 10000;
@@ -16,6 +16,8 @@ mod nomination_agent {
         validator: AccountId,
         pool_id: u32,
         staked: u128,
+        unbonding: u128,
+        creation_bond: u128,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -23,6 +25,7 @@ mod nomination_agent {
     pub enum RuntimeError {
         CallRuntimeFailed,
         Unauthorized,
+        Active,
     }
 
     impl From<EnvError> for RuntimeError {
@@ -37,35 +40,46 @@ mod nomination_agent {
     impl NominationAgent {
         #[ink(constructor, payable)]
         pub fn new(
-            vault_: AccountId,
-            admin_: AccountId,
-            validator_: AccountId,
-            pool_id_: u32,
-            pool_create_amount: Balance,
-            existential_deposit: Balance,
+            vault: AccountId,
+            admin: AccountId,
+            validator: AccountId,
+            pool_id: u32,
+            creation_bond: u128,
+            existential_deposit: u128,
         ) -> Self {
             let account_id = Self::env().account_id();
 
-            if Self::env().transferred_value() != pool_create_amount + existential_deposit {
+            if Self::env().transferred_value() != creation_bond + existential_deposit {
                 panic!("Insufficient transferred value");
             }
 
             let nomination_agent = NominationAgent {
-                vault: vault_,
-                admin: admin_,
-                validator: validator_,
-                pool_id: pool_id_,
+                vault,
+                admin,
+                validator,
+                pool_id,
                 staked: 0,
+                unbonding: 0,
+                creation_bond,
             };
 
             // Create nomination pool
             nomination_agent.env()
                 .call_runtime(&RuntimeCall::NominationPools(
                     NominationCall::Create {
-                        amount: pool_create_amount,
+                        amount: creation_bond,
                         root: MultiAddress::Id(account_id),
                         nominator: MultiAddress::Id(account_id),
                         bouncer: MultiAddress::Id(account_id),
+                    }
+                )).unwrap();
+
+            // Disallow others to join nomination pool
+            nomination_agent.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::SetState {
+                        pool_id,
+                        state: PoolState::Blocked,
                     }
                 )).unwrap();
 
@@ -73,8 +87,8 @@ mod nomination_agent {
             nomination_agent.env()
                 .call_runtime(&RuntimeCall::NominationPools(
                     NominationCall::Nominate {
-                        pool_id: pool_id_,
-                        validators: [validator_].to_vec(),
+                        pool_id,
+                        validators: [validator].to_vec(),
                     }
                 )).unwrap();
 
@@ -113,6 +127,7 @@ mod nomination_agent {
             }
 
             self.staked -= amount;
+            self.unbonding += amount;
 
             // Trigger un-bonding process
             self.env()
@@ -140,7 +155,7 @@ mod nomination_agent {
                 .call_runtime(&RuntimeCall::NominationPools(
                     NominationCall::WithdrawUnbonded {
                         member_account: MultiAddress::Id(Self::env().account_id()),
-                        num_slashing_spans: 1,
+                        num_slashing_spans: 0,
                     }
                 )) {
                 ink::env::debug_println!("Ignoring NominationCall::WithdrawUnbonded error {:?}", e);
@@ -152,6 +167,7 @@ mod nomination_agent {
 
             // Transfer withdrawn AZERO to vault
             if withdrawn > 0 {
+                self.unbonding -= withdrawn;
                 Self::env().transfer(vault, withdrawn)?;
             }
 
@@ -207,6 +223,11 @@ mod nomination_agent {
             self.staked
         }
 
+        #[ink(message, selector = 13)]
+        pub fn get_unbonding_value(&self) -> Balance {
+            self.unbonding
+        }
+
         #[ink(message)]
         pub fn get_vault(&self) -> AccountId {
             self.vault
@@ -227,15 +248,87 @@ mod nomination_agent {
             self.pool_id
         }
 
-        #[ink(message, selector = 99)]
-        pub fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), RuntimeError> {
+        /// Step 1 of 2 in finalizing the nomination pool's lifecycle
+        /// Performs the following actions:
+        ///     1) Puts the pool in a Destroying state
+        ///     2) Removes the validator nomination
+        ///     3) Begins unbonding the initial bond
+        ///
+        /// Can only be called by admin
+        /// Must have no protocol funds staked
+        /// Must have no protocol funds unbonding
+        #[ink(message, selector = 100)]
+        pub fn destroy(&mut self) -> Result<(), RuntimeError> {
             // Restricted to admin
             if Self::env().caller() != self.admin {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            ink::env::set_code_hash(&code_hash)?;
-            ink::env::debug_println!("Switched code hash to {:?}.", code_hash);
+            if self.staked > 0 || self.unbonding > 0 {
+                return Err(RuntimeError::Active);
+            }
+
+            let pool_id = self.pool_id; // shadow
+
+            // Begin pool destruction
+            self.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::SetState {
+                        pool_id,
+                        state: PoolState::Destroying,
+                    }
+                ))?;
+
+            // Chill
+            self.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::Chill {
+                        pool_id,
+                    }
+                ))?;
+
+            // Unbond initial nomination pool bond
+            self.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::Unbond {
+                        member_account: MultiAddress::Id(Self::env().account_id()),
+                        unbonding_points: self.creation_bond,
+                    }
+                ))?;
+
+            self.creation_bond = 0;
+
+            Ok(())
+        }
+
+        /// Step 2 of 2 in finalizing the nomination pool's lifecycle
+        /// Performs the following actions:
+        ///     1) Withdraws the (now unbonded) initial bond
+        ///     2) Transfers the initial bond to any account of choice
+        ///
+        /// Can only be called by admin
+        /// Must be called after `destroy()`
+        #[ink(message, selector = 101)]
+        pub fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError> {
+            // Restricted to admin
+            if Self::env().caller() != self.admin {
+                return Err(RuntimeError::Unauthorized);
+            }
+
+            if self.creation_bond > 0 {
+                return Err(RuntimeError::Active);
+            }
+
+            // Trigger un-bonding process
+            self.env()
+                .call_runtime(&RuntimeCall::NominationPools(
+                    NominationCall::WithdrawUnbonded {
+                        member_account: MultiAddress::Id(Self::env().account_id()),
+                        num_slashing_spans: 0,
+                    }
+                )).ok();
+
+            Self::env().transfer(to, Self::env().balance())?;
 
             Ok(())
         }
