@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xdf7f4e645a035f8094a06fecc452b242810b66fe07d56addb60befaab81104f6",
+    "hash": "0xac4c5e114543b1ef4e7143b2ecaae3716477e4356874bb822f4ade2443bdc305",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -345,7 +345,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "mmintt",
+        "label": "mint",
         "mutates": true,
         "payable": false,
         "returnType": {

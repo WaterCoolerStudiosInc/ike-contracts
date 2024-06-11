@@ -108,14 +108,18 @@ mod governance_nft {
         }
         #[ink(message,selector = 88)]
         pub fn increment_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>{
-            assert_eq!(self.env().caller(),self.admin);
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
             let mut curr=self.token_governance_data.get(id).unwrap();
             curr.vote_weight+=weight;
             Ok(())
         }
         #[ink(message,selector = 99)]
         pub fn decrement_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>{
-            assert_eq!(self.env().caller(),self.admin);
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
             let mut curr=self.token_governance_data.get(id).unwrap();
             assert!(curr.vote_weight>=weight);
             curr.vote_weight-=weight;
@@ -123,7 +127,9 @@ mod governance_nft {
         }
         #[ink(message,selector = 1337)]
         pub fn mint(&mut self, to:AccountId,weight:u128) -> Result<(), PSP34Error> {
-            assert_eq!(self.env().caller(),self.admin);
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
             
             self.mint_count+=1;
             let curr_id=Id::U128(self.mint_count);
@@ -142,7 +148,9 @@ mod governance_nft {
         #[ink(message,selector = 8057)]
         pub fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
              // Add security, restrict usage of the message
-             assert_eq!(self.env().caller(),self.admin);
+             if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
 
              let _id=Id::U128(self.mint_count);
             
