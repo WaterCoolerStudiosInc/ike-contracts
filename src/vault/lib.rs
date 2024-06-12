@@ -105,6 +105,10 @@ mod vault {
     pub struct RoleSetFeesAdminTransferred {
         new_account: AccountId,
     }
+    #[ink(event)]
+    pub struct NewHash {
+        code_hash: [u8; 32],
+    }
 
     #[ink(storage)]
     pub struct Vault {
@@ -596,6 +600,13 @@ mod vault {
             }
 
             ink::env::set_code_hash(&code_hash)?;
+
+            Self::emit_event(
+                Self::env(),
+                Event::NewHash(NewHash {
+                    code_hash,
+                }),
+            );
 
             Ok(())
         }
