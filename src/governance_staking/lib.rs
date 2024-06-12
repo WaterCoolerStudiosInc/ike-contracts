@@ -155,7 +155,7 @@ mod staking {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
-            self.update_stake_accumulation(now);
+            self.update_stake_accumulation(now)?;
             self.staked_token_balance+=token_value;
             if let Err(e) = self.nft.increment_weight(nft_id, token_value) {
                 return Err(StakingError::NFTError(e));

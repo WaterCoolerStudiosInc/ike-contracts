@@ -89,7 +89,8 @@ mod tests {
             bytes_governance_staking(),
             "new",
             &[  gov_token.to_string(),
-                hash_governance_token()
+                hash_governance_nft()
+                100_000_000
             ],
             vec![2],
             None,
@@ -178,21 +179,7 @@ mod tests {
             transcoder_governance_token(),
         ).unwrap();
 
-        
-        /**let mut sess = call_function(
-            sess,
-            &ctx.gov_nft,
-            &ctx.bob,
-            String::from("PSP34::total_supply"),
-            Some(vec![]),
-            None,
-            transcoder_governance_nft(),
-        ).unwrap();
-        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
-        let total_supply = rr.unwrap();
-
-
-        println!("{:?}",total_supply);
+  
         
         let  sess = call_function(
             sess,
@@ -203,36 +190,8 @@ mod tests {
             None,
             transcoder_governance_staking(),
         ).unwrap();
-        **/
-       
-
-        Ok(())
-    }
-    #[test]
-    fn test_nft()-> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
-        let nft=ctx.sess.deploy(
-            bytes_governance_nft(),
-            "new",
-            &[ctx.bob.to_string()
-            ],
-            vec![2],
-            None,
-            &transcoder_governance_nft().unwrap(),
-        )?;
-        let sess = call_function(
-            ctx.sess,
-            &nft,
-            &ctx.bob,
-            String::from("mint"),
-            Some(vec![ctx.bob.to_string(),100_000_000_u128.to_string()]),
-            None,
-            transcoder_governance_nft(),
-         ).unwrap();
-         //let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
-         //let mint_res = rr.unwrap();
-         //println!("{:?}",mint_res);
-         let mut sess = call_function(
+        
+        let mut sess = call_function(
             sess,
             &ctx.gov_nft,
             &ctx.bob,
@@ -243,10 +202,10 @@ mod tests {
         ).unwrap();
         let rr: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
         let total_supply = rr.unwrap();
-
-
         println!("{:?}",total_supply);
         Ok(())
+    
+ 
         
     }
 }
