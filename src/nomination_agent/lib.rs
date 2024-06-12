@@ -1,10 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 mod data;
+pub mod errors;
+pub mod traits;
+
+pub use crate::nomination_agent::NominationAgentRef;
 
 #[ink::contract]
 mod nomination_agent {
     use crate::data::{BondExtra, MultiAddress, NominationCall, PoolState, RuntimeCall};
+    use crate::errors::RuntimeError;
+    use crate::traits::INominationAgent;
     use ink::env::Error as EnvError;
 
     const BIPS: u128 = 10000;
@@ -12,20 +18,13 @@ mod nomination_agent {
     #[ink(storage)]
     pub struct NominationAgent {
         vault: AccountId,
+        registry: AccountId,
         admin: AccountId,
         validator: AccountId,
         pool_id: u32,
         staked: u128,
         unbonding: u128,
         creation_bond: u128,
-    }
-
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum RuntimeError {
-        CallRuntimeFailed,
-        Unauthorized,
-        Active,
     }
 
     impl From<EnvError> for RuntimeError {
@@ -38,6 +37,21 @@ mod nomination_agent {
     }
 
     impl NominationAgent {
+        #[ink(constructor)]
+        pub fn deploy_hash() -> Self {
+            let account_id = Self::env().account_id();
+            NominationAgent {
+                vault: account_id,
+                registry: account_id,
+                admin: account_id,
+                validator: account_id,
+                pool_id: 0,
+                staked: 0,
+                unbonding: 0,
+                creation_bond: 0,
+            }
+        }
+
         #[ink(constructor, payable)]
         pub fn new(
             vault: AccountId,
@@ -55,6 +69,7 @@ mod nomination_agent {
 
             let nomination_agent = NominationAgent {
                 vault,
+                registry: Self::env().caller(),
                 admin,
                 validator,
                 pool_id,
@@ -94,9 +109,11 @@ mod nomination_agent {
 
             nomination_agent
         }
+    }
 
+    impl INominationAgent for NominationAgent {
         #[ink(message, payable, selector = 1)]
-        pub fn deposit(&mut self) -> Result<(), RuntimeError> {
+        fn deposit(&mut self) -> Result<(), RuntimeError> {
             let deposit_amount = Self::env().transferred_value();
 
             // Restricted to vault
@@ -120,7 +137,7 @@ mod nomination_agent {
         }
 
         #[ink(message, selector = 2)]
-        pub fn start_unbond(&mut self, amount: u128) -> Result<(), RuntimeError> {
+        fn start_unbond(&mut self, amount: u128) -> Result<(), RuntimeError> {
             // Restricted to vault
             if Self::env().caller() != self.vault {
                 return Err(RuntimeError::Unauthorized);
@@ -142,7 +159,7 @@ mod nomination_agent {
         }
 
         #[ink(message, selector = 3)]
-        pub fn withdraw_unbonded(&mut self) -> Result<(), RuntimeError> {
+        fn withdraw_unbonded(&mut self) -> Result<(), RuntimeError> {
             let vault = self.vault; // shadow
 
             // Restricted to vault
@@ -175,7 +192,7 @@ mod nomination_agent {
         }
 
         #[ink(message, selector = 4)]
-        pub fn compound(&mut self, incentive_percentage: u16) -> Result<(Balance, Balance), RuntimeError> {
+        fn compound(&mut self, incentive_percentage: u16) -> Result<(Balance, Balance), RuntimeError> {
             let vault = self.vault; // shadow
 
             // Restricted to vault
@@ -219,32 +236,32 @@ mod nomination_agent {
         }
 
         #[ink(message, selector = 12)]
-        pub fn get_staked_value(&self) -> Balance {
+        fn get_staked_value(&self) -> Balance {
             self.staked
         }
 
         #[ink(message, selector = 13)]
-        pub fn get_unbonding_value(&self) -> Balance {
+        fn get_unbonding_value(&self) -> Balance {
             self.unbonding
         }
 
         #[ink(message)]
-        pub fn get_vault(&self) -> AccountId {
+        fn get_vault(&self) -> AccountId {
             self.vault
         }
 
         #[ink(message)]
-        pub fn get_admin(&self) -> AccountId {
+        fn get_admin(&self) -> AccountId {
             self.admin
         }
 
         #[ink(message)]
-        pub fn get_validator(&self) -> AccountId {
+        fn get_validator(&self) -> AccountId {
             self.validator
         }
 
         #[ink(message)]
-        pub fn get_pool_id(&self) -> u32 {
+        fn get_pool_id(&self) -> u32 {
             self.pool_id
         }
 
@@ -258,9 +275,9 @@ mod nomination_agent {
         /// Must have no protocol funds staked
         /// Must have no protocol funds unbonding
         #[ink(message, selector = 100)]
-        pub fn destroy(&mut self) -> Result<(), RuntimeError> {
-            // Restricted to admin
-            if Self::env().caller() != self.admin {
+        fn destroy(&mut self) -> Result<(), RuntimeError> {
+            // Restricted to registry
+            if Self::env().caller() != self.registry {
                 return Err(RuntimeError::Unauthorized);
             }
 
@@ -309,7 +326,7 @@ mod nomination_agent {
         /// Can only be called by admin
         /// Must be called after `destroy()`
         #[ink(message, selector = 101)]
-        pub fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError> {
+        fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError> {
             // Restricted to admin
             if Self::env().caller() != self.admin {
                 return Err(RuntimeError::Unauthorized);
