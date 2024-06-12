@@ -234,7 +234,7 @@ mod vault {
                     staker: caller,
                     azero,
                     new_shares,
-                    virtual_shares: self.data.total_shares_virtual,
+                    virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
                 }),
             );
 
@@ -517,7 +517,7 @@ mod vault {
                     caller,
                     azero: compounded,
                     incentive,
-                    virtual_shares: self.data.total_shares_virtual,
+                    virtual_shares: self.get_current_virtual_shares(),
                 }),
             );
 
@@ -654,7 +654,7 @@ mod vault {
                 Self::env(),
                 Event::FeesAdjusted(FeesAdjusted {
                     new_fee,
-                    virtual_shares: self.data.total_shares_virtual,
+                    virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
                 }),
             );
 
