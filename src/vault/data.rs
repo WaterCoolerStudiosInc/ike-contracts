@@ -25,7 +25,7 @@ type Timestamp = u64;
 
 pub const BIPS: u16 = 10000;
 pub const DAY: u64 = 86400 * 1000;
-pub const YEAR: u64 = DAY * 365;
+pub const YEAR: u64 = DAY * 365_25 / 100; // https://docs.alephzero.org/aleph-zero/use/stake/staking-rewards
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
