@@ -26,6 +26,8 @@ const main = async (validators: string[]) => {
   const initParams = await initPolkadotJs()
   const { api, chain, account } = initParams
 
+  console.log('===== Network Queries =====')
+
   const minNominatorBondCodec = await api.query.staking.minNominatorBond()
   const minNominatorBond = BigInt(minNominatorBondCodec.toString())
   console.log(`Minimum nomination bond: ${minNominatorBond}`)
@@ -34,7 +36,7 @@ const main = async (validators: string[]) => {
   const existentialDeposit = BigInt(existentialDepositCodec.toString())
   console.log(`Existential deposit: ${existentialDeposit}`)
 
-  console.log('===== Contract Deployment =====')
+  console.log('===== Code Hash Deployment =====')
 
   console.log(`Deploying code hash: 'registry' ...`)
   const registry_data = await getDeploymentData('registry')
@@ -69,6 +71,8 @@ const main = async (validators: string[]) => {
   )
   console.log(`Hash: ${nomination_agent.hash}`)
 
+  console.log('===== Contract Deployment =====')
+
   console.log(`Deploying contract: 'vault' ...`)
   const vault_data = await getDeploymentData('vault')
   const vault = chainId === 'development'
@@ -89,6 +93,8 @@ const main = async (validators: string[]) => {
     )
 
   const vault_instance = new ContractPromise(api, vault_data.abi, vault.address)
+
+  console.log('===== Address Lookup =====')
 
   console.log('Fetching registry contract ...')
   const registry_contract_result = await contractQuery(
@@ -111,6 +117,8 @@ const main = async (validators: string[]) => {
   share_token.address = decodeOutput(share_token_contract_result, vault_instance, 'get_share_token_contract').output
   console.log(`Share Token Address: ${share_token.address}`)
 
+  console.log('===== Agent Configuration =====')
+
   for (const validator of validators) {
     const lastPoolIdCodec = await api.query.nominationPools.lastPoolId()
     const nextPoolId = BigInt(lastPoolIdCodec.toString()) + 1n
@@ -125,8 +133,37 @@ const main = async (validators: string[]) => {
       },
       [account.address, validator, nextPoolId, minNominatorBond, existentialDeposit],
     )
-    console.log('Added!')
   }
+
+  console.log('Fetching agents ...')
+  const get_agents_result = await contractQuery(
+    api,
+    '',
+    registry_instance,
+    'get_agents',
+  )
+  const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'get_agents').output
+
+  if (chainId === 'development') {
+    console.log('Equally weighting agents ...')
+    await contractTx(
+      api,
+      account,
+      registry_instance,
+      'update_agents',
+      {},
+      [agents.map((a) => a.address), [100, 100]],
+    )
+  }
+
+  console.log('===== Contract Locations =====')
+
+  console.log({
+    vault: vault.address,
+    registry: registry.address,
+    share_token: share_token.address,
+    ...agents.reduce((obj, a, i) => ({...obj, [`agent[${i}]`]: a.address}), {}),
+  })
 
   await writeContractAddresses(chain.network, {
     vault,
