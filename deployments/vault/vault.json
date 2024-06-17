@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xce7490c1b78610d49c1863cc2b3df1ed031df743a2fa799969ae41ac088197bf",
+    "hash": "0x857c9ee2295df88dc4b847d349441dfc5f774642226cb1b66803cda7b20a9459",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -42,6 +42,15 @@
               ],
               "type": 8
             }
+          },
+          {
+            "label": "nomination_agent_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 8
+            }
           }
         ],
         "default": false,
@@ -70,6 +79,15 @@
           },
           {
             "label": "registry_code_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "nomination_agent_hash",
             "type": {
               "displayName": [
                 "Hash"
@@ -191,6 +209,45 @@
         ],
         "docs": [],
         "label": "Staked"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "referral_id",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "staker",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "azero",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [],
+        "label": "Referral"
       },
       {
         "args": [
@@ -571,6 +628,21 @@
         ],
         "docs": [],
         "label": "RoleSetFeesAdminTransferred"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "code_hash",
+            "type": {
+              "displayName": [],
+              "type": 1
+            }
+          }
+        ],
+        "docs": [],
+        "label": "NewHash"
       }
     ],
     "lang_error": {
@@ -602,6 +674,32 @@
           "type": 12
         },
         "selector": "0x5adb38de"
+      },
+      {
+        "args": [
+          {
+            "label": "referral_id",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "stake_with_referral",
+        "mutates": true,
+        "payable": true,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 12
+        },
+        "selector": "0xcb9aa6ad"
       },
       {
         "args": [
@@ -1440,6 +1538,24 @@
           "type": 30
         },
         "selector": "0xc8e000f1"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Calculate the value of sAZERO in terms of AZERO with TARGET_DECIMALS precision"
+        ],
+        "label": "RateProvider::get_rate",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 23
+        },
+        "selector": "0x73098e66"
       }
     ]
   },
@@ -2647,7 +2763,6 @@
       "type": {
         "def": {
           "tuple": [
-            4,
             4,
             4,
             32,

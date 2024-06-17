@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xfaa9cd4b8fdcd1c3082dcb44c83c7132b56785fb5da95ea1afc4f491c2807820",
+    "hash": "0x11f7f5c444fff378144f61d9d8fde7f4e454d1c3da0740a1d819441972362dc0",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -26,7 +26,7 @@
       {
         "args": [
           {
-            "label": "vault_",
+            "label": "vault",
             "type": {
               "displayName": [
                 "AccountId"
@@ -35,12 +35,48 @@
             }
           },
           {
-            "label": "mock_fail_",
+            "label": "admin",
             "type": {
               "displayName": [
-                "bool"
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "validator",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "pool_id",
+            "type": {
+              "displayName": [
+                "u32"
               ],
               "type": 3
+            }
+          },
+          {
+            "label": "creation_bond",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "existential_deposit",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
             }
           }
         ],
@@ -80,13 +116,13 @@
         "displayName": [
           "BlockNumber"
         ],
-        "type": 20
+        "type": 3
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 21
+        "type": 20
       },
       "hash": {
         "displayName": [
@@ -271,6 +307,48 @@
           "type": 15
         },
         "selector": "0x0000000d"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "destroy",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000064"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "admin_withdraw_bond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000065"
       }
     ]
   },
@@ -292,10 +370,37 @@
               "layout": {
                 "leaf": {
                   "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "registry"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "admin"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "validator"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
                   "ty": 3
                 }
               },
-              "name": "mock_fail"
+              "name": "pool_id"
             },
             {
               "layout": {
@@ -313,7 +418,16 @@
                   "ty": 4
                 }
               },
-              "name": "unbonded"
+              "name": "unbonding"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "creation_bond"
             }
           ],
           "name": "RuntimeCaller"
@@ -366,7 +480,7 @@
       "id": 3,
       "type": {
         "def": {
-          "primitive": "bool"
+          "primitive": "u32"
         }
       }
     },
@@ -547,11 +661,7 @@
               },
               {
                 "index": 2,
-                "name": "InvalidWithdraw"
-              },
-              {
-                "index": 3,
-                "name": "InsufficientFunds"
+                "name": "Active"
               }
             ]
           }
@@ -822,14 +932,6 @@
     },
     {
       "id": 20,
-      "type": {
-        "def": {
-          "primitive": "u32"
-        }
-      }
-    },
-    {
-      "id": 21,
       "type": {
         "def": {
           "variant": {}
