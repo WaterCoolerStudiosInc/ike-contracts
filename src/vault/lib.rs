@@ -38,6 +38,13 @@ mod vault {
         virtual_shares: Balance,
     }
     #[ink(event)]
+    pub struct Referral {
+        #[ink(topic)]
+        referral_id: AccountId,
+        staker: AccountId,
+        azero: Balance,
+    }
+    #[ink(event)]
     pub struct Compounded {
         caller: AccountId,
         azero: Balance,
@@ -242,6 +249,20 @@ mod vault {
                 }),
             );
 
+            Ok(new_shares)
+        }
+
+        #[ink(message, payable)]
+        pub fn stake_with_referral(&mut self, referral_id: AccountId) -> Result<Balance, VaultError> {
+            let new_shares = self.stake()?;
+            Self::emit_event(
+                Self::env(),
+                Event::Referral(Referral {
+                    referral_id,
+                    staker: Self::env().caller(),
+                    azero: Self::env().transferred_value(),
+                }),
+            );
             Ok(new_shares)
         }
 
