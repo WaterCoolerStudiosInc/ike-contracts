@@ -2,10 +2,12 @@
 
 mod data;
 mod nomination_agent_utils;
+mod traits;
 
 #[ink::contract]
 mod vault {
     use crate::data::*;
+    use crate::traits::*;
 
     use ink::{
         codegen::EmitEvent,
@@ -167,6 +169,16 @@ mod vault {
                 return Err(VaultError::TokenError(e));
             }
             Ok(())
+        }
+    }
+
+    impl RateProvider for Vault {
+        /// Calculate the value of sAZERO in terms of AZERO with TARGET_DECIMALS precision
+        #[ink(message)]
+        fn get_rate(&mut self) -> u128 {
+            // Because both RATE_DECIMALS and sAZERO.decimals() are 12,
+            // no further adjustment is necessary
+            self.get_azero_from_shares(1e12 as u128)
         }
     }
 
