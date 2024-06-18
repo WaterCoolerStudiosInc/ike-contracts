@@ -140,15 +140,25 @@ pub mod multisig {
     }
     impl MultiSig {
         #[ink(constructor)]
-        pub fn new(_admin: AccountId) -> Self {
+        pub fn new(_admin: AccountId,_registry:AccountId,_vault:AccountId) -> Self {
             Self {
                 admin: _admin,
+                registry:_registry
+                vault:_vault,
                 signers: Vec::new(),
                 threshold: initial_roles,
                 creation_time:Self::env().block_timestamp();
             }
         }
-        #[message]
+        #[ink(message,selector = 1)]
+        pub fn add_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
+            let caller = Self.env.caller();
+            if caller != self.admin {
+                return Err(MultiSigError::Unauthorized);
+            }
+            self.signers.push(_signer);
+        }
+        #[ink(message,selector = 2)]
         pub fn remove_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
             let caller = Self.env.caller();
             if caller != self.admin {
@@ -162,13 +172,14 @@ pub mod multisig {
             }
             Ok(())
         }
-        #[message]
-        pub fn add_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
+       
+        #[ink(message,selector = 3)]
+        pub fn update_threshold(&mut self,new_threshold:u16)-> Result<(),MultiSigError>{
             let caller = Self.env.caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
-            }
-            self.signers.push(_signer);
+            }   
+            self.threshold=new_threshold;
         }
     }
 }

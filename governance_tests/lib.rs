@@ -89,8 +89,8 @@ mod tests {
             bytes_governance_staking(),
             "new",
             &[  gov_token.to_string(),
-                hash_governance_nft()
-                100_000_000
+                hash_governance_nft(),
+                100_000_000.to_string()
             ],
             vec![2],
             None,
@@ -166,7 +166,7 @@ mod tests {
         
     }
     #[test]
-    fn test_wrap() -> Result<(), Box<dyn Error>> {
+    fn test_mint_update() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
         // Bob approves Ed to transfer 1k sAZERO
         let mut sess = call_function(
@@ -203,6 +203,34 @@ mod tests {
         let rr: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
         let total_supply = rr.unwrap();
         println!("{:?}",total_supply);
+        let  sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("add_token_value"),
+            Some(vec![10000_u128.to_string(),1_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ).unwrap();
+        let  sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("remove_token_value"),
+            Some(vec![999_u128.to_string(),1_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ).unwrap();
+        let  sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("get_governance_data"),
+            Some(vec![1_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ).unwrap();
+        let gdata: Result<GovernanceData, drink::errors::LangError> = sess.last_call_return().unwrap();
         Ok(())
     
  

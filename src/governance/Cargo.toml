@@ -1,5 +1,5 @@
 [package]
-name = "council_election"
+name = "governance"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -13,9 +13,16 @@ scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
 psp34 = { git = "https://github.com/Cardinal-Cryptography/PSP34.git", default-features = false }
+vault = { path = "../vault", default-features = false, features = [
+    "ink-as-dependency",
+] }
 
+psp22 = { version = "=0.2.1", default-features = false }
+governance_nft = { path = "../governance_nft", default-features = false, features = [
+    "ink-as-dependency",
+] }
 [lib]
-name = "council_election"
+name = "governance"
 path = "lib.rs"
 
 [features]

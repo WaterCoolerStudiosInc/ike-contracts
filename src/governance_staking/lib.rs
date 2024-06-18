@@ -23,6 +23,7 @@ mod staking {
     pub enum StakingError {
         Invalid,
         Unauthorized,
+        InvalidTimeWindow,
         NFTError(PSP34Error),
         TokenError(PSP22Error),
     }
@@ -213,8 +214,12 @@ mod staking {
         }
         #[ink(message)]
         pub fn unwrap(&mut self, token_id: u128) -> Result<(), StakingError> {
+            let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
             let data=  self.unstake_requests.get(token_id).unwrap();
+            if now< data.time + WITHDRAW_DELAY{
+                return Err(StakingError::InvalidTimeWindow);
+            }
             if data.owner!= caller {
                 return Err(StakingError::Unauthorized);
             }
