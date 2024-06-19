@@ -167,7 +167,8 @@ mod nomination_agent {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            let before = Self::env().balance();
+            let balance_before = Self::env().balance();
+
             if let Err(e) = self.env()
                 .call_runtime(&RuntimeCall::NominationPools(
                     NominationCall::WithdrawUnbonded {
@@ -178,9 +179,8 @@ mod nomination_agent {
                 ink::env::debug_println!("Ignoring NominationCall::WithdrawUnbonded error {:?}", e);
                 return Ok(());
             };
-            let after = Self::env().balance();
 
-            let withdrawn = after - before;
+            let withdrawn = Self::env().balance() - balance_before;
 
             // Transfer withdrawn AZERO to vault
             if withdrawn > 0 {
@@ -200,32 +200,38 @@ mod nomination_agent {
                 return Err(RuntimeError::Unauthorized);
             }
 
+            let balance_before = Self::env().balance();
+
             // Claim available AZERO
             self.env()
                 .call_runtime(&RuntimeCall::NominationPools(
                     NominationCall::ClaimPayout {}
-                ))?;
+                ))
+                .ok();
 
-            let balance = Self::env().balance();
+            let payout = Self::env().balance() - balance_before;
 
             // Gracefully return when nomination pool had nothing to claim
-            if balance == 0 {
+            if payout == 0 {
                 return Ok((0, 0));
             }
 
-            let incentive = balance * incentive_percentage as u128 / BIPS;
-            let compound_amount = balance - incentive;
-            self.staked += compound_amount;
+            let incentive = payout * incentive_percentage as u128 / BIPS;
+            let compound_amount = payout - incentive;
 
             // Bond AZERO to nomination pool
-            self.env()
-                .call_runtime(&RuntimeCall::NominationPools(
-                    NominationCall::BondExtra {
-                        extra: BondExtra::FreeBalance {
-                            balance: compound_amount,
+            if compound_amount > 0 {
+                self.staked += compound_amount;
+                self.env()
+                    .call_runtime(&RuntimeCall::NominationPools(
+                        NominationCall::BondExtra {
+                            extra: BondExtra::FreeBalance {
+                                balance: compound_amount,
+                            }
                         }
-                    }
-                ))?;
+                    ))
+                    .ok();
+            }
 
             // Send incentive AZERO to vault which will handle distribution to caller
             if incentive > 0 {
@@ -271,7 +277,7 @@ mod nomination_agent {
         ///     2) Removes the validator nomination
         ///     3) Begins unbonding the initial bond
         ///
-        /// Can only be called by admin
+        /// Can only be called by registry
         /// Must have no protocol funds staked
         /// Must have no protocol funds unbonding
         #[ink(message, selector = 100)]
@@ -343,7 +349,8 @@ mod nomination_agent {
                         member_account: MultiAddress::Id(Self::env().account_id()),
                         num_slashing_spans: 0,
                     }
-                )).ok();
+                ))
+                .ok();
 
             Self::env().transfer(to, Self::env().balance())?;
 
