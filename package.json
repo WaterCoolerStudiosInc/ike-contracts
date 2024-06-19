@@ -1,7 +1,7 @@
 {
   "name": "@water-cooler-studios/kintsu-contracts",
   "type": "module",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "scripts": {
     "test": "cargo test --manifest-path drink_tests/Cargo.toml",
     "build": "bash build-all.sh",

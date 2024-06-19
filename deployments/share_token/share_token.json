@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x015a6d1e1d4f200c6c95fdfd6c5e1a343fce724b39a27dbd30bd5ca5aa4f771a",
+    "hash": "0xc5fabf8148fd6225412dd7bd4bb5e42122d1374e103961fe2e8d98c05d325934",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -220,32 +220,6 @@
           "type": 9
         },
         "selector": "0x00001e61"
-      },
-      {
-        "args": [
-          {
-            "label": "new_owner",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "transfer_ownership",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0x107e33ea"
       },
       {
         "args": [],
