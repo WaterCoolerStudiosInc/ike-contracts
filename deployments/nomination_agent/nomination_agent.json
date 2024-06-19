@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xb93427104e122a7d0162a99f9a5d439429dca5676e850d244fd4684b6537bad6",
+    "hash": "0x143433b9cd831df85c9c5ce7cac4187e028b4ec60d66fce6f60c970a491897c0",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -348,7 +348,7 @@
           "     2) Removes the validator nomination",
           "     3) Begins unbonding the initial bond",
           "",
-          " Can only be called by admin",
+          " Can only be called by registry",
           " Must have no protocol funds staked",
           " Must have no protocol funds unbonding"
         ],
