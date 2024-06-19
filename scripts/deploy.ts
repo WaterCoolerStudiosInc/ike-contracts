@@ -26,6 +26,8 @@ const main = async (validators: string[]) => {
   const initParams = await initPolkadotJs()
   const { api, chain, account } = initParams
 
+  console.log('===== Network Queries =====')
+
   const minNominatorBondCodec = await api.query.staking.minNominatorBond()
   const minNominatorBond = BigInt(minNominatorBondCodec.toString())
   console.log(`Minimum nomination bond: ${minNominatorBond}`)
@@ -34,20 +36,19 @@ const main = async (validators: string[]) => {
   const existentialDeposit = BigInt(existentialDepositCodec.toString())
   console.log(`Existential deposit: ${existentialDeposit}`)
 
-  console.log('===== Contract Deployment =====')
+  console.log('===== Code Hash Deployment =====')
 
-  console.log(`Deploying contract: 'registry' ...`)
+  console.log(`Deploying code hash: 'registry' ...`)
   const registry_data = await getDeploymentData('registry')
   const registry = await deployContract(
     api,
     account,
     registry_data.abi,
     registry_data.wasm,
-    'new',
-    [account.address, account.address, account.address],
+    'deploy_hash',
   )
 
-  console.log(`Deploying contract: 'share_token' ...`)
+  console.log(`Deploying code hash: 'share_token' ...`)
   const token_data = await getDeploymentData('share_token')
   const share_token = await deployContract(
     api,
@@ -58,6 +59,20 @@ const main = async (validators: string[]) => {
     ['TEST', 'TS'],
   )
 
+  console.log(`Deploying code hash: 'nomination_agent' ...`)
+  const nomination_agent_data = await getDeploymentData('nomination_agent')
+  console.log(`Data hash: ${nomination_agent_data.abi.source.hash}`)
+  const nomination_agent = await deployContract(
+    api,
+    account,
+    nomination_agent_data.abi,
+    nomination_agent_data.wasm,
+    'deploy_hash',
+  )
+  console.log(`Hash: ${nomination_agent.hash}`)
+
+  console.log('===== Contract Deployment =====')
+
   console.log(`Deploying contract: 'vault' ...`)
   const vault_data = await getDeploymentData('vault')
   const vault = chainId === 'development'
@@ -67,41 +82,19 @@ const main = async (validators: string[]) => {
       vault_data.abi,
       vault_data.wasm,
       'custom_era',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, 30 * 3 * 1_000],
+      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, 5 * 3 * 1_000],
     ) : await deployContract(
       api,
       account,
       vault_data.abi,
       vault_data.wasm,
       'new',
-      [token_data.abi.source.hash, registry_data.abi.source.hash],
+      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash],
     )
-
-  // Deploy agents for testing
-  const nomination_agents = []
-  for (const validator of validators) {
-    const lastPoolIdCodec = await api.query.nominationPools.lastPoolId()
-    const nextPoolId = BigInt(lastPoolIdCodec.toString()) + 1n
-    const nominator_data = await getDeploymentData('nomination_agent')
-    console.log(`Deploying contract: 'nomination_agent' (validator: ${validator} & PID #${nextPoolId}) ...`)
-    const nominator = await deployContract(
-      api,
-      account,
-      nominator_data.abi,
-      nominator_data.wasm,
-      'new',
-      [vault.address, account.address, validator, nextPoolId, minNominatorBond, existentialDeposit],
-      {
-        value: minNominatorBond + existentialDeposit,
-      },
-    )
-    console.log('Deployed!')
-    nomination_agents.push(nominator)
-  }
-
-  console.log('===== Contract Configuration =====')
 
   const vault_instance = new ContractPromise(api, vault_data.abi, vault.address)
+
+  console.log('===== Address Lookup =====')
 
   console.log('Fetching registry contract ...')
   const registry_contract_result = await contractQuery(
@@ -124,18 +117,53 @@ const main = async (validators: string[]) => {
   share_token.address = decodeOutput(share_token_contract_result, vault_instance, 'get_share_token_contract').output
   console.log(`Share Token Address: ${share_token.address}`)
 
-  for (let i=0; i<nomination_agents.length; i++) {
-    console.log(`Adding nomination agent (${i+1}/${nomination_agents.length}) to registry ...`)
+  console.log('===== Agent Configuration =====')
+
+  for (const validator of validators) {
+    const lastPoolIdCodec = await api.query.nominationPools.lastPoolId()
+    const nextPoolId = BigInt(lastPoolIdCodec.toString()) + 1n
+    console.log(`Adding nomination agent (validator: ${validator} & PID #${nextPoolId}) ...`)
     await contractTx(
       api,
       account,
       registry_instance,
       'add_agent',
-      {},
-      [nomination_agents[i].address, '1000'],
+      {
+        value: minNominatorBond + existentialDeposit,
+      },
+      [account.address, validator, nextPoolId, minNominatorBond, existentialDeposit],
     )
-    console.log('Success!')
   }
+
+  console.log('Fetching agents ...')
+  const get_agents_result = await contractQuery(
+    api,
+    '',
+    registry_instance,
+    'get_agents',
+  )
+  const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'get_agents').output
+
+  if (chainId === 'development') {
+    console.log('Equally weighting agents ...')
+    await contractTx(
+      api,
+      account,
+      registry_instance,
+      'update_agents',
+      {},
+      [agents.map((a) => a.address), [100, 100]],
+    )
+  }
+
+  console.log('===== Contract Locations =====')
+
+  console.log({
+    vault: vault.address,
+    registry: registry.address,
+    share_token: share_token.address,
+    ...agents.reduce((obj, a, i) => ({...obj, [`agent[${i}]`]: a.address}), {}),
+  })
 
   await writeContractAddresses(chain.network, {
     vault,

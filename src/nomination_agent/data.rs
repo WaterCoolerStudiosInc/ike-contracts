@@ -15,6 +15,16 @@ pub enum MultiAddress<AccountId, AccountIndex> {
     // Its a 20 byte representation.
     Address20([u8; 20]),
 }
+#[allow(dead_code)]
+#[derive(scale::Encode)]
+pub enum PoolState {
+    #[codec(index = 0)]
+    Open,
+    #[codec(index = 1)]
+    Blocked,
+    #[codec(index = 2)]
+    Destroying,
+}
 #[derive(scale::Encode)]
 pub enum BondExtra {
     FreeBalance { balance: u128 },
@@ -48,6 +58,15 @@ pub enum NominationCall {
     Nominate {
         pool_id: u32,
         validators: Vec<AccountId>,
+    },
+    #[codec(index = 9)]
+    SetState {
+        pool_id: u32,
+        state: PoolState,
+    },
+    #[codec(index = 13)]
+    Chill {
+        pool_id: u32,
     },
 }
 #[derive(scale::Encode)]

@@ -2006,6 +2006,7 @@ name = "registry"
 version = "0.1.0"
 dependencies = [
  "ink",
+ "nomination_agent",
  "parity-scale-codec",
  "scale-info",
 ]

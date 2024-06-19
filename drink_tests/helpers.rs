@@ -11,7 +11,7 @@ pub use crate::sources::*;
 
 pub const SECOND: u64 = 1_000;
 pub const DAY: u64 = SECOND * 86400;
-pub const YEAR: u64 = DAY * 365;
+pub const YEAR: u64 = DAY * 365_25 / 100;
 pub const BIPS: u128 = 10000;
 
 pub fn update_days(
@@ -36,16 +36,25 @@ pub fn call_add_agent(
     sess: Session<MinimalRuntime>,
     registry: &AccountId32,
     sender: &AccountId32,
-    agent: &AccountId32,
-    weight: &u64,
+    admin: &AccountId32,
+    validator: &AccountId32,
+    pool_id: u32,
+    pool_create_amount: u128,
+    existential_deposit: u128,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
         &registry,
         &sender,
         String::from("add_agent"),
-        Some([agent.to_string(), weight.to_string()].to_vec()),
-        None,
+        Some([
+            admin.to_string(),
+            validator.to_string(),
+            pool_id.to_string(),
+            pool_create_amount.to_string(),
+            existential_deposit.to_string(),
+        ].to_vec()),
+        Some(pool_create_amount + existential_deposit),
         transcoder_registry(),
     )?;
     Ok(sess)

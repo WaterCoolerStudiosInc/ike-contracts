@@ -12,6 +12,9 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
+nomination_agent = { path = "../nomination_agent", default-features = false, features = [
+    "ink-as-dependency",
+] }
 
 [lib]
 name = "registry"
@@ -19,5 +22,5 @@ path = "lib.rs"
 
 [features]
 default = ["std"]
-std = ["ink/std", "scale/std", "scale-info", "scale-info/std"]
+std = ["ink/std", "scale/std", "scale-info", "scale-info/std", "nomination_agent/std"]
 ink-as-dependency = []

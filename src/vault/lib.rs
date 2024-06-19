@@ -187,20 +187,22 @@ mod vault {
         pub fn new(
             share_token_hash: Hash,
             registry_code_hash: Hash,
+            nomination_agent_hash: Hash,
         ) -> Self {
-            Self::custom_era(share_token_hash, registry_code_hash, DAY)
+            Self::custom_era(share_token_hash, registry_code_hash, nomination_agent_hash, DAY)
         }
 
         #[ink(constructor)]
         pub fn custom_era(
             share_token_hash: Hash,
             registry_code_hash: Hash,
+            nomination_agent_hash: Hash,
             era: u64,
         ) -> Self {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let registry_ref = RegistryRef::new(caller, caller, caller)
+            let registry_ref = RegistryRef::new(caller, caller, caller, nomination_agent_hash)
                 .endowment(0)
                 .code_hash(registry_code_hash)
                 .salt_bytes(
@@ -316,15 +318,14 @@ mod vault {
                 batch_id: current_batch_unlock_id,
             });
             self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
-            let unlock_id=(user_unlock_requests.len()-1) as u128;
+
             Self::emit_event(
                 Self::env(),
                 Event::UnlockRequested(UnlockRequested {
                     staker: caller,
                     shares,
-                    unlock_id,
+                    unlock_id: (user_unlock_requests.len()-1) as u128,
                     batch_id: current_batch_unlock_id,
-
                 }),
             );
 

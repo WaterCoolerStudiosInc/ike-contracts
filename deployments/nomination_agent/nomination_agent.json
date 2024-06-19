@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xf51de2cb9530dc767fdaf90c210192015668ce773fdaa83799ccba54d189615b",
+    "hash": "0xd3ed2112e5cec9dfd5f449f183dc328c7f5d21b32a5d3f26aeecda1058b879aa",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -24,9 +24,24 @@
   "spec": {
     "constructors": [
       {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "deploy_hash",
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 5
+        },
+        "selector": "0x5b7f6cd1"
+      },
+      {
         "args": [
           {
-            "label": "vault_",
+            "label": "vault",
             "type": {
               "displayName": [
                 "AccountId"
@@ -35,7 +50,7 @@
             }
           },
           {
-            "label": "admin_",
+            "label": "admin",
             "type": {
               "displayName": [
                 "AccountId"
@@ -44,7 +59,7 @@
             }
           },
           {
-            "label": "validator_",
+            "label": "validator",
             "type": {
               "displayName": [
                 "AccountId"
@@ -53,7 +68,7 @@
             }
           },
           {
-            "label": "pool_id_",
+            "label": "pool_id",
             "type": {
               "displayName": [
                 "u32"
@@ -62,10 +77,10 @@
             }
           },
           {
-            "label": "pool_create_amount",
+            "label": "creation_bond",
             "type": {
               "displayName": [
-                "Balance"
+                "u128"
               ],
               "type": 4
             }
@@ -74,7 +89,7 @@
             "label": "existential_deposit",
             "type": {
               "displayName": [
-                "Balance"
+                "u128"
               ],
               "type": 4
             }
@@ -147,7 +162,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "deposit",
+        "label": "INominationAgent::deposit",
         "mutates": true,
         "payable": true,
         "returnType": {
@@ -173,7 +188,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "start_unbond",
+        "label": "INominationAgent::start_unbond",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -189,7 +204,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "withdraw_unbonded",
+        "label": "INominationAgent::withdraw_unbonded",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -215,7 +230,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "compound",
+        "label": "INominationAgent::compound",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -231,7 +246,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_staked_value",
+        "label": "INominationAgent::get_staked_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -247,7 +262,23 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_vault",
+        "label": "INominationAgent::get_unbonding_value",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 15
+        },
+        "selector": "0x0000000d"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_vault",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -257,13 +288,13 @@
           ],
           "type": 16
         },
-        "selector": "0x4f96cf6c"
+        "selector": "0x49767b99"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_admin",
+        "label": "INominationAgent::get_admin",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -273,13 +304,13 @@
           ],
           "type": 16
         },
-        "selector": "0x57b8a8a7"
+        "selector": "0xe63ca2d5"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_validator",
+        "label": "INominationAgent::get_validator",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -289,13 +320,13 @@
           ],
           "type": 16
         },
-        "selector": "0x35219e73"
+        "selector": "0xe55bf6b5"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_pool_id",
+        "label": "INominationAgent::get_pool_id",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -305,21 +336,23 @@
           ],
           "type": 17
         },
-        "selector": "0xfc52e849"
+        "selector": "0x78810bd5"
       },
       {
-        "args": [
-          {
-            "label": "code_hash",
-            "type": {
-              "displayName": [],
-              "type": 1
-            }
-          }
-        ],
+        "args": [],
         "default": false,
-        "docs": [],
-        "label": "set_code",
+        "docs": [
+          " Step 1 of 2 in finalizing the nomination pool's lifecycle",
+          " Performs the following actions:",
+          "     1) Puts the pool in a Destroying state",
+          "     2) Removes the validator nomination",
+          "     3) Begins unbonding the initial bond",
+          "",
+          " Can only be called by admin",
+          " Must have no protocol funds staked",
+          " Must have no protocol funds unbonding"
+        ],
+        "label": "INominationAgent::destroy",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -329,7 +362,41 @@
           ],
           "type": 8
         },
-        "selector": "0x00000063"
+        "selector": "0x00000064"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Step 2 of 2 in finalizing the nomination pool's lifecycle",
+          " Performs the following actions:",
+          "     1) Withdraws the (now unbonded) initial bond",
+          "     2) Transfers the initial bond to any account of choice",
+          "",
+          " Can only be called by admin",
+          " Must be called after `destroy()`"
+        ],
+        "label": "INominationAgent::admin_withdraw_bond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000065"
       }
     ]
   },
@@ -346,6 +413,15 @@
                 }
               },
               "name": "vault"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "registry"
             },
             {
               "layout": {
@@ -382,6 +458,24 @@
                 }
               },
               "name": "staked"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "unbonding"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "creation_bond"
             }
           ],
           "name": "NominationAgent"
@@ -612,13 +706,17 @@
               {
                 "index": 1,
                 "name": "Unauthorized"
+              },
+              {
+                "index": 2,
+                "name": "Active"
               }
             ]
           }
         },
         "path": [
           "nomination_agent",
-          "nomination_agent",
+          "errors",
           "RuntimeError"
         ]
       }

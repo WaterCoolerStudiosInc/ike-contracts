@@ -5,10 +5,13 @@ pub use crate::registry::RegistryRef;
 pub mod registry {
 
     use ink::{
-        env::{debug_println, Error as InkEnvError},
+        contract_ref,
+        env::{Error as InkEnvError},
         prelude::{format, string::String, vec::Vec},
         storage::Mapping,
+        ToAccountId,
     };
+    use nomination_agent::{NominationAgentRef, traits::INominationAgent};
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -61,7 +64,6 @@ pub mod registry {
     pub struct AgentAdded {
         #[ink(topic)]
         agent: AccountId,
-        weight: u64,
     }
     #[ink(event)]
     pub struct AgentUpdated {
@@ -94,14 +96,31 @@ pub mod registry {
         pub total_weight: u64,
         // Permissions for adding agents, updating weights, and removing agents
         pub roles: Mapping<RoleType, Role>,
+        // Used for instantiating agents
+        pub vault: AccountId,
+        pub nomination_agent_hash: Hash,
+        pub nomination_agent_counter: u128,
     }
 
     impl Registry {
+        #[ink(constructor)]
+        pub fn deploy_hash() -> Self {
+            Self {
+                agents: Vec::new(),
+                total_weight: 0,
+                roles: Mapping::default(),
+                vault: Self::env().caller(),
+                nomination_agent_hash: Hash::default(),
+                nomination_agent_counter: 0,
+            }
+        }
+
         #[ink(constructor)]
         pub fn new(
             role_add: AccountId,
             role_update: AccountId,
             role_remove: AccountId,
+            nomination_agent_hash: Hash,
         ) -> Self {
             let mut initial_roles = Mapping::default();
             initial_roles.insert(RoleType::AddAgent, &Role { admin: role_add, account: role_add });
@@ -112,6 +131,9 @@ pub mod registry {
                 agents: Vec::new(),
                 total_weight: 0,
                 roles: initial_roles,
+                vault: Self::env().caller(),
+                nomination_agent_hash,
+                nomination_agent_counter: 0,
             }
         }
 
@@ -119,38 +141,52 @@ pub mod registry {
         ///
         /// Caller must have the AddAgent role.
         /// Cannot add the same nomination agent twice.
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn add_agent(
             &mut self,
-            account: AccountId,
-            new_weight: u64,
-        ) -> Result<(), RegistryError> {
+            admin: AccountId,
+            validator: AccountId,
+            pool_id: u32,
+            pool_create_amount: Balance,
+            existential_deposit: Balance,
+        ) -> Result<AccountId, RegistryError> {
             let caller = Self::env().caller();
 
             if caller != self.roles.get(RoleType::AddAgent).unwrap().account {
                 return Err(RegistryError::InvalidPermissions);
             }
 
-            // Ensure agent does not already exist
-            if self.agents.iter().any(|a| a.address == account) {
-                return Err(RegistryError::DuplicateAgent);
-            }
+            let nomination_agent_counter = self.nomination_agent_counter; // shadow
 
-            debug_println!("adding new agent");
+            let agent_ref = NominationAgentRef::new(
+                    self.vault,
+                    admin,
+                    validator,
+                    pool_id,
+                    pool_create_amount,
+                    existential_deposit,
+                )
+                .endowment(pool_create_amount + existential_deposit)
+                .code_hash(self.nomination_agent_hash)
+                .salt_bytes(nomination_agent_counter.to_le_bytes())
+                .instantiate();
+
+            let agent_address = NominationAgentRef::to_account_id(&agent_ref);
+
+            self.nomination_agent_counter = nomination_agent_counter + 1;
+
             self.agents.push(Agent {
-                address: account,
-                weight: new_weight,
+                address: agent_address,
+                weight: 0,
             });
-            self.total_weight += new_weight;
 
             Self::env().emit_event(
                 AgentAdded {
-                    agent: account,
-                    weight: new_weight,
+                    agent: agent_address,
                 }
             );
 
-            Ok(())
+            Ok(agent_address)
         }
 
         /// Update existing nomination agents
@@ -159,7 +195,7 @@ pub mod registry {
         #[ink(message)]
         pub fn update_agents(
             &mut self,
-            accounts: Vec<AccountId>,
+            agents: Vec<AccountId>,
             new_weights: Vec<u64>,
         ) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
@@ -168,12 +204,12 @@ pub mod registry {
                 return Err(RegistryError::InvalidPermissions);
             }
 
-            if accounts.len() != new_weights.len() {
+            if agents.len() != new_weights.len() {
                 return Err(RegistryError::InvalidInput);
             }
 
-            for (args_index, &account) in accounts.iter().enumerate() {
-                if let Some(index) = self.agents.iter().position(|a| a.address == account) {
+            for (args_index, &agent) in agents.iter().enumerate() {
+                if let Some(index) = self.agents.iter().position(|a| a.address == agent) {
                     let old_weight = self.agents[index].weight;
                     let new_weight = new_weights[args_index];
 
@@ -181,13 +217,13 @@ pub mod registry {
                     self.total_weight += new_weight;
 
                     self.agents[index] = Agent {
-                        address: account,
+                        address: agent,
                         weight: new_weight,
                     };
 
                     Self::env().emit_event(
                         AgentUpdated {
-                            agent: account,
+                            agent,
                             old_weight,
                             new_weight,
                         }
@@ -201,15 +237,15 @@ pub mod registry {
         }
 
         /// Removes a nomination agent
+        /// This is intended to remove fully deprecated agents to save gas during iteration.
         ///
         /// Caller must have the RemoveAgent role.
-        /// This is intended to remove fully deprecated agents to save gas during iteration.
-        /// Agent must have a weight set of 0.
-        /// Agent should have sufficient time to unbond all staked AZERO.
+        /// Agent must have no AZERO staked (excludes initial bond).
+        /// Agent must have no AZERO unbonding.
         #[ink(message)]
         pub fn remove_agent(
             &mut self,
-            account: AccountId,
+            agent: AccountId,
         ) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
@@ -217,20 +253,31 @@ pub mod registry {
                 return Err(RegistryError::InvalidPermissions);
             }
 
-            if let Some(index) = self.agents.iter().position(|a| a.address == account) {
-                let weight = self.agents[index].weight;
+            if let Some(index) = self.agents.iter().position(|a| a.address == agent) {
+                let mut agent_contract: contract_ref!(INominationAgent) = agent.into();
 
-                // Do not delete agents with active weight (and possible bonded AZERO)
-                if weight > 0 {
+                // Do not delete agents with AZERO staked
+                if agent_contract.get_staked_value() > 0 {
                     return Err(RegistryError::ActiveAgent);
                 }
 
-                self.total_weight -= weight;
+                // Do not delete agents with AZERO unbonding
+                if agent_contract.get_unbonding_value() > 0 {
+                    return Err(RegistryError::ActiveAgent);
+                }
+
+                let weight = self.agents[index].weight;
+                if weight > 0 {
+                    self.total_weight -= weight;
+                }
+
                 self.agents.remove(index);
+
+                agent_contract.destroy().expect("Agent begins the destruction process");
 
                 Self::env().emit_event(
                     AgentDeleted {
-                        agent: account,
+                        agent,
                     }
                 );
             } else {
