@@ -4,7 +4,7 @@ use crate::governance_nft::GovernanceData;
 #[ink::trait_definition]
 pub trait GovernanceNFT{
     #[ink(message, selector = 1337)]
-    fn mint(&mut self, to: AccountId, weight: u128) -> Result<(), PSP34Error>;    
+    fn mint(&mut self, to: AccountId, weight: u128) -> Result<u128, PSP34Error>;    
     #[ink(message, selector = 31337)]
     fn get_governance_data(&mut self, id:u128) -> GovernanceData;
     #[ink(message, selector = 8057)]

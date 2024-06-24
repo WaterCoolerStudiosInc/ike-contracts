@@ -76,3 +76,25 @@ pub fn bytes_governance_staking() -> Vec<u8> {
     read("../deployments/governance_staking/governance_staking.wasm")
         .expect("Failed to find or read contract file")
 }
+
+pub fn hash_governance() -> String {
+    let json = read_to_string("../deployments/governance/governance.json").unwrap();
+    let artifact: Artifact = from_str(&json).expect("Should extract hash from share_token.json");
+    artifact.source.hash
+}
+
+// Transcoders for making contract calls
+
+pub fn transcoder_governance() -> Option<Rc<ContractMessageTranscoder>> {
+    Some(Rc::new(
+        ContractMessageTranscoder::load(PathBuf::from(
+            "../deployments/governance/governance.json",
+        ))
+            .expect("Failed to create transcoder"),
+    ))
+}
+pub fn bytes_governance() -> Vec<u8> {
+    read("../deployments/governance/governance.wasm")
+        .expect("Failed to find or read contract file")
+}
+

@@ -2,9 +2,13 @@
 
 #[ink::contract]
 mod staking {
+    
+    use ink::primitives::AccountId;
+    use ink::reflect::ContractEventBase;
     use ink::ToAccountId;
     use ink::{contract_ref, env::call};
     use ink::{
+        codegen::EmitEvent,
         env::{debug_println, DefaultEnvironment},
         prelude::{string::String, vec::Vec},
         storage::Mapping,
@@ -30,6 +34,7 @@ mod staking {
     #[ink(storage)]
     pub struct Staking {
         creation_time: u64,
+        governor:AccountId,
         reward_token_balance: u128,
         staked_token_balance: u128,
         rewards_per_second: u128,
@@ -43,6 +48,7 @@ mod staking {
         unstake_requests: Mapping<u128, UnstakeRequest>,
         last_reward_claim:Mapping<u128,u64>
     }
+   
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     struct UnstakeRequest {
@@ -50,7 +56,37 @@ mod staking {
         pub token_value: u128,
         pub owner:AccountId
     }
+    #[ink(event)]
+    pub struct TokensWrapped{
+        staker: AccountId,
+        amount:u128,
+        nft:u128
+    }
+    #[ink(event)]
+    pub struct StakeAdded{
+        staker: AccountId,
+        amount:u128,
+        nft:u128
+    }
+    #[ink(event)]
+    pub struct StakeRemoved{
+        staker: AccountId,
+        amount:u128,
+        nft:u128
+    }
+    #[ink(event)]
+    pub struct UnwrapRequestCreated{
+        staker: AccountId,        
+        nft:u128
+    }
+    type Event = <Staking as ContractEventBase>::Type;
     impl Staking {
+        fn emit_event<EE>(emitter: EE, event: Event)
+        where
+            EE: EmitEvent<Staking>,
+        {
+            emitter.emit_event(event);
+        }
         fn transfer_psp22_from(
             &self,
             from: &AccountId,
@@ -69,11 +105,13 @@ mod staking {
             }
             Ok(())
         }
-        fn mint_psp34(&mut self, to: AccountId, weight: u128) -> Result<(), StakingError> {
-            if let Err(e) = self.nft.mint(to, weight) {
-                return Err(StakingError::NFTError(e));
+        fn mint_psp34(&mut self, to: AccountId, weight: u128) -> Result<u128, StakingError> {
+            let result =self.nft.mint(to, weight); 
+            match result{
+                Err(e)=>return Err(StakingError::NFTError(e)),
+                Ok(r)=>Ok(r)
             }
-            Ok(())
+            
         }
         fn update_stake_accumulation(&mut self, curr_time: u64) -> Result<(), StakingError> {
             self.accumulated_rewards+=((curr_time - self.lst_accumulation_update) as u128)*self.rewards_per_second;
@@ -90,6 +128,7 @@ mod staking {
         #[ink(constructor)]
         pub fn new(
             governance_token: AccountId,
+            governor:AccountId,
             governance_nft_hash: Hash,
             interest_rate: u128,
         ) -> Self {
@@ -106,6 +145,7 @@ mod staking {
 
             Self {
                 creation_time: now,
+                governor:governor,
                 reward_token_balance: 0_u128,
                 staked_token_balance: 0_u128,
                 rewards_per_second: interest_rate,
@@ -125,6 +165,15 @@ mod staking {
             GovernanceNFTRef::to_account_id(&self.nft)
         }
         #[ink(message)]
+        pub fn update_rewards_rate(&mut self,new_rate:u128) ->   Result<(), StakingError> {
+            let caller = Self::env().caller();
+            if caller != self.governor{
+                return Err(StakingError::Unauthorized)
+            }
+            self.rewards_per_second=new_rate;
+            Ok(())
+        }
+        #[ink(message)]
         pub fn wrap_tokens(
             &mut self,
             token_value: u128,
@@ -137,13 +186,21 @@ mod staking {
             self.staked_token_balance+=token_value;
             
            
-            
+            let recipient:AccountId;
             if to.is_some() {
-                self.mint_psp34(to.unwrap(), token_value)?;
+                recipient=to.unwrap();
             } else {
-                self.mint_psp34(caller, token_value)?;
+                recipient=caller;
             }
-
+            let minted_nft=self.mint_psp34(recipient, token_value).unwrap();
+            Self::emit_event(
+                Self::env(),
+                Event::TokensWrapped(TokensWrapped{
+                    staker: caller,
+                    amount:token_value,
+                    nft:minted_nft
+                }),
+            );
             Ok(())
         }
 

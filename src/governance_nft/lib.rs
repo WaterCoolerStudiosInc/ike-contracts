@@ -126,7 +126,7 @@ mod governance_nft {
             Ok(())
         }
         #[ink(message,selector = 1337)]
-        pub fn mint(&mut self, to:AccountId,weight:u128) -> Result<(), PSP34Error> {
+        pub fn mint(&mut self, to:AccountId,weight:u128) -> Result<u128, PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
@@ -142,7 +142,8 @@ mod governance_nft {
             let events = self.data.mint(to, curr_id)?;
             
             self.emit_events(events);
-            Ok(())
+            
+            Ok(self.mint_count)
         }
       
         #[ink(message,selector = 8057)]

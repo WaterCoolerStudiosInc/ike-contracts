@@ -19,6 +19,7 @@ mod tests {
         gov_token:AccountId32,
         gov_nft:AccountId32,
         stake_contract:AccountId32,
+        vault:AccountId32,
         alice: AccountId32,
         bob: AccountId32,
         charlie: AccountId32,
@@ -150,7 +151,20 @@ mod tests {
             None,
             transcoder_governance_token(),
         )?;
-        
+        sess.upload(helpers::bytes_registry()).expect("Session should upload registry bytes");
+        sess.upload(helpers::bytes_share_token()).expect("Session should upload token bytes");
+
+        let vault = sess.deploy(
+            helpers::bytes_vault(),
+            "new",
+            &[
+                helpers::hash_share_token(),
+                helpers::hash_registry(),
+            ],
+            vec![1],
+            None,
+            &helpers::transcoder_vault().unwrap(),
+        )?;
         //sess.upload(bytes_governance_token()).expect("Session should upload token bytes");
         Ok(TestContext {
             sess,
