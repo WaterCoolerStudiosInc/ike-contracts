@@ -2,9 +2,7 @@
 
 #[ink::contract]
 pub mod governance {
-    use std::env::current_dir;
-    use core::convert::TryFrom;
-    use core::convert::TryInto;
+    
     use ::vault::Vault;
     use governance_nft::GovernanceNFT;
     use ink::{

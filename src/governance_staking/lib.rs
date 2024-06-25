@@ -3,7 +3,7 @@
 #[ink::contract]
 mod staking {
     
-    use ink::primitives::AccountId;
+   
     use ink::reflect::ContractEventBase;
     use ink::ToAccountId;
     use ink::{contract_ref, env::call};

@@ -9,16 +9,23 @@ mod tests {
         session::Session,
         AccountId32,
     };
+   
     use drink::session::NO_ARGS;
     use drink::session::contract_transcode::ContractMessageTranscoder;
     use std::error::Error;
     use crate::sources::*;
     use std::rc::Rc;
+    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+    pub struct GovernanceData {
+        pub block_created:u64,
+        pub vote_weight:u128
+     }
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token:AccountId32,
         gov_nft:AccountId32,
         stake_contract:AccountId32,
+        governance:AccountId32,
         vault:AccountId32,
         alice: AccountId32,
         bob: AccountId32,
@@ -142,7 +149,7 @@ mod tests {
             None,
             transcoder_governance_token(),
         )?;
-        let sess=call_function(
+        let mut sess=call_function(
             sess,
             &gov_token,
             &bob, 
@@ -151,26 +158,54 @@ mod tests {
             None,
             transcoder_governance_token(),
         )?;
-        sess.upload(helpers::bytes_registry()).expect("Session should upload registry bytes");
-        sess.upload(helpers::bytes_share_token()).expect("Session should upload token bytes");
+        sess.upload(bytes_registry()).expect("Session should upload registry bytes");
+        sess.upload(bytes_share_token()).expect("Session should upload token bytes");
 
         let vault = sess.deploy(
-            helpers::bytes_vault(),
+            bytes_vault(),
             "new",
             &[
-                helpers::hash_share_token(),
-                helpers::hash_registry(),
+                hash_share_token(),
+                hash_registry(),
             ],
             vec![1],
             None,
-            &helpers::transcoder_vault().unwrap(),
+            &transcoder_vault().unwrap(),
         )?;
-        //sess.upload(bytes_governance_token()).expect("Session should upload token bytes");
+        /**
+         * vault: AccountId,
+            _multisig:AccountId,
+            _gov_nft: AccountId,
+            exec_threshold: u128,
+            reject_threshold: u128,
+            acc_threshold: u128,   
+         */
+        let acc_threshold=10000_u128;
+        let reject_threshold=10000_u128;
+        let exec_threshold=10000_u128;
+        let governance = sess.deploy(
+            bytes_governance(),
+            "new",
+            &[
+               vault.to_string(),
+               bob.to_string(),
+               gov_nft.to_string(),
+               exec_threshold.to_string(),
+               reject_threshold.to_string(),
+               acc_threshold.to_string(), 
+            ],
+            vec![1],
+            None,
+            &transcoder_governance().unwrap(),
+        )?;
+    
         Ok(TestContext {
             sess,
             gov_token,
             gov_nft,
-            stake_contract,            
+            stake_contract,
+            governance,
+            vault,            
             alice,
             bob,
             charlie,
@@ -242,9 +277,9 @@ mod tests {
             String::from("get_governance_data"),
             Some(vec![1_u128.to_string()]),
             None,
-            transcoder_governance_staking(),
+            transcoder_governance_nft(),
         ).unwrap();
-        let gdata: Result<GovernanceData, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let gdata:Result<GovernanceData,drink::errors::LangError>= sess.last_call_return().unwrap();
         Ok(())
     
  
