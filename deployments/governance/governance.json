@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x1c6b7854c4663c9dfd76ac02e96ccec13e04ce26b9232ccb9e1bb4cecaca3abb",
+    "hash": "0x7d292caf4b7a17516db8053d6686de054c185db5cd2f32a80117887665a8671d",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -1026,42 +1026,46 @@
               },
               {
                 "index": 1,
-                "name": "VaultFailure"
+                "name": "MultiSigError"
               },
               {
                 "index": 2,
-                "name": "Unauthorized"
+                "name": "VaultFailure"
               },
               {
                 "index": 3,
-                "name": "InvalidInput"
+                "name": "Unauthorized"
               },
               {
                 "index": 4,
-                "name": "InvalidVotePeriodUpdate"
+                "name": "InvalidInput"
               },
               {
                 "index": 5,
-                "name": "InvalidVoteWeight"
+                "name": "InvalidVotePeriodUpdate"
               },
               {
                 "index": 6,
-                "name": "MaxProposals"
+                "name": "InvalidVoteWeight"
               },
               {
                 "index": 7,
-                "name": "ExistingProposal"
+                "name": "MaxProposals"
               },
               {
                 "index": 8,
-                "name": "NonExistingProposal"
+                "name": "ExistingProposal"
               },
               {
                 "index": 9,
-                "name": "ProposalInactive"
+                "name": "NonExistingProposal"
               },
               {
                 "index": 10,
+                "name": "ProposalInactive"
+              },
+              {
+                "index": 11,
                 "name": "DoubleVote"
               },
               {
@@ -1071,7 +1075,7 @@
                     "typeName": "PSP22Error"
                   }
                 ],
-                "index": 11,
+                "index": 12,
                 "name": "TokenError"
               }
             ]

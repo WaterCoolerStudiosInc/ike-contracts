@@ -5,7 +5,7 @@ authors = ["jjj <jjj17@protonmail.com"]
 edition = "2021"
 
 [dependencies]
-ink = { version = "=4.3.0", default-features = false }
+ink = { version = "=4.3.0", default-features = false,features = ["ink-debug"] }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }

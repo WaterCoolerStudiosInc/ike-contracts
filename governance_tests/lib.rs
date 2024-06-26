@@ -97,8 +97,10 @@ mod tests {
             bytes_governance_staking(),
             "new",
             &[  gov_token.to_string(),
+                alice.to_string(),
                 hash_governance_nft(),
-                100_000_000.to_string()
+                100_000.to_string(),
+                
             ],
             vec![2],
             None,
