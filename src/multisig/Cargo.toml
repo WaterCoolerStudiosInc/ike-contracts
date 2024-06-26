@@ -1,5 +1,5 @@
 [package]
-name = "council_multisig"
+name = "multisig"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -22,7 +22,7 @@ vault = { path = "../vault", default-features = false, features = [
 
 psp22 = { version = "=0.2.1", default-features = false }
 [lib]
-name = "council_multisig"
+name = "multisig"
 path = "lib.rs"
 
 [features]

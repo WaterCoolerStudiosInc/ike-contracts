@@ -113,6 +113,9 @@ mod governance_nft {
             }
             let mut curr=self.token_governance_data.get(id).unwrap();
             curr.vote_weight+=weight;
+            debug_println!("VOTE WEIGHT {}",curr.vote_weight);
+            self.token_governance_data.insert(id,&curr);
+          
             Ok(())
         }
         #[ink(message,selector = 99)]
@@ -123,6 +126,8 @@ mod governance_nft {
             let mut curr=self.token_governance_data.get(id).unwrap();
             assert!(curr.vote_weight>=weight);
             curr.vote_weight-=weight;
+            debug_println!("VOTE WEIGHT {}",curr.vote_weight);
+            self.token_governance_data.insert(id,&curr);
             Ok(())
         }
         #[ink(message,selector = 1337)]

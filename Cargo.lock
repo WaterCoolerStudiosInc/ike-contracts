@@ -1006,6 +1006,7 @@ version = "0.1.0"
 dependencies = [
  "governance_nft",
  "ink",
+ "multisig",
  "parity-scale-codec",
  "psp22",
  "psp34",
@@ -1623,6 +1624,19 @@ dependencies = [
  "scale-info",
  "sp-io",
  "sp-runtime",
+]
+
+[[package]]
+name = "multisig"
+version = "0.1.0"
+dependencies = [
+ "ink",
+ "parity-scale-codec",
+ "psp22",
+ "psp34",
+ "registry",
+ "scale-info",
+ "vault",
 ]
 
 [[package]]

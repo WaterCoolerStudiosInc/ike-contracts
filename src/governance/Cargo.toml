@@ -21,6 +21,9 @@ psp22 = { version = "=0.2.1", default-features = false }
 governance_nft = { path = "../governance_nft", default-features = false, features = [
     "ink-as-dependency",
 ] }
+multisig = { path = "../multisig", default-features = false, features = [
+    "ink-as-dependency",
+] }
 [lib]
 name = "governance"
 path = "lib.rs"

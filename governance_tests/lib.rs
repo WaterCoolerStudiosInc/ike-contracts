@@ -214,6 +214,101 @@ mod tests {
         })
         
     }
+    fn wrap_tokens(mut ctx:TestContext,amount:u128) -> Result<TestContext, Box<dyn Error>> {       
+            let mut sess = call_function(
+                ctx.sess,
+                &ctx.gov_token,
+                &ctx.alice,
+                String::from("PSP22::approve"),
+                Some(vec![ctx.stake_contract.to_string(), amount.to_string()]),
+                None,
+                transcoder_governance_token(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.stake_contract,
+                &ctx.alice,
+                String::from("wrap_tokens"),
+                Some(vec![amount.to_string(),"None".to_string()]),
+                None,
+                transcoder_governance_staking(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.gov_token,
+                &ctx.bob,
+                String::from("PSP22::approve"),
+                Some(vec![ctx.stake_contract.to_string(), amount.to_string()]),
+                None,
+                transcoder_governance_token(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.stake_contract,
+                &ctx.bob,
+                String::from("wrap_tokens"),
+                Some(vec![amount.to_string(),"None".to_string()]),
+                None,
+                transcoder_governance_staking(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.gov_token,
+                &ctx.charlie,
+                String::from("PSP22::approve"),
+                Some(vec![ctx.stake_contract.to_string(),amount.to_string()]),
+                None,
+                transcoder_governance_token(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.stake_contract,
+                &ctx.charlie,
+                String::from("wrap_tokens"),
+                Some(vec![amount.to_string(),"None".to_string()]),
+                None,
+                transcoder_governance_staking(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.gov_token,
+                &ctx.dave,
+                String::from("PSP22::approve"),
+                Some(vec![ctx.stake_contract.to_string(),amount.to_string()]),
+                None,
+                transcoder_governance_token(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.stake_contract,
+                &ctx.dave,
+                String::from("wrap_tokens"),
+                Some(vec![amount.to_string(),"None".to_string()]),
+                None,
+                transcoder_governance_staking(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.gov_token,
+                &ctx.ed,
+                String::from("PSP22::approve"),
+                Some(vec![ctx.stake_contract.to_string(),amount.to_string()]),
+                None,
+                transcoder_governance_token(),
+            ).unwrap();
+            let mut sess = call_function(
+                sess,
+                &ctx.stake_contract,
+                &ctx.ed,
+                String::from("wrap_tokens"),
+                Some(vec![amount.to_string(),"None".to_string()]),
+                None,
+                transcoder_governance_staking(),
+            ).unwrap();
+            ctx.sess=sess;
+            Ok(ctx)
+        }
+    
     #[test]
     fn test_mint_update() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
@@ -257,7 +352,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_token_value"),
-            Some(vec![10000_u128.to_string(),1_u128.to_string()]),
+            Some(vec![10013_u128.to_string(),1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         ).unwrap();
@@ -266,7 +361,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("remove_token_value"),
-            Some(vec![999_u128.to_string(),1_u128.to_string()]),
+            Some(vec![973_u128.to_string(),1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         ).unwrap();
@@ -280,9 +375,8 @@ mod tests {
             transcoder_governance_nft(),
         ).unwrap();
         let gdata:Result<GovernanceData,drink::errors::LangError>= sess.last_call_return().unwrap();
+        println!("{:?}",gdata);
         Ok(())
-    
- 
-        
+           
     }
 }

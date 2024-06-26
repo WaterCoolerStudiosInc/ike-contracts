@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract]
+#[derive(Debug)]
 mod staking {
     
    
@@ -32,6 +33,7 @@ mod staking {
         TokenError(PSP22Error),
     }
     #[ink(storage)]
+  
     pub struct Staking {
         creation_time: u64,
         governor:AccountId,
@@ -179,6 +181,7 @@ mod staking {
             token_value: u128,
             to: Option<AccountId>,
         ) -> Result<(), StakingError> {
+            debug_println!("ADDing Value {}",token_value);
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
@@ -210,11 +213,13 @@ mod staking {
             token_value: u128,
             nft_id: u128,
         ) -> Result<(), StakingError> {
+            debug_println!("ADDing Value {}",token_value);
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
             self.update_stake_accumulation(now)?;
             self.staked_token_balance+=token_value;
+            
             if let Err(e) = self.nft.increment_weight(nft_id, token_value) {
                 return Err(StakingError::NFTError(e));
             }

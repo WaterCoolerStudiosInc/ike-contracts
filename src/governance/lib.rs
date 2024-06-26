@@ -3,8 +3,9 @@
 #[ink::contract]
 pub mod governance {
     
-    use ::vault::Vault;
+    use vault::Vault;
     use governance_nft::GovernanceNFT;
+    use multisig::MultiSig;
     use ink::{
         codegen::EmitEvent,
         contract_ref,
@@ -25,6 +26,7 @@ pub mod governance {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum GovernanceError {
         RegistryFailure,
+        MultiSigError,
         VaultFailure,
         Unauthorized,
         InvalidInput,
@@ -190,9 +192,17 @@ pub mod governance {
             expired
         }
         fn remove_council_member(&self,member:&AccountId)->Result<(),GovernanceError>{
+            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
+            if let Err(e) = multisig.remove_signer(*member) {
+                return Err(GovernanceError::MultiSigError);
+            }
             Ok(())
         }
         fn add_council_member(&self,member:&AccountId)->Result<(),GovernanceError>{
+            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
+            if let Err(e) = multisig.remove_signer(*member) {
+                return Err(GovernanceError::MultiSigError);
+            }
             Ok(())
         }
         
