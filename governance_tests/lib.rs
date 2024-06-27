@@ -354,7 +354,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_token_value"),
-            Some(vec![10013_u128.to_string(),1_u128.to_string()]),
+            Some(vec![10000_u128.to_string(),1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         ).unwrap();
@@ -363,7 +363,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("remove_token_value"),
-            Some(vec![973_u128.to_string(),1_u128.to_string()]),
+            Some(vec![5000_u128.to_string(),1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         ).unwrap();
@@ -378,6 +378,7 @@ mod tests {
         ).unwrap();
         let gdata:Result<GovernanceData,drink::errors::LangError>= sess.last_call_return().unwrap();
         println!("{:?}",gdata);
+        assert_eq!(gdata.unwrap().vote_weight,100005000);
         Ok(())
            
     }
