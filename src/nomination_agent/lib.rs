@@ -200,8 +200,6 @@ mod nomination_agent {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            let balance_before = Self::env().balance();
-
             // Claim available AZERO
             self.env()
                 .call_runtime(&RuntimeCall::NominationPools(
@@ -209,15 +207,16 @@ mod nomination_agent {
                 ))
                 .ok();
 
-            let payout = Self::env().balance() - balance_before;
+            // Contract balance might also contain rewards claimed via `BondExtra`
+            let rewards = Self::env().balance();
 
             // Gracefully return when nomination pool had nothing to claim
-            if payout == 0 {
+            if rewards == 0 {
                 return Ok((0, 0));
             }
 
-            let incentive = payout * incentive_percentage as u128 / BIPS;
-            let compound_amount = payout - incentive;
+            let incentive = rewards * incentive_percentage as u128 / BIPS;
+            let compound_amount = rewards - incentive;
 
             // Bond AZERO to nomination pool
             if compound_amount > 0 {
