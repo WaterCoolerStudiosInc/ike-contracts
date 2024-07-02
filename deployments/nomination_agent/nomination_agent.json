@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x8fb8110a2e08c6204cf660f4b2e984c7c6b95c77dc2540c0fe9ff437f31f6abf",
+    "hash": "0xb21995d7e484cb1b9aad4da03110f505cbddfae3f8133743bc573eeadcd2f562",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -124,20 +124,20 @@
         "displayName": [
           "ChainExtension"
         ],
-        "type": 20
+        "type": 23
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 18
+        "type": 21
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 19
+        "type": 22
       }
     },
     "events": [],
@@ -358,8 +358,24 @@
       {
         "args": [],
         "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_pool_state",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 19
+        },
+        "selector": "0xd0ef7b93"
+      },
+      {
+        "args": [],
+        "default": false,
         "docs": [
-          " Step 1 of 2 in finalizing the nomination pool's lifecycle",
+          " Step 1 of 3 in finalizing the nomination pool's lifecycle",
           " Performs the following actions:",
           "     1) Puts the pool in a Destroying state",
           "     2) Removes the validator nomination",
@@ -367,7 +383,8 @@
           "",
           " Can only be called by registry",
           " Must have no protocol funds staked",
-          " Must have no protocol funds unbonding"
+          " Must have no protocol funds unbonding",
+          " Must have been initialized"
         ],
         "label": "INominationAgent::destroy",
         "mutates": true,
@@ -379,7 +396,32 @@
           ],
           "type": 8
         },
-        "selector": "0x00000064"
+        "selector": "0x00000065"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Step 2 of 3 in finalizing the nomination pool's lifecycle",
+          " Might need to permissionlessly unbond/withdraw members",
+          " When a pool state is Destroying, `unbond` and `withdrawUnbonded` become permissionless",
+          " Performs the following actions:",
+          "     1) Begins unbonding the initial bond",
+          "",
+          " Can only be called by admin",
+          " Must be called after `destroy()`"
+        ],
+        "label": "INominationAgent::admin_unbond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000066"
       },
       {
         "args": [
@@ -395,7 +437,7 @@
         ],
         "default": false,
         "docs": [
-          " Step 2 of 2 in finalizing the nomination pool's lifecycle",
+          " Step 3 of 3 in finalizing the nomination pool's lifecycle",
           " Performs the following actions:",
           "     1) Withdraws the (now unbonded) initial bond",
           "     2) Transfers the initial bond to any account of choice",
@@ -413,7 +455,7 @@
           ],
           "type": 8
         },
-        "selector": "0x00000065"
+        "selector": "0x00000067"
       }
     ]
   },
@@ -486,6 +528,29 @@
                 }
               },
               "name": "pool_id"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "PoolState",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "Open"
+                    },
+                    "1": {
+                      "fields": [],
+                      "name": "Blocked"
+                    },
+                    "2": {
+                      "fields": [],
+                      "name": "Destroying"
+                    }
+                  }
+                }
+              },
+              "name": "pool_state"
             },
             {
               "layout": {
@@ -750,10 +815,14 @@
               },
               {
                 "index": 3,
-                "name": "Initialized"
+                "name": "InvalidPoolState"
               },
               {
                 "index": 4,
+                "name": "Initialized"
+              },
+              {
+                "index": 5,
                 "name": "NotInitialized"
               }
             ]
@@ -962,7 +1031,7 @@
               {
                 "fields": [
                   {
-                    "type": 3
+                    "type": 18
                   }
                 ],
                 "index": 0,
@@ -983,7 +1052,7 @@
         "params": [
           {
             "name": "T",
-            "type": 3
+            "type": 18
           },
           {
             "name": "E",
@@ -997,6 +1066,109 @@
     },
     {
       "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 20
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 20
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Open"
+              },
+              {
+                "index": 1,
+                "name": "Blocked"
+              },
+              {
+                "index": 2,
+                "name": "Destroying"
+              }
+            ]
+          }
+        },
+        "path": [
+          "nomination_agent",
+          "data",
+          "PoolState"
+        ]
+      }
+    },
+    {
+      "id": 21,
       "type": {
         "def": {
           "composite": {
@@ -1016,7 +1188,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 22,
       "type": {
         "def": {
           "primitive": "u64"
@@ -1024,7 +1196,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 23,
       "type": {
         "def": {
           "variant": {}
