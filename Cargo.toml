@@ -11,7 +11,8 @@ members = [
     "src/governance",
     "src/governance_nft",
     "src/governance_staking",
-    "src/governance_token"
+    "src/governance_token",
+    "src/validator_whitelist"
 
 ]
 exclude = [

@@ -15,11 +15,16 @@ mod tests {
     use std::error::Error;
     use crate::sources::*;
     use std::rc::Rc;
+    use governance::PropType;
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     pub struct GovernanceData {
         pub block_created:u64,
         pub vote_weight:u128
      }
+    const TOTAL_SUPPLY:u128=100_000_000_000_000_000_u128;
+    let ACC_THRESHOLD=TOTAL_SUPPLY/5;
+    let REJECT_THRESHOLD=TOTAL_SUPPLY/5;
+    let EXEC_THRESHOLD=TOTAL_SUPPLY/5;
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token:AccountId32,
@@ -124,12 +129,13 @@ mod tests {
         println!("{:?}",stake_contract.to_string());
         println!("{:?}",gov_token.to_string());
         println!("{:?}",gov_nft.to_string());
+        let user_tokens=TOTAL_SUPPLY/5;
         let sess=call_function(
             sess,
             &gov_token,
             &bob,
             String::from("PSP22::transfer_from"),
-            Some(vec![ bob.to_string(),alice.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
+            Some(vec![ bob.to_string(),alice.to_string(), user_tokens.to_string(), "[]".to_string()]),
             None,
             transcoder_governance_token(),
         )?;
@@ -138,7 +144,7 @@ mod tests {
             &gov_token,
             &bob, 
             String::from("PSP22::transfer_from"),
-            Some(vec![bob.to_string(), charlie.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
+            Some(vec![bob.to_string(), charlie.to_string(), user_tokens.to_string(), "[]".to_string()]),
             None,
             transcoder_governance_token(),
         )?;
@@ -147,7 +153,7 @@ mod tests {
             &gov_token,
             &bob, 
             String::from("PSP22::transfer_from"),
-            Some(vec![bob.to_string(), dave.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
+            Some(vec![bob.to_string(), dave.to_string(), user_tokens.to_string(), "[]".to_string()]),
             None,
             transcoder_governance_token(),
         )?;
@@ -156,7 +162,7 @@ mod tests {
             &gov_token,
             &bob, 
             String::from("PSP22::transfer_from"),
-            Some(vec![bob.to_string(), ed.to_string(), 100_000_000_000_000_u128.to_string(), "[]".to_string()]),
+            Some(vec![bob.to_string(), ed.to_string(), user_tokens.to_string(), "[]".to_string()]),
             None,
             transcoder_governance_token(),
         )?;
@@ -182,9 +188,17 @@ mod tests {
             reject_threshold: u128,
             acc_threshold: u128,   
          */
-        let acc_threshold=10000_u128;
-        let reject_threshold=10000_u128;
-        let exec_threshold=10000_u128;
+        let multisig = sess.deploy(
+            bytes_multisig(),
+            "new",
+            &[
+                hash_share_token(),
+                hash_registry(),
+            ],
+            vec![1],
+            None,
+            &transcoder_vault().unwrap(),
+        )?;
         let governance = sess.deploy(
             bytes_governance(),
             "new",
@@ -192,15 +206,15 @@ mod tests {
                vault.to_string(),
                bob.to_string(),
                gov_nft.to_string(),
-               exec_threshold.to_string(),
-               reject_threshold.to_string(),
-               acc_threshold.to_string(), 
+               EXEC_THRESHOLD.to_string(),
+               REJECT_THRESHOLD.to_string(),
+               ACC_THRESHOLD.to_string(), 
             ],
             vec![1],
             None,
             &transcoder_governance().unwrap(),
         )?;
-    
+        
         Ok(TestContext {
             sess,
             gov_token,
@@ -320,7 +334,7 @@ mod tests {
             &ctx.gov_token,
             &ctx.bob,
             String::from("PSP22::approve"),
-            Some(vec![ctx.stake_contract.to_string(), 100_000_000_000_000_u128.to_string()]),
+            Some(vec![ctx.stake_contract.to_string(), TOTAL_SUPPLY.to_string()]),
             None,
             transcoder_governance_token(),
         ).unwrap();
@@ -332,7 +346,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("wrap_tokens"),
-            Some(vec![100_000_000_u128.to_string(),"None".to_string()]),
+            Some(vec![(TOTAL_SUPPLY/10).to_string(),"None".to_string()]),
             None,
             transcoder_governance_staking(),
         ).unwrap();
@@ -378,8 +392,14 @@ mod tests {
         ).unwrap();
         let gdata:Result<GovernanceData,drink::errors::LangError>= sess.last_call_return().unwrap();
         println!("{:?}",gdata);
-        assert_eq!(gdata.unwrap().vote_weight,100005000);
+        let expected= (TOTAL_SUPPLY/10)+5000;
+        assert_eq!(gdata.unwrap().vote_weight,expected);
+        Ok(())           
+    }
+    #[test]
+    fn make_and_vote_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
         Ok(())
-           
     }
 }
