@@ -1,3 +1,4 @@
+use crate::data::PoolState;
 use crate::errors::RuntimeError;
 use ink::primitives::{AccountId};
 
@@ -34,11 +35,17 @@ pub trait INominationAgent {
     fn get_validator(&self) -> AccountId;
 
     #[ink(message)]
-    fn get_pool_id(&self) -> u32;
+    fn get_pool_id(&self) -> Option<u32>;
 
-    #[ink(message, selector = 100)]
-    fn destroy(&mut self) -> Result<(), RuntimeError>;
+    #[ink(message)]
+    fn get_pool_state(&self) -> PoolState;
 
     #[ink(message, selector = 101)]
+    fn destroy(&mut self) -> Result<(), RuntimeError>;
+
+    #[ink(message, selector = 102)]
+    fn admin_unbond(&mut self) -> Result<(), RuntimeError>;
+
+    #[ink(message, selector = 103)]
     fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError>;
 }

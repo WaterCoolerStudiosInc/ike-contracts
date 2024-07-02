@@ -25,8 +25,8 @@ pub enum ConfigOp<_0> {
     #[codec(index = 2)]
     Remove,
 }
-#[allow(dead_code)]
-#[derive(scale::Encode)]
+#[derive(Clone, PartialEq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub enum PoolState {
     #[codec(index = 0)]
     Open,

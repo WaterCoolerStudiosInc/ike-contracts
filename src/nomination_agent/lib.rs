@@ -22,6 +22,7 @@ mod nomination_agent {
         admin: AccountId,
         validator: AccountId,
         pool_id: Option<u32>,
+        pool_state: PoolState,
         staked: u128,
         unbonding: u128,
         creation_bond: u128,
@@ -46,6 +47,7 @@ mod nomination_agent {
                 admin: account_id,
                 validator: account_id,
                 pool_id: None,
+                pool_state: PoolState::Open,
                 staked: 0,
                 unbonding: 0,
                 creation_bond: 0,
@@ -72,6 +74,7 @@ mod nomination_agent {
                 admin,
                 validator,
                 pool_id: None,
+                pool_state: PoolState::Open,
                 staked: 0,
                 unbonding: 0,
                 creation_bond,
@@ -125,6 +128,8 @@ mod nomination_agent {
                         state: PoolState::Blocked,
                     }
                 ))?;
+
+            self.pool_state = PoolState::Blocked;
 
             // Nominate to validator
             self.env()
@@ -294,11 +299,16 @@ mod nomination_agent {
         }
 
         #[ink(message)]
-        fn get_pool_id(&self) -> u32 {
-            self.pool_id.unwrap()
+        fn get_pool_id(&self) -> Option<u32> {
+            self.pool_id
         }
 
-        /// Step 1 of 2 in finalizing the nomination pool's lifecycle
+        #[ink(message)]
+        fn get_pool_state(&self) -> PoolState {
+            self.pool_state.clone()
+        }
+
+        /// Step 1 of 3 in finalizing the nomination pool's lifecycle
         /// Performs the following actions:
         ///     1) Puts the pool in a Destroying state
         ///     2) Removes the validator nomination
@@ -307,7 +317,8 @@ mod nomination_agent {
         /// Can only be called by registry
         /// Must have no protocol funds staked
         /// Must have no protocol funds unbonding
-        #[ink(message, selector = 100)]
+        /// Must have been initialized
+        #[ink(message, selector = 101)]
         fn destroy(&mut self) -> Result<(), RuntimeError> {
             // Restricted to registry
             if Self::env().caller() != self.registry {
@@ -333,6 +344,8 @@ mod nomination_agent {
                     }
                 ))?;
 
+            self.pool_state = PoolState::Destroying;
+
             // Chill
             self.env()
                 .call_runtime(&RuntimeCall::NominationPools(
@@ -340,6 +353,28 @@ mod nomination_agent {
                         pool_id,
                     }
                 ))?;
+
+            Ok(())
+        }
+
+        /// Step 2 of 3 in finalizing the nomination pool's lifecycle
+        /// Might need to permissionlessly unbond/withdraw members
+        /// When a pool state is Destroying, `unbond` and `withdrawUnbonded` become permissionless
+        /// Performs the following actions:
+        ///     1) Begins unbonding the initial bond
+        ///
+        /// Can only be called by admin
+        /// Must be called after `destroy()`
+        #[ink(message, selector = 102)]
+        fn admin_unbond(&mut self) -> Result<(), RuntimeError> {
+            // Restricted to admin
+            if Self::env().caller() != self.admin {
+                return Err(RuntimeError::Unauthorized);
+            }
+
+            if self.pool_state != PoolState::Destroying {
+                return Err(RuntimeError::InvalidPoolState);
+            }
 
             // Unbond initial nomination pool bond
             self.env()
@@ -355,22 +390,22 @@ mod nomination_agent {
             Ok(())
         }
 
-        /// Step 2 of 2 in finalizing the nomination pool's lifecycle
+        /// Step 3 of 3 in finalizing the nomination pool's lifecycle
         /// Performs the following actions:
         ///     1) Withdraws the (now unbonded) initial bond
         ///     2) Transfers the initial bond to any account of choice
         ///
         /// Can only be called by admin
         /// Must be called after `destroy()`
-        #[ink(message, selector = 101)]
+        #[ink(message, selector = 103)]
         fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError> {
             // Restricted to admin
             if Self::env().caller() != self.admin {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            if self.creation_bond > 0 {
-                return Err(RuntimeError::Active);
+            if self.pool_state != PoolState::Destroying {
+                return Err(RuntimeError::InvalidPoolState);
             }
 
             // Trigger un-bonding process

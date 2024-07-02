@@ -1,10 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+pub mod data;
 pub mod errors;
 pub mod traits;
 
 #[ink::contract]
 mod mock_nominator {
+    use crate::data::{PoolState};
     use crate::errors::RuntimeError;
     use crate::traits::INominationAgent;
     use ink::env::Error as EnvError;
@@ -20,6 +22,7 @@ mod mock_nominator {
         admin: AccountId,
         validator: AccountId,
         pool_id: Option<u32>,
+        pool_state: PoolState,
         staked: u128,
         unbonding: u128,
         creation_bond: u128,
@@ -44,6 +47,7 @@ mod mock_nominator {
                 admin: account_id,
                 validator: account_id,
                 pool_id: None,
+                pool_state: PoolState::Open,
                 staked: 0,
                 unbonding: 0,
                 creation_bond: 0,
@@ -70,6 +74,7 @@ mod mock_nominator {
                 admin,
                 validator,
                 pool_id: None,
+                pool_state: PoolState::Open,
                 staked: 0,
                 unbonding: 0,
                 creation_bond,
@@ -89,6 +94,7 @@ mod mock_nominator {
             }
 
             self.pool_id = Option::from(pool_id);
+            self.pool_state = PoolState::Blocked;
 
             Ok(())
         }
@@ -176,11 +182,16 @@ mod mock_nominator {
         }
 
         #[ink(message)]
-        fn get_pool_id(&self) -> u32 {
-            self.pool_id.unwrap()
+        fn get_pool_id(&self) -> Option<u32> {
+            self.pool_id
         }
 
-        #[ink(message, selector = 100)]
+        #[ink(message)]
+        fn get_pool_state(&self) -> PoolState {
+            self.pool_state.clone()
+        }
+
+        #[ink(message, selector = 101)]
         fn destroy(&mut self) -> Result<(), RuntimeError> {
             // Stub
             if Self::env().caller() != self.registry {
@@ -189,18 +200,31 @@ mod mock_nominator {
             if self.staked > 0 || self.unbonding > 0 {
                 return Err(RuntimeError::Active);
             }
+            self.pool_state = PoolState::Destroying;
+            Ok(())
+        }
+
+        #[ink(message, selector = 102)]
+        fn admin_unbond(&mut self) -> Result<(), RuntimeError> {
+            // Stub
+            if Self::env().caller() != self.registry {
+                return Err(RuntimeError::Unauthorized);
+            }
+            if self.pool_state != PoolState::Destroying {
+                return Err(RuntimeError::InvalidPoolState);
+            }
             self.creation_bond = 0;
             Ok(())
         }
 
-        #[ink(message, selector = 101)]
+        #[ink(message, selector = 103)]
         fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError> {
             // Stub
             if Self::env().caller() != self.admin {
                 return Err(RuntimeError::Unauthorized);
             }
-            if self.creation_bond > 0 {
-                return Err(RuntimeError::Active);
+            if self.pool_state != PoolState::Destroying {
+                return Err(RuntimeError::InvalidPoolState);
             }
             // Requires funds are sent via test environment to succeed
             Self::env().transfer(to, Self::env().balance()).unwrap();
