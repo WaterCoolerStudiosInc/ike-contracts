@@ -2087,6 +2087,7 @@ name = "registry"
 version = "0.1.0"
 dependencies = [
  "ink",
+ "nomination_agent",
  "parity-scale-codec",
  "scale-info",
 ]
@@ -3186,6 +3187,8 @@ name = "vault"
 version = "0.1.0"
 dependencies = [
  "ink",
+ "num-bigint",
+ "num-traits",
  "parity-scale-codec",
  "psp22",
  "registry",

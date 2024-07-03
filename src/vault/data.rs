@@ -16,6 +16,8 @@ use ink::{
     primitives::AccountId,
     storage::Mapping,
 };
+use num_bigint::BigUint;
+use num_traits::cast::ToPrimitive;
 use psp22::PSP22Error;
 use registry::{registry::Agent, RegistryRef};
 type Balance = <DefaultEnvironment as Environment>::Balance;
@@ -23,7 +25,7 @@ type Timestamp = u64;
 
 pub const BIPS: u16 = 10000;
 pub const DAY: u64 = 86400 * 1000;
-pub const YEAR: u64 = DAY * 365;
+pub const YEAR: u64 = DAY * 365_25 / 100; // https://docs.alephzero.org/aleph-zero/use/stake/staking-rewards
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
@@ -44,6 +46,7 @@ pub struct UnlockRequestBatch {
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum VaultError {
+    Duplication,
     InvalidPercent,
     InvalidBatchUnlockRequest,
     InvalidUserUnlockRequest,
@@ -145,7 +148,6 @@ impl VaultData {
     ///
     /// # Returns
     ///
-    /// `total_staked` - Total AZERO staked across all agents
     /// `pos_diff` - Total positive difference; zero indicates no over-allocations
     /// `neg_diff` - Total negative difference; zero indicates no under-allocations
     /// `stakes` - Amount of AZERO staked in each agent
@@ -157,8 +159,7 @@ impl VaultData {
         agents: &Vec<Agent>,
         total_weight: u64,
         total_pooled: u128,
-    ) -> (u128, u128, u128, Vec<u128>, Vec<i128>) {
-        let mut total_staked = 0_u128;
+    ) -> (u128, u128, Vec<u128>, Vec<i128>) {
         let mut pos_diff = 0_u128;
         let mut neg_diff = 0_u128;
         let mut stakes = Vec::new();
@@ -167,7 +168,7 @@ impl VaultData {
         for a in agents.into_iter() {
             let staked_amount_current = query_staked_value(a.address) as i128;
             let staked_amount_optimal = if total_weight > 0 {
-                ((a.weight as u128 * total_pooled) / total_weight as u128) as i128
+                self.pro_rata(a.weight as u128, total_pooled, total_weight as u128) as i128
             } else {
                 0
             };
@@ -177,12 +178,11 @@ impl VaultData {
             } else if diff < 0 {
                 neg_diff += -diff as u128;
             }
-            total_staked += staked_amount_current as u128;
             stakes.push(staked_amount_current as u128);
             imbalances.push(diff);
         }
 
-        (total_staked, pos_diff, neg_diff, stakes, imbalances)
+        (pos_diff, neg_diff, stakes, imbalances)
     }
 
     /// Deposits a given amount to nominator agents splitting deposits by nominator weights and stake imbalances
@@ -199,7 +199,7 @@ impl VaultData {
 
         let new_total_pooled = self.total_pooled + azero;
 
-        let (_total_staked, _pos_diff, neg_diff, _stakes, imbalances) = self
+        let (_pos_diff, neg_diff, _stakes, imbalances) = self
             .get_weight_imbalances(&agents, total_weight, new_total_pooled);
 
         // Amount to distribute to under-allocated agents
@@ -216,7 +216,7 @@ impl VaultData {
             // Distribute to under-allocated agents
             // Weighted by agent imbalance
             let phase1_amount = if imbalances[i] < 0 {
-                phase1 * (-imbalances[i] as u128) / neg_diff
+                self.pro_rata(phase1, -imbalances[i] as u128, neg_diff)
             } else {
                 0
             };
@@ -224,7 +224,7 @@ impl VaultData {
             // Distribute remaining amount equitably to all agents
             // Weighted by agent weight
             let phase2_amount = if phase2 > 0 {
-                phase2 * (agents[i].weight as u128) / (total_weight as u128)
+                self.pro_rata(phase2, agents[i].weight as u128, total_weight as u128)
             } else {
                 0
             };
@@ -278,9 +278,11 @@ impl VaultData {
     pub fn delegate_unbonding(&mut self, azero: Balance) -> Result<(), VaultError> {
         let (total_weight, agents) = self.registry_contract.get_agents();
 
-        let new_total_pooled = self.total_pooled - azero;
+        let total_pooled_ = self.total_pooled; // shadow
 
-        let (total_staked, pos_diff, _neg_diff, stakes, imbalances) = self
+        let new_total_pooled = total_pooled_ - azero;
+
+        let (pos_diff, _neg_diff, stakes, imbalances) = self
             .get_weight_imbalances(&agents, total_weight, new_total_pooled);
 
         // Amount to withdraw from over-allocated agents
@@ -289,7 +291,7 @@ impl VaultData {
         // Remaining amount to withdraw equitably from all agents
         let phase2 = azero - phase1;
 
-        let total_staked_after_phase1 = total_staked - phase1;
+        let total_staked_after_phase1 = total_pooled_ - phase1;
 
         let n = agents.len();
         let mut unbond_amounts: Vec<Balance> = Vec::with_capacity(n);
@@ -299,7 +301,7 @@ impl VaultData {
             // Unbond from over-allocated agents
             // Weighted by agent imbalance
             let phase1_amount = if imbalances[i] > 0 {
-                phase1 * (imbalances[i] as u128) / pos_diff
+                self.pro_rata(phase1, imbalances[i] as u128, pos_diff)
             } else {
                 0
             };
@@ -307,7 +309,7 @@ impl VaultData {
             // Unbond remaining amount equitably from all agents
             // Weighted by agent remaining stake
             let phase2_amount = if phase2 > 0 {
-                phase2 * (stakes[i] - phase1_amount) / total_staked_after_phase1
+                self.pro_rata(phase2, stakes[i] - phase1_amount, total_staked_after_phase1)
             } else {
                 0
             };
@@ -417,8 +419,12 @@ impl VaultData {
 
         // Calculate fee accumulation since last update
         if time > 0 {
-            let virtual_shares = self.total_shares_minted * self.fee_percentage as u128 / BIPS as u128;
-            let time_weighted_virtual_shares = virtual_shares * time as u128 / YEAR as u128;
+            let virtual_shares = self.pro_rata(
+                self.total_shares_minted + self.total_shares_virtual,
+                self.fee_percentage as u128,
+                BIPS as u128,
+            );
+            let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
 
             self.total_shares_virtual += time_weighted_virtual_shares;
             self.last_fee_update = current_time;
@@ -432,12 +438,22 @@ impl VaultData {
 
         if time > 0 {
             // Calculate fee accumulation since last update
-            let virtual_shares = self.total_shares_minted * self.fee_percentage as u128 / BIPS as u128;
-            let time_weighted_virtual_shares = virtual_shares * time as u128 / YEAR as u128;
+            let virtual_shares = self.pro_rata(
+                self.total_shares_minted + self.total_shares_virtual,
+                self.fee_percentage as u128,
+                BIPS as u128,
+            );
+            let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
             self.total_shares_virtual + time_weighted_virtual_shares
         } else {
             // No additional fee accumulation is required
             self.total_shares_virtual
         }
+    }
+
+    /// Performs the u128 operations: a * b / c
+    pub fn pro_rata(&self, a: u128, b: u128, c: u128) -> u128 {
+        let result = BigUint::from(a) * BigUint::from(b) / BigUint::from(c);
+        BigUint::to_u128(&result).unwrap()
     }
 }

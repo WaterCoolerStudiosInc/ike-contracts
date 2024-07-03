@@ -22,6 +22,7 @@ mod tests {
         share_token: AccountId32,
         vault: AccountId32,
         nominators: Vec<AccountId32>,
+        validators: Vec<AccountId32>,
         alice: AccountId32,
         bob: AccountId32,
         charlie: AccountId32,
@@ -36,10 +37,22 @@ mod tests {
         let dave = AccountId32::new([4u8; 32]);
         let ed = AccountId32::new([5u8; 32]);
 
+        let validator1 = AccountId32::new([101u8; 32]);
+        let validator2 = AccountId32::new([102u8; 32]);
+        let validator3 = AccountId32::new([103u8; 32]);
+
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
+
+        // FUND DEFAULT ACCOUNTS
+        sess.chain_api().add_tokens(alice.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(bob.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(charlie.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(dave.clone(), 100_000_000e12 as u128);
+        sess.chain_api().add_tokens(ed.clone(), 100_000_000e12 as u128);
 
         sess.upload(helpers::bytes_registry()).expect("Session should upload registry bytes");
         sess.upload(helpers::bytes_share_token()).expect("Session should upload token bytes");
+        sess.upload(helpers::bytes_nominator()).expect("Session should upload nominator bytes");
 
         let vault = sess.deploy(
             helpers::bytes_vault(),
@@ -47,36 +60,13 @@ mod tests {
             &[
                 helpers::hash_share_token(),
                 helpers::hash_registry(),
+                helpers::hash_nominator(),
             ],
             vec![1],
             None,
             &helpers::transcoder_vault().unwrap(),
         )?;
         sess.set_transcoder(vault.clone(), &helpers::transcoder_vault().unwrap());
-
-        let nominator = sess.deploy(
-            helpers::bytes_nominator(),
-            "new",
-            &[
-                vault.to_string(),
-                false.to_string(),
-            ],
-            vec![1],
-            None,
-            &helpers::transcoder_nominator().unwrap(),
-        )?;
-
-        let nominator2 = sess.deploy(
-            helpers::bytes_nominator(),
-            "new",
-            &[
-                vault.to_string(),
-                false.to_string(),
-            ],
-            vec![2],
-            None,
-            &helpers::transcoder_nominator().unwrap(),
-        )?;
 
         let mut sess = helpers::call_function(
             sess,
@@ -104,30 +94,43 @@ mod tests {
             .unwrap();
         let ss: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
         let share_token = ss.unwrap();
+        sess.set_transcoder(share_token.clone(), &helpers::transcoder_share_token().unwrap());
 
         sess.set_actor(bob.clone());
-
-        // FUND DEFAULT ACCOUNTS
-        sess.chain_api().add_tokens(alice.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(bob.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(charlie.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(dave.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(ed.clone(), 100_000_000e10 as u128);
 
         // ADD AGENTS
         let sess = helpers::call_add_agent(
             sess,
             &registry,
             &bob,
-            &nominator,
-            &100,
+            &bob,
+            &validator1,
+            1,
+            100e12 as u128,
+            500,
         )?;
         let sess = helpers::call_add_agent(
             sess,
             &registry,
             &bob,
-            &nominator2,
-            &100,
+            &bob,
+            &validator2,
+            2,
+            100e12 as u128,
+            500,
+        )?;
+
+        let (_, agents, sess) = helpers::get_agents(
+            sess,
+            &registry,
+        )?;
+
+        let sess = helpers::call_update_agents(
+            sess,
+            &registry,
+            &bob,
+            vec![agents[0].address.to_string(), agents[1].address.to_string()],
+            vec![String::from("100"), String::from("100")],
         )?;
 
         Ok(TestContext {
@@ -135,7 +138,8 @@ mod tests {
             registry,
             share_token,
             vault,
-            nominators: vec![nominator, nominator2],
+            nominators: vec![agents[0].address.clone(), agents[1].address.clone()],
+            validators: vec![validator1, validator2, validator3],
             alice,
             bob,
             charlie,
@@ -158,22 +162,22 @@ mod tests {
         let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, STAKE_AMOUNT).unwrap();
         let sess = helpers::update_in_milliseconds(sess, helpers::YEAR / INTERVALS);
         let (fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
-        assert_eq!(fees, 1201600000000u128);
+        assert_eq!(fees, 1203200000000u128);
 
         let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.charlie, STAKE_AMOUNT).unwrap();
         let sess = helpers::update_in_milliseconds(sess, helpers::YEAR / INTERVALS);
         let (fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
-        assert_eq!(fees, 2406403200000u128);
+        assert_eq!(fees, 2412819200000u128);
 
         let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.dave, STAKE_AMOUNT).unwrap();
         let sess = helpers::update_in_milliseconds(sess, helpers::YEAR / INTERVALS);
         let (fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
-        assert_eq!(fees, 4016016004266u128);
+        assert_eq!(fees, 4032096102400u128);
 
         let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.ed, STAKE_AMOUNT).unwrap();
         let sess = helpers::update_in_milliseconds(sess, helpers::YEAR / INTERVALS);
         let (fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
-        assert_eq!(fees, 6032048025603u128);
+        assert_eq!(fees, 6064288614912u128);
 
         let (total_pooled, sess) = helpers::get_total_pooled(sess, &ctx.vault).unwrap();
         assert_eq!(total_pooled, STAKE_AMOUNT * INTERVALS as u128);
@@ -189,8 +193,11 @@ mod tests {
             helpers::transcoder_vault(),
         )
         .unwrap();
-        let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
-        assert_eq!(shares_after - shares_before, 6032048025603u128);
+        let (shares_after, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
+        assert_eq!(shares_after - shares_before, fees);
+
+        let (fees, _sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
+        assert_eq!(fees, 0);
 
         Ok(())
     }
@@ -296,21 +303,16 @@ mod tests {
         )
         .unwrap();
 
-        // 5m AZERO staked for 2 days
-        let expected_fees = (5_000_000e10 as u128) * 2 / 365 * 200 / helpers::BIPS;
-        let (claimable_fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
-        assert_eq!(claimable_fees, expected_fees);
-
-        let fees_50000_staked_2_days_shares = (50_000e10 as u128) * 2 / 365 * 200 / helpers::BIPS + 2;
+        let fees_50000_staked_2_days_shares = (50_000e10 as u128) * (2 * helpers::DAY as u128) / helpers::YEAR as u128 * 200 / helpers::BIPS;
         let (fees_50000_staked_2_days_azero, sess) = helpers::get_azero_from_shares(sess, &ctx.vault, fees_50000_staked_2_days_shares).unwrap();
 
         // Verify nominators
         let (staked, unbonded, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[0]).unwrap();
-        assert_eq!(staked, (2_500_000e10 - 25_000e10) as u128 + (fees_50000_staked_2_days_azero / 2) - 1);
-        assert_eq!(unbonded, 25_000e10 as u128 - (fees_50000_staked_2_days_azero / 2) + 1);
+        assert_eq!(staked, (2_500_000e10 - 25_000e10) as u128 + (fees_50000_staked_2_days_azero / 2) + 1);
+        assert_eq!(unbonded, 25_000e10 as u128 - (fees_50000_staked_2_days_azero / 2) - 1);
         let (staked, unbonded, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[1]).unwrap();
-        assert_eq!(staked, (2_500_000e10 - 25_000e10) as u128 + (fees_50000_staked_2_days_azero / 2));
-        assert_eq!(unbonded, 25_000e10 as u128 - (fees_50000_staked_2_days_azero / 2));
+        assert_eq!(staked, (2_500_000e10 - 25_000e10) as u128 + (fees_50000_staked_2_days_azero / 2) + 1);
+        assert_eq!(unbonded, 25_000e10 as u128 - (fees_50000_staked_2_days_azero / 2) - 1);
 
         let (total_shares, _, _, sess) = helpers::get_batch_unlock_requests(sess, &ctx.vault, &batch).unwrap();
         assert_eq!(
@@ -321,7 +323,7 @@ mod tests {
         // Wait for cooldown period to complete
         let sess = helpers::update_days(sess, 14);
 
-        // Redeem AZERO plus interest minus fees
+        // Redeem AZERO minus fees
         let (redeemed, sess) = helpers::call_redeem_with_withdraw(sess, &ctx.vault, &ctx.alice, 0).unwrap();
         assert_eq!(redeemed, 10_000e10 as u128 + 32 - 2 - fees_50000_staked_2_days_azero / 5);
         let (redeemed, sess) = helpers::call_redeem(sess, &ctx.vault, &ctx.bob, 0).unwrap();
@@ -334,7 +336,7 @@ mod tests {
         assert_eq!(redeemed, 10_000e10 as u128 + 32 - 1 - fees_50000_staked_2_days_azero / 5);
 
         let (claimable_fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
-        assert_eq!(claimable_fees, 4_345_2054794520);
+        assert_eq!(claimable_fees, 43426511146997);
 
         let (shares_before, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
         let sess = helpers::call_function(
@@ -348,7 +350,7 @@ mod tests {
         )
         .unwrap();
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
-        assert_eq!(shares_after - shares_before, 4_345_2054794520);
+        assert_eq!(shares_after - shares_before, claimable_fees);
 
         Ok(())
     }
@@ -364,11 +366,13 @@ mod tests {
         assert_eq!(unbonded, 0, "Nominator #2 should have no unbonded AZERO");
 
         // Staking of 5 million AZERO
-        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e10 as u128).unwrap();
-        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000e10 as u128).unwrap();
-        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.charlie, 1_000_000e10 as u128).unwrap();
-        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.dave, 1_000_000e10 as u128).unwrap();
-        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.ed, 1_000_000e10 as u128).unwrap();
+        let (shares_alice, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e10 as u128).unwrap();
+        let (shares_bob, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000e10 as u128).unwrap();
+        let (shares_charlie, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.charlie, 1_000_000e10 as u128).unwrap();
+        let (shares_dave, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.dave, 1_000_000e10 as u128).unwrap();
+        let (shares_ed, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.ed, 1_000_000e10 as u128).unwrap();
+
+        println!("{} {} {} {} {}", shares_alice, shares_bob, shares_charlie, shares_dave, shares_ed);
 
         // First batch (with 1 request)
         let (first_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
@@ -442,7 +446,7 @@ mod tests {
 
         // Verify nominators after first batch unlock
         let (staked, unbonded, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[0]).unwrap();
-        let fees = 16432953550;
+        let fees = 16421709500;
         assert_eq!(
             staked,
             (5_000_000e10 as u128 / 2) - (unlocking_first_batch / 2) + fees,
@@ -476,15 +480,15 @@ mod tests {
 
         // Verify nominators after second batch unlock
         let (staked, unbonded, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[0]).unwrap();
-        let fees = 49298860650;
+        let fees = 49265128500;
         assert_eq!(
             staked,
-            (5_000_000e10 as u128 / 2) - (unlocking_first_batch / 2) - (unlocking_second_batch / 2) + fees - 1,
+            (5_000_000e10 as u128 / 2) - (unlocking_first_batch / 2) - (unlocking_second_batch / 2) + fees,
             "Nominator #1 should lose half of the second batch's staked AZERO"
         );
         assert_eq!(
             unbonded,
-            (unlocking_first_batch / 2) + (unlocking_second_batch / 2) - fees + 1,
+            (unlocking_first_batch / 2) + (unlocking_second_batch / 2) - fees,
             "Nominator #1 should gain half of the second batch's unbonded AZERO"
         );
         let (staked, unbonded, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[1]).unwrap();
@@ -510,7 +514,7 @@ mod tests {
 
         // Verify nominators after third batch unlock
         let (staked, unbonded, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[0]).unwrap();
-        let fees = 82164767749;
+        let fees = 82108547500;
         assert_eq!(
             staked,
             (5_000_000e10 as u128 / 2)
@@ -545,7 +549,7 @@ mod tests {
         let sess = helpers::update_days(sess, 14);
 
         // Redeem AZERO plus fees
-        let fees = 32865907100;
+        let fees = 32843419000;
         let (redeemed, sess) = helpers::call_redeem_with_withdraw(sess, &ctx.vault, &ctx.alice, 0).unwrap();
         assert_eq!(redeemed, 10_000e10 as u128 + 31 - fees);
         let (redeemed, sess) = helpers::call_redeem(sess, &ctx.vault, &ctx.bob, 0).unwrap();
@@ -558,6 +562,66 @@ mod tests {
         assert_eq!(redeemed, 10_000e10 as u128 + 32 - fees);
 
         Ok(())
+    }
+    #[test]
+    fn test_send_batch_ids_panic_because_descending_order() {
+        let ctx = setup().unwrap();
+        let sess = ctx.sess;
+
+        // Stake 1 million AZERO
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e12 as u128).unwrap();
+
+        // Request unlocking of 100 sAZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (first_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        // Request unlocking of 100 sAZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (second_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        assert_eq!(second_batch > first_batch, true);
+
+        match helpers::call_send_batch_unlock_requests(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            vec![second_batch, first_batch],
+        ) {
+            Ok(_) => panic!("Should panic because batch ids are specified in descending order"),
+            Err(_) => (),
+        }
+    }
+    #[test]
+    fn test_send_batch_ids_panic_because_duplicate() {
+        let ctx = setup().unwrap();
+        let sess = ctx.sess;
+
+        // Stake 1 million AZERO
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e12 as u128).unwrap();
+
+        // Request unlocking of 100 AZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (first_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        // Request unlocking of 100 AZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 100e12 as u128).unwrap();
+        let (second_batch, sess) = helpers::query_batch_id(sess, &ctx.vault).unwrap();
+        let sess = helpers::update_days(sess, 2);
+
+        assert_eq!(second_batch > first_batch, true);
+
+        match helpers::call_send_batch_unlock_requests(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            vec![first_batch, second_batch, first_batch],
+        ) {
+            Ok(_) => panic!("Should panic because batch ids contain duplicate"),
+            Err(_) => (),
+        }
     }
     #[test]
     fn test_unlock_cancellation() -> Result<(), Box<dyn Error>> {
@@ -915,7 +979,7 @@ mod tests {
         let (claimable_fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
         assert_eq!(claimable_fees, 0);
 
-        let sess = helpers::update_days(sess, 365);
+        let sess = helpers::update_in_milliseconds(sess, helpers::YEAR);
 
         // Verify claimable fees
         let (shares_before, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
@@ -940,13 +1004,14 @@ mod tests {
     }
     #[test]
     fn test_withdraw_fees_after_adjusted_fee() {
-        const ONE_DAY_FEE_2_PERCENT: u128 = 200e10 as u128 / 365;
-        const ONE_DAY_FEE_4_PERCENT: u128 = 400e10 as u128 / 365;
+        const STAKE: u128 = 10_000e10 as u128;
+        const ONE_DAY_FEE_2_PERCENT: u128 = STAKE * helpers::DAY as u128 / helpers::YEAR as u128 * 2_00 / helpers::BIPS;
+        const ONE_DAY_FEE_4_PERCENT: u128 = STAKE * helpers::DAY as u128 / helpers::YEAR as u128 * 4_00 / helpers::BIPS;
 
         let ctx = setup().unwrap();
 
         // Initial stake
-        let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, STAKE).unwrap();
 
         // 2% fee for 1 day
         let sess = helpers::update_days(sess, 1);
@@ -973,7 +1038,7 @@ mod tests {
         let (expected_fees, sess) = helpers::get_current_virtual_shares(sess, &ctx.vault).unwrap();
         assert_eq!(
             expected_fees,
-            ONE_DAY_FEE_2_PERCENT + ONE_DAY_FEE_4_PERCENT,
+            ONE_DAY_FEE_2_PERCENT + ONE_DAY_FEE_4_PERCENT + 599666, // compounding
             "Should show 2% fee for 1 day and 4% fee for 1 day",
         );
 
@@ -991,7 +1056,7 @@ mod tests {
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
         assert_eq!(
             shares_after - shares_before,
-            ONE_DAY_FEE_2_PERCENT + ONE_DAY_FEE_4_PERCENT,
+            ONE_DAY_FEE_2_PERCENT + ONE_DAY_FEE_4_PERCENT + 599666, // compounding,
             "Should withdraw 2% fee for 1 day and 4% fee for 1 day"
         );
     }
@@ -1176,28 +1241,17 @@ mod tests {
     }
     #[test]
     fn test_nominator_addition_panic_because_caller_restricted() {
-        let mut ctx = setup().unwrap();
-
-        // Create new nomination agent
-        let nominator_new = ctx.sess.deploy(
-            helpers::bytes_nominator(),
-            "new",
-            &[
-                ctx.vault.to_string(),
-                false.to_string(),
-            ],
-            vec![3],
-            None,
-            &helpers::transcoder_nominator().unwrap(),
-        )
-            .unwrap();
+        let ctx = setup().unwrap();
 
         match helpers::call_add_agent(
             ctx.sess,
             &ctx.registry,
             &ctx.charlie, // does not have `helpers::RoleType::AddAgent`
-            &nominator_new,
-            &100,
+            &ctx.charlie,
+            &ctx.validators[2],
+            3,
+            100e12 as u128,
+            500,
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
             Err(_) => (),
@@ -1219,16 +1273,19 @@ mod tests {
         };
     }
     #[test]
-    fn test_nominator_remove_panic_because_weight_is_non_zero() {
+    fn test_nominator_remove_panic_because_stake_is_non_zero() {
         let ctx = setup().unwrap();
 
+        // Stake 1k AZERO
+        let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000e12 as u128).unwrap();
+
         match helpers::call_remove_agent(
-            ctx.sess,
+            sess,
             &ctx.registry,
             &ctx.bob, // has `helpers::RoleType::RemoveAgent`
             &ctx.nominators[0],
         ) {
-            Ok(_) => panic!("Should panic because nominators[0] has weight"),
+            Ok(_) => panic!("Should panic because nominators[0] has stake"),
             Err(_) => (),
         };
     }
@@ -1236,18 +1293,8 @@ mod tests {
     fn test_nominator_remove_panic_because_caller_restricted() {
         let ctx = setup().unwrap();
 
-        // Must set weight to 0 before removal is allowed
-        let sess = helpers::call_update_agents(
-            ctx.sess,
-            &ctx.registry,
-            &ctx.bob, // has `helpers::RoleType::RemoveAgent`
-            vec![ctx.nominators[0].to_string()],
-            vec![0.to_string()],
-        )
-            .unwrap();
-
         match helpers::call_remove_agent(
-            sess,
+            ctx.sess,
             &ctx.registry,
             &ctx.charlie, // does not have `helpers::RoleType::RemoveAgent`
             &ctx.nominators[0],
@@ -1263,16 +1310,6 @@ mod tests {
         let (total_weight_before, agents_before, sess) = helpers::get_agents(
             ctx.sess,
             &ctx.registry,
-        )
-            .unwrap();
-
-        // Must set weight to 0 before removal is allowed
-        let sess = helpers::call_update_agents(
-            sess,
-            &ctx.registry,
-            &ctx.bob, // has `helpers::RoleType::RemoveAgent`
-            vec![ctx.nominators[0].to_string()],
-            vec![0.to_string()],
         )
             .unwrap();
 
@@ -1308,32 +1345,22 @@ mod tests {
         assert_eq!(stake1, 5_000_000); // 50% to agent0
         assert_eq!(stake2, 5_000_000); // 50% to agent1
 
-        let (total_weight_before, agents_before, mut sess) = helpers::get_agents(
+        let (total_weight_before, agents_before, sess) = helpers::get_agents(
             sess,
             &ctx.registry,
         )
             .unwrap();
-
-        // Create new nomination agent
-        let nominator_new = sess.deploy(
-            helpers::bytes_nominator(),
-            "new",
-            &[
-                ctx.vault.to_string(),
-                false.to_string(),
-            ],
-            vec![3],
-            None,
-            &helpers::transcoder_nominator().unwrap(),
-        )?;
 
         // Add nomination agent
         let sess = helpers::call_add_agent(
             sess,
             &ctx.registry,
             &ctx.bob,
-            &nominator_new,
-            &100,
+            &ctx.bob,
+            &ctx.validators[2],
+            3,
+            100e12 as u128,
+            500,
         )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
@@ -1343,16 +1370,35 @@ mod tests {
             .unwrap();
 
         assert_eq!(agents_after.len(), agents_before.len() + 1);
-        assert_eq!(total_weight_after, total_weight_before + 100_u64);
-        assert_eq!(agents_after[2].address, nominator_new);
-        assert_eq!(agents_after[2].weight, 100_u64);
+        assert_eq!(total_weight_after, total_weight_before);
+        assert_eq!(agents_after[2].weight, 0);
+
+        // Update weight to 100
+        let sess = helpers::call_update_agents(
+            sess,
+            &ctx.registry,
+            &ctx.bob,
+            vec![agents_after[2].address.to_string()],
+            vec![100.to_string()],
+        )
+            .unwrap();
+
+        let (total_weight_after, agents_after, sess) = helpers::get_agents(
+            sess,
+            &ctx.registry,
+        )
+            .unwrap();
+
+        assert_eq!(agents_after.len(), agents_before.len() + 1);
+        assert_eq!(total_weight_after, total_weight_before + 100);
+        assert_eq!(agents_after[2].weight, 100);
 
         // Stake additional 10 million AZERO
         let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10000000).unwrap();
 
         let (stake1, _, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[0]).unwrap();
         let (stake2, _, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[1]).unwrap();
-        let (stake3, _, _sess) = helpers::query_nominator_balance(sess, &nominator_new).unwrap();
+        let (stake3, _, _sess) = helpers::query_nominator_balance(sess, &agents_after[2].address).unwrap();
         assert_eq!(stake1, 6666668);
         assert_eq!(stake2, 6666666);
         assert_eq!(stake3, 6666666);
@@ -1371,32 +1417,22 @@ mod tests {
         assert_eq!(stake1, 5_000_000); // 50% to agent0
         assert_eq!(stake2, 5_000_000); // 50% to agent1
 
-        let (total_weight_before, agents_before, mut sess) = helpers::get_agents(
+        let (total_weight_before, agents_before, sess) = helpers::get_agents(
             sess,
             &ctx.registry,
         )
             .unwrap();
-
-        // Create new nomination agent
-        let nominator_new = sess.deploy(
-            helpers::bytes_nominator(),
-            "new",
-            &[
-                ctx.vault.to_string(),
-                false.to_string(),
-            ],
-            vec![3],
-            None,
-            &helpers::transcoder_nominator().unwrap(),
-        )?;
 
         // Add nomination agent
         let sess = helpers::call_add_agent(
             sess,
             &ctx.registry,
             &ctx.bob,
-            &nominator_new,
-            &50,
+            &ctx.bob,
+            &ctx.validators[2],
+            3,
+            100e12 as u128,
+            500,
         )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
@@ -1406,16 +1442,34 @@ mod tests {
             .unwrap();
 
         assert_eq!(agents_after.len(), agents_before.len() + 1);
-        assert_eq!(total_weight_after, total_weight_before + 50_u64);
-        assert_eq!(agents_after[2].address, nominator_new);
-        assert_eq!(agents_after[2].weight, 50_u64);
+        assert_eq!(total_weight_after, total_weight_before);
+        assert_eq!(agents_after[2].weight, 0);
+
+        // Update weight to 50
+        let sess = helpers::call_update_agents(
+            sess,
+            &ctx.registry,
+            &ctx.bob,
+            vec![agents_after[2].address.to_string()],
+            vec![50.to_string()],
+        )
+            .unwrap();
+
+        let (total_weight_after, agents_after, sess) = helpers::get_agents(
+            sess,
+            &ctx.registry,
+        )
+            .unwrap();
+
+        assert_eq!(total_weight_after, total_weight_before + 50);
+        assert_eq!(agents_after[2].weight, 50);
 
         // Stake another 10m AZERO
         let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000_000).unwrap();
 
         let (stake1, _, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[0]).unwrap();
         let (stake2, _, sess) = helpers::query_nominator_balance(sess, &ctx.nominators[1]).unwrap();
-        let (stake3, _, _sess) = helpers::query_nominator_balance(sess, &nominator_new).unwrap();
+        let (stake3, _, _sess) = helpers::query_nominator_balance(sess, &agents_after[2].address).unwrap();
         assert_eq!(stake1, 5_000_000 + 3_000_000);
         assert_eq!(stake2, 5_000_000 + 3_000_000);
         assert_eq!(stake3, 4_000_000);

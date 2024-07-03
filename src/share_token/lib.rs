@@ -41,14 +41,6 @@ mod token {
             Ok(())
         }
         #[ink(message)]
-        pub fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), PSP22Error> {
-            if Self::env().caller() != self.owner {
-                return Err(PSP22Error::Custom(String::from("Caller is not Owner")));
-            }
-            self.owner = new_owner;
-            Ok(())
-        }
-        #[ink(message)]
         pub fn get_owner(&self) -> AccountId {
             self.owner
         }

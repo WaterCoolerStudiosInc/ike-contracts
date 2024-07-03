@@ -1,6 +1,10 @@
 {
   "source": {
+<<<<<<< HEAD
     "hash": "0x033620a4710942bd5cef48a8b8a55915c04c6f3f41d69b065b43ab4c1b4541bc",
+=======
+    "hash": "0x827068dc7613abea531f5ca553cbc60e619c386b00aaecc6fc8c89385a47887c",
+>>>>>>> main
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -42,6 +46,15 @@
               ],
               "type": 8
             }
+          },
+          {
+            "label": "nomination_agent_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 8
+            }
           }
         ],
         "default": false,
@@ -70,6 +83,15 @@
           },
           {
             "label": "registry_code_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "nomination_agent_hash",
             "type": {
               "displayName": [
                 "Hash"
@@ -191,6 +213,45 @@
         ],
         "docs": [],
         "label": "Staked"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "referral_id",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "staker",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "azero",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "docs": [],
+        "label": "Referral"
       },
       {
         "args": [
@@ -571,6 +632,21 @@
         ],
         "docs": [],
         "label": "RoleSetFeesAdminTransferred"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "code_hash",
+            "type": {
+              "displayName": [],
+              "type": 1
+            }
+          }
+        ],
+        "docs": [],
+        "label": "NewHash"
       }
     ],
     "lang_error": {
@@ -602,6 +678,32 @@
           "type": 12
         },
         "selector": "0x5adb38de"
+      },
+      {
+        "args": [
+          {
+            "label": "referral_id",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "stake_with_referral",
+        "mutates": true,
+        "payable": true,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 12
+        },
+        "selector": "0xcb9aa6ad"
       },
       {
         "args": [
@@ -685,7 +787,8 @@
           " Burns associated sAZERO",
           "",
           " Cannot be called for a batch that has not concluded",
-          " Cannot be called for a batch that has already been redeemed"
+          " Cannot be called for a batch that has already been redeemed",
+          " Batch IDs must be specified in ascending order (for gas efficient duplicate check)"
         ],
         "label": "send_batch_unlock_requests",
         "mutates": true,
@@ -1439,6 +1542,24 @@
           "type": 30
         },
         "selector": "0xc8e000f1"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Calculate the value of sAZERO in terms of AZERO with TARGET_DECIMALS precision"
+        ],
+        "label": "RateProvider::get_rate",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 23
+        },
+        "selector": "0x73098e66"
       }
     ]
   },
@@ -2001,46 +2122,50 @@
             "variants": [
               {
                 "index": 0,
-                "name": "InvalidPercent"
+                "name": "Duplication"
               },
               {
                 "index": 1,
-                "name": "InvalidBatchUnlockRequest"
+                "name": "InvalidPercent"
               },
               {
                 "index": 2,
-                "name": "InvalidUserUnlockRequest"
+                "name": "InvalidBatchUnlockRequest"
               },
               {
                 "index": 3,
-                "name": "CooldownPeriod"
+                "name": "InvalidUserUnlockRequest"
               },
               {
                 "index": 4,
-                "name": "InvalidPermissions"
+                "name": "CooldownPeriod"
               },
               {
                 "index": 5,
-                "name": "NoChange"
+                "name": "InvalidPermissions"
               },
               {
                 "index": 6,
-                "name": "ZeroDepositing"
+                "name": "NoChange"
               },
               {
                 "index": 7,
-                "name": "ZeroUnbonding"
+                "name": "ZeroDepositing"
               },
               {
                 "index": 8,
-                "name": "ZeroTotalWeight"
+                "name": "ZeroUnbonding"
               },
               {
                 "index": 9,
-                "name": "ZeroCompounding"
+                "name": "ZeroTotalWeight"
               },
               {
                 "index": 10,
+                "name": "ZeroCompounding"
+              },
+              {
+                "index": 11,
                 "name": "MinimumStake"
               },
               {
@@ -2050,7 +2175,7 @@
                     "typeName": "String"
                   }
                 ],
-                "index": 11,
+                "index": 12,
                 "name": "InkEnvError"
               },
               {
@@ -2060,7 +2185,7 @@
                     "typeName": "RuntimeError"
                   }
                 ],
-                "index": 12,
+                "index": 13,
                 "name": "InternalError"
               },
               {
@@ -2070,11 +2195,11 @@
                     "typeName": "PSP22Error"
                   }
                 ],
-                "index": 13,
+                "index": 14,
                 "name": "TokenError"
               },
               {
-                "index": 14,
+                "index": 15,
                 "name": "InternalTokenError"
               }
             ]
@@ -2642,7 +2767,6 @@
       "type": {
         "def": {
           "tuple": [
-            4,
             4,
             4,
             32,

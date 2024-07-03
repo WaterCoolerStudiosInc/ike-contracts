@@ -1,6 +1,10 @@
 {
   "source": {
+<<<<<<< HEAD
     "hash": "0x6b0f81b5b9238fc532da1eb7c1d265e67e6af7cb28a0b09ba5fe4b519378c360",
+=======
+    "hash": "0x143433b9cd831df85c9c5ce7cac4187e028b4ec60d66fce6f60c970a491897c0",
+>>>>>>> main
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -24,9 +28,24 @@
   "spec": {
     "constructors": [
       {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "deploy_hash",
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 5
+        },
+        "selector": "0x5b7f6cd1"
+      },
+      {
         "args": [
           {
-            "label": "vault_",
+            "label": "vault",
             "type": {
               "displayName": [
                 "AccountId"
@@ -35,7 +54,7 @@
             }
           },
           {
-            "label": "admin_",
+            "label": "admin",
             "type": {
               "displayName": [
                 "AccountId"
@@ -44,12 +63,39 @@
             }
           },
           {
-            "label": "pool_id_",
+            "label": "validator",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "pool_id",
             "type": {
               "displayName": [
                 "u32"
               ],
               "type": 3
+            }
+          },
+          {
+            "label": "creation_bond",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "existential_deposit",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
             }
           }
         ],
@@ -91,20 +137,20 @@
         "displayName": [
           "ChainExtension"
         ],
-        "type": 19
+        "type": 20
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 17
+        "type": 18
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 18
+        "type": 19
       }
     },
     "events": [],
@@ -120,7 +166,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "deposit",
+        "label": "INominationAgent::deposit",
         "mutates": true,
         "payable": true,
         "returnType": {
@@ -146,7 +192,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "start_unbond",
+        "label": "INominationAgent::start_unbond",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -162,7 +208,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "withdraw_unbonded",
+        "label": "INominationAgent::withdraw_unbonded",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -188,7 +234,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "compound",
+        "label": "INominationAgent::compound",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -204,7 +250,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_pool_id",
+        "label": "INominationAgent::get_staked_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -214,13 +260,29 @@
           ],
           "type": 15
         },
-        "selector": "0x0000000b"
+        "selector": "0x0000000c"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_staked_value",
+        "label": "INominationAgent::get_unbonding_value",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 15
+        },
+        "selector": "0x0000000d"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_vault",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -230,21 +292,71 @@
           ],
           "type": 16
         },
-        "selector": "0x0000000c"
+        "selector": "0x49767b99"
       },
       {
-        "args": [
-          {
-            "label": "code_hash",
-            "type": {
-              "displayName": [],
-              "type": 1
-            }
-          }
-        ],
+        "args": [],
         "default": false,
         "docs": [],
-        "label": "set_code",
+        "label": "INominationAgent::get_admin",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xe63ca2d5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_validator",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xe55bf6b5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_pool_id",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x78810bd5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Step 1 of 2 in finalizing the nomination pool's lifecycle",
+          " Performs the following actions:",
+          "     1) Puts the pool in a Destroying state",
+          "     2) Removes the validator nomination",
+          "     3) Begins unbonding the initial bond",
+          "",
+          " Can only be called by registry",
+          " Must have no protocol funds staked",
+          " Must have no protocol funds unbonding"
+        ],
+        "label": "INominationAgent::destroy",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -254,7 +366,41 @@
           ],
           "type": 8
         },
-        "selector": "0x00000063"
+        "selector": "0x00000064"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Step 2 of 2 in finalizing the nomination pool's lifecycle",
+          " Performs the following actions:",
+          "     1) Withdraws the (now unbonded) initial bond",
+          "     2) Transfers the initial bond to any account of choice",
+          "",
+          " Can only be called by admin",
+          " Must be called after `destroy()`"
+        ],
+        "label": "INominationAgent::admin_withdraw_bond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000065"
       }
     ]
   },
@@ -279,7 +425,25 @@
                   "ty": 0
                 }
               },
+              "name": "registry"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
               "name": "admin"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "validator"
             },
             {
               "layout": {
@@ -298,6 +462,24 @@
                 }
               },
               "name": "staked"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "unbonding"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "creation_bond"
             }
           ],
           "name": "NominationAgent"
@@ -528,13 +710,17 @@
               {
                 "index": 1,
                 "name": "Unauthorized"
+              },
+              {
+                "index": 2,
+                "name": "Active"
               }
             ]
           }
         },
         "path": [
           "nomination_agent",
-          "nomination_agent",
+          "errors",
           "RuntimeError"
         ]
       }
@@ -651,48 +837,6 @@
               {
                 "fields": [
                   {
-                    "type": 3
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 3
-          },
-          {
-            "name": "E",
-            "type": 7
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
-      "id": 16,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
                     "type": 4
                   }
                 ],
@@ -727,7 +871,91 @@
       }
     },
     {
+      "id": 16,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 0
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 0
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
       "id": 17,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 3
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 18,
       "type": {
         "def": {
           "composite": {
@@ -747,7 +975,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
       "type": {
         "def": {
           "primitive": "u64"
@@ -755,7 +983,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 20,
       "type": {
         "def": {
           "variant": {}

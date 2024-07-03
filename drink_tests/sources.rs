@@ -28,6 +28,12 @@ pub fn hash_share_token() -> String {
     artifact.source.hash
 }
 
+pub fn hash_nominator() -> String {
+    let json = read_to_string("../deployments/mock_nominator/mock_nominator.json").unwrap();
+    let artifact: Artifact = from_str(&json).expect("Should extract hash from mock_nominator.json");
+    artifact.source.hash
+}
+
 // Transcoders for making contract calls
 
 pub fn transcoder_registry() -> Option<Rc<ContractMessageTranscoder>> {

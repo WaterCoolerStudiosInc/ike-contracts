@@ -11,9 +11,13 @@ mod mock_nominator {
     #[ink(storage)]
     pub struct RuntimeCaller {
         vault: AccountId,
-        mock_fail: bool,
+        registry: AccountId,
+        admin: AccountId,
+        validator: AccountId,
+        pool_id: u32,
         staked: u128,
-        unbonded: u128,
+        unbonding: u128,
+        creation_bond: u128,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -21,8 +25,7 @@ mod mock_nominator {
     pub enum RuntimeError {
         CallRuntimeFailed,
         Unauthorized,
-        InvalidWithdraw,
-        InsufficientFunds,
+        Active,
     }
 
     impl From<EnvError> for RuntimeError {
@@ -39,12 +42,29 @@ mod mock_nominator {
         /// given some tokens that will be further transferred with
         /// `transfer_through_runtime` message.
         #[ink(constructor, payable)]
-        pub fn new(vault_: AccountId, mock_fail_: bool) -> Self {
+        pub fn new(
+            vault: AccountId,
+            admin: AccountId,
+            validator: AccountId,
+            pool_id: u32,
+            creation_bond: u128,
+            existential_deposit: u128,
+        ) -> Self {
+            // Mock spending AZERO to create nomination pool
+            Self::env().transfer(
+                AccountId::from([0u8; 32]),
+                creation_bond + existential_deposit,
+            ).unwrap();
+
             RuntimeCaller {
-                vault: vault_,
-                mock_fail: mock_fail_,
+                vault,
+                registry: Self::env().caller(),
+                admin,
+                validator,
+                pool_id,
                 staked: 0,
-                unbonded: 0,
+                unbonding: 0,
+                creation_bond,
             }
         }
 
@@ -55,12 +75,8 @@ mod mock_nominator {
             if Self::env().caller() != self.vault {
                 return Err(RuntimeError::Unauthorized);
             }
-            if self.mock_fail {
-                return Err(RuntimeError::CallRuntimeFailed);
-            } else {
-                self.staked += Self::env().transferred_value();
-                return Ok(());
-            }
+            self.staked += Self::env().transferred_value();
+            return Ok(());
         }
 
         #[ink(message, selector = 2)]
@@ -68,30 +84,23 @@ mod mock_nominator {
             if Self::env().caller() != self.vault {
                 return Err(RuntimeError::Unauthorized);
             }
-            if self.mock_fail {
-                return Err(RuntimeError::CallRuntimeFailed);
-            } else {
-                self.staked -= amount;
-                self.unbonded += amount;
-                return Ok(());
-            }
+            self.staked -= amount;
+            self.unbonding += amount;
+            return Ok(());
         }
+
         #[ink(message, selector = 3)]
         pub fn withdraw_unbonded(&mut self) -> Result<(), RuntimeError> {
             if Self::env().caller() != self.vault {
                 return Err(RuntimeError::Unauthorized);
             }
-            if self.mock_fail {
-                return Err(RuntimeError::CallRuntimeFailed);
-            } else {
-                if self.unbonded > 0 {
-                    Self::env().transfer(self.vault, self.unbonded)?;
-                    self.unbonded = 0;
-                }
-
-                return Ok(());
+            if self.unbonding > 0 {
+                Self::env().transfer(self.vault, self.unbonding)?;
+                self.unbonding = 0;
             }
+            return Ok(());
         }
+
         #[ink(message, selector = 4)]
         pub fn compound(&mut self, incentive_percentage: u16) -> Result<(Balance, Balance), RuntimeError> {
             let vault = self.vault; // shadow
@@ -100,45 +109,72 @@ mod mock_nominator {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            if self.mock_fail {
-                return Err(RuntimeError::CallRuntimeFailed);
-            } else {
-                let balance = Self::env().balance();
+            let balance = Self::env().balance();
 
-                // Gracefully return when nomination pool had nothing to claim
-                if balance == 0 {
-                    return Ok((0, 0));
-                }
-
-                let incentive = balance * incentive_percentage as u128 / BIPS;
-                let compound_amount = balance - incentive;
-                self.staked += compound_amount;
-
-                if incentive > 0 {
-                    Self::env().transfer(vault, incentive)?;
-                }
-
-                Ok((compound_amount, incentive))
+            // Gracefully return when nomination pool had nothing to claim
+            if balance == 0 {
+                return Ok((0, 0));
             }
+
+            let incentive = balance * incentive_percentage as u128 / BIPS;
+            let compound_amount = balance - incentive;
+            self.staked += compound_amount;
+
+            if incentive > 0 {
+                Self::env().transfer(vault, incentive)?;
+            }
+
+            Ok((compound_amount, incentive))
         }
+
         #[ink(message, payable, selector = 5)]
         pub fn add_stake(&mut self) -> Balance {
             self.staked += Self::env().transferred_value();
             self.staked
         }
+
         #[ink(message, payable)]
         pub fn remove_stake(&mut self, amount: u128) -> Result<Balance, RuntimeError> {
             self.staked -= amount;
             Self::env().transfer(Self::env().caller(), amount)?;
             Ok(self.staked)
         }
+
         #[ink(message, selector = 12)]
         pub fn get_staked_value(&self) -> Balance {
             self.staked
         }
+
         #[ink(message, selector = 13)]
         pub fn get_unbonded_value(&self) -> Balance {
-            self.unbonded
+            self.unbonding
+        }
+
+        #[ink(message, selector = 100)]
+        pub fn destroy(&mut self) -> Result<(), RuntimeError> {
+            // Stub
+            if Self::env().caller() != self.registry {
+                return Err(RuntimeError::Unauthorized);
+            }
+            if self.staked > 0 || self.unbonding > 0 {
+                return Err(RuntimeError::Active);
+            }
+            self.creation_bond = 0;
+            Ok(())
+        }
+
+        #[ink(message, selector = 101)]
+        pub fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError> {
+            // Stub
+            if Self::env().caller() != self.admin {
+                return Err(RuntimeError::Unauthorized);
+            }
+            if self.creation_bond > 0 {
+                return Err(RuntimeError::Active);
+            }
+            // Requires funds are sent via test environment to succeed
+            Self::env().transfer(to, Self::env().balance()).unwrap();
+            Ok(())
         }
     }
 }

@@ -2,10 +2,11 @@
 mod traits;
 mod data;
 mod nomination_agent_utils;
-pub use traits::Vault;
+
 #[ink::contract]
 mod vault {
     use crate::data::*;
+    use crate::traits::*;
 
     use ink::{
         codegen::EmitEvent,
@@ -36,6 +37,13 @@ mod vault {
         azero: Balance,
         new_shares: Balance,
         virtual_shares: Balance,
+    }
+    #[ink(event)]
+    pub struct Referral {
+        #[ink(topic)]
+        referral_id: AccountId,
+        staker: AccountId,
+        azero: Balance,
     }
     #[ink(event)]
     pub struct Compounded {
@@ -105,6 +113,10 @@ mod vault {
     pub struct RoleSetFeesAdminTransferred {
         new_account: AccountId,
     }
+    #[ink(event)]
+    pub struct NewHash {
+        code_hash: [u8; 32],
+    }
 
     #[ink(storage)]
     pub struct Vault {
@@ -159,25 +171,37 @@ mod vault {
         }
     }
 
+    impl RateProvider for Vault {
+        /// Calculate the value of sAZERO in terms of AZERO with TARGET_DECIMALS precision
+        #[ink(message)]
+        fn get_rate(&mut self) -> u128 {
+            // Because both RATE_DECIMALS and sAZERO.decimals() are 12,
+            // no further adjustment is necessary
+            self.get_azero_from_shares(1e12 as u128)
+        }
+    }
+
     impl Vault {
         #[ink(constructor)]
         pub fn new(
             share_token_hash: Hash,
             registry_code_hash: Hash,
+            nomination_agent_hash: Hash,
         ) -> Self {
-            Self::custom_era(share_token_hash, registry_code_hash, DAY)
+            Self::custom_era(share_token_hash, registry_code_hash, nomination_agent_hash, DAY)
         }
 
         #[ink(constructor)]
         pub fn custom_era(
             share_token_hash: Hash,
             registry_code_hash: Hash,
+            nomination_agent_hash: Hash,
             era: u64,
         ) -> Self {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let registry_ref = RegistryRef::new(caller, caller, caller)
+            let registry_ref = RegistryRef::new(caller, caller, caller, nomination_agent_hash)
                 .endowment(0)
                 .code_hash(registry_code_hash)
                 .salt_bytes(
@@ -234,10 +258,24 @@ mod vault {
                     staker: caller,
                     azero,
                     new_shares,
-                    virtual_shares: self.data.total_shares_virtual,
+                    virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
                 }),
             );
 
+            Ok(new_shares)
+        }
+
+        #[ink(message, payable)]
+        pub fn stake_with_referral(&mut self, referral_id: AccountId) -> Result<Balance, VaultError> {
+            let new_shares = self.stake()?;
+            Self::emit_event(
+                Self::env(),
+                Event::Referral(Referral {
+                    referral_id,
+                    staker: Self::env().caller(),
+                    azero: Self::env().transferred_value(),
+                }),
+            );
             Ok(new_shares)
         }
 
@@ -279,15 +317,14 @@ mod vault {
                 batch_id: current_batch_unlock_id,
             });
             self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
-            let unlock_id=(user_unlock_requests.len()-1) as u128;
+
             Self::emit_event(
                 Self::env(),
                 Event::UnlockRequested(UnlockRequested {
                     staker: caller,
                     shares,
-                    unlock_id,
+                    unlock_id: (user_unlock_requests.len()-1) as u128,
                     batch_id: current_batch_unlock_id,
-
                 }),
             );
 
@@ -347,15 +384,23 @@ mod vault {
         ///
         /// Cannot be called for a batch that has not concluded
         /// Cannot be called for a batch that has already been redeemed
+        /// Batch IDs must be specified in ascending order (for gas efficient duplicate check)
         #[ink(message)]
         pub fn send_batch_unlock_requests(&mut self, batch_ids: Vec<u64>) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
             let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
 
-            // Cannot send current batch unlock request
-            if batch_ids.iter().any(|&batch_id| batch_id >= current_batch_unlock_id) {
-                return Err(VaultError::InvalidBatchUnlockRequest);
+            // Validate batch_ids
+            for (i, &batch_id) in batch_ids.iter().enumerate() {
+                // Cannot send current batch unlock request
+                if batch_id >= current_batch_unlock_id {
+                    return Err(VaultError::InvalidBatchUnlockRequest);
+                }
+                // Cannot send duplicate batch id (requires `batch_ids` is sorted in asc order)
+                if i > 0 && batch_id <= batch_ids[i-1] {
+                    return Err(VaultError::Duplication);
+                }
             }
 
             let batches: Vec<UnlockRequestBatch> = batch_ids
@@ -371,6 +416,7 @@ mod vault {
             // Update fees before calculating redemption ratio and burning shares
             self.data.update_fees(now);
 
+            let total_shares_virtual_ = self.data.total_shares_virtual; // shadow
             let mut aggregate_batch_spot_value: Balance = 0;
             let mut aggregate_total_shares: Balance = 0;
 
@@ -390,7 +436,7 @@ mod vault {
                     Self::env(),
                     Event::BatchUnlockSent(BatchUnlockSent {
                         shares: batch.total_shares,
-                        virtual_shares: self.data.total_shares_virtual,
+                        virtual_shares: total_shares_virtual_,
                         spot_value: batch_spot_value,
                         batch_id,
                     }),
@@ -452,7 +498,11 @@ mod vault {
             self.data.user_unlock_requests.insert(user, &user_unlock_requests);
 
             // Send AZERO to user
-            let azero = share_amount * batch_unlock_request.value_at_redemption.unwrap() / batch_unlock_request.total_shares;
+            let azero = self.data.pro_rata(
+                share_amount,
+                batch_unlock_request.value_at_redemption.unwrap(),
+                batch_unlock_request.total_shares,
+            );
             Self::env().transfer(user, azero)?;
 
             Self::emit_event(
@@ -504,7 +554,7 @@ mod vault {
                     caller,
                     azero: compounded,
                     incentive,
-                    virtual_shares: self.data.total_shares_virtual,
+                    virtual_shares: self.get_current_virtual_shares(),
                 }),
             );
 
@@ -584,6 +634,13 @@ mod vault {
 
             ink::env::set_code_hash(&code_hash)?;
 
+            Self::emit_event(
+                Self::env(),
+                Event::NewHash(NewHash {
+                    code_hash,
+                }),
+            );
+
             Ok(())
         }
 
@@ -641,7 +698,7 @@ mod vault {
                 Self::env(),
                 Event::FeesAdjusted(FeesAdjusted {
                     new_fee,
-                    virtual_shares: self.data.total_shares_virtual,
+                    virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
                 }),
             );
 
@@ -811,7 +868,7 @@ mod vault {
                 // Also known as 1:1 redemption ratio
                 azero
             } else {
-                azero * self.get_total_shares() / total_pooled_
+                self.data.pro_rata(azero, self.get_total_shares(), total_pooled_)
             }
         }
 
@@ -823,7 +880,7 @@ mod vault {
                 // This should never happen
                 0
             } else {
-                shares * self.data.total_pooled / total_shares
+                self.data.pro_rata(shares, self.data.total_pooled, total_shares)
             }
         }
 
@@ -851,7 +908,7 @@ mod vault {
         }
 
         #[ink(message)]
-        pub fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, u128, Vec<u128>, Vec<i128>) {
+        pub fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>) {
             let (total_weight, agents) = self.data.registry_contract.get_agents();
             self.data.get_weight_imbalances(&agents, total_weight, total_pooled)
         }

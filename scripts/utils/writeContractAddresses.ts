@@ -12,7 +12,6 @@ export const writeContractAddresses = async (
   metadata?: { [key: string]: string | number },
 ) => {
   const baseDir = process.env.DIR || './deployments'
-  const frontEndBaseDir = '../frontend/src/deployments/compiled'
 
   console.log()
   for (const [contractName, deployment] of Object.entries(contractDeployments)) {
@@ -40,9 +39,5 @@ export const writeContractAddresses = async (
 
     await writeFile(absolutePath, fileContents)
     console.log(`Exported deployment info to file: ${relativePath}`)
-
-    const frontEndRelativePath = path.join(frontEndBaseDir, contractNamePath)
-    const frontEndAbsolutePath = path.join(path.resolve(), frontEndRelativePath)
-    await writeFile(frontEndAbsolutePath, fileContents)
   }
 }
