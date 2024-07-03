@@ -17,6 +17,16 @@ pub enum MultiAddress<AccountId, AccountIndex> {
 }
 #[allow(dead_code)]
 #[derive(scale::Encode)]
+pub enum ConfigOp<_0> {
+    #[codec(index = 0)]
+    Noop,
+    #[codec(index = 1)]
+    Set(_0),
+    #[codec(index = 2)]
+    Remove,
+}
+#[derive(Clone, PartialEq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub enum PoolState {
     #[codec(index = 0)]
     Open,
@@ -63,6 +73,13 @@ pub enum NominationCall {
     SetState {
         pool_id: u32,
         state: PoolState,
+    },
+    #[codec(index = 12)]
+    UpdateRoles {
+        pool_id: u32,
+        new_root: ConfigOp<AccountId>,
+        new_nominator: ConfigOp<AccountId>,
+        new_bouncer: ConfigOp<AccountId>,
     },
     #[codec(index = 13)]
     Chill {

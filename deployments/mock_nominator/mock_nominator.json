@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x8b87e88d816af622203f15a7cd7228c9b893993b8bc4f8a5474b7e438704a960",
+    "hash": "0x59ddeb015e06a36b01b29c5763f42c680dec8b8eb8639fbf9092ccad78aec5ee",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -23,6 +23,21 @@
   },
   "spec": {
     "constructors": [
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "deploy_hash",
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 5
+        },
+        "selector": "0x5b7f6cd1"
+      },
       {
         "args": [
           {
@@ -53,15 +68,6 @@
             }
           },
           {
-            "label": "pool_id",
-            "type": {
-              "displayName": [
-                "u32"
-              ],
-              "type": 3
-            }
-          },
-          {
             "label": "creation_bond",
             "type": {
               "displayName": [
@@ -81,11 +87,7 @@
           }
         ],
         "default": false,
-        "docs": [
-          "The constructor is `payable`, so that during instantiation it can be",
-          "given some tokens that will be further transferred with",
-          "`transfer_through_runtime` message."
-        ],
+        "docs": [],
         "label": "new",
         "payable": true,
         "returnType": {
@@ -122,20 +124,20 @@
         "displayName": [
           "ChainExtension"
         ],
-        "type": 20
+        "type": 23
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 18
+        "type": 21
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 19
+        "type": 22
       }
     },
     "events": [],
@@ -148,13 +150,36 @@
     },
     "messages": [
       {
+        "args": [
+          {
+            "label": "pool_id",
+            "type": {
+              "displayName": [
+                "u32"
+              ],
+              "type": 3
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::initialize",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000000"
+      },
+      {
         "args": [],
         "default": false,
-        "docs": [
-          " need to do a check for minimum value",
-          ""
-        ],
-        "label": "deposit",
+        "docs": [],
+        "label": "INominationAgent::deposit",
         "mutates": true,
         "payable": true,
         "returnType": {
@@ -180,7 +205,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "start_unbond",
+        "label": "INominationAgent::start_unbond",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -196,7 +221,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "withdraw_unbonded",
+        "label": "INominationAgent::withdraw_unbonded",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -222,7 +247,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "compound",
+        "label": "INominationAgent::compound",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -238,49 +263,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "add_stake",
-        "mutates": true,
-        "payable": true,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 15
-        },
-        "selector": "0x00000005"
-      },
-      {
-        "args": [
-          {
-            "label": "amount",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 4
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "remove_stake",
-        "mutates": true,
-        "payable": true,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 16
-        },
-        "selector": "0x7758d434"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "get_staked_value",
+        "label": "INominationAgent::get_staked_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -296,7 +279,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_unbonded_value",
+        "label": "INominationAgent::get_unbonding_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -312,7 +295,87 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "destroy",
+        "label": "INominationAgent::get_vault",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x49767b99"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_admin",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xe63ca2d5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_validator",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xe55bf6b5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_pool_id",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x78810bd5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_pool_state",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 19
+        },
+        "selector": "0xd0ef7b93"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::destroy",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -322,7 +385,23 @@
           ],
           "type": 8
         },
-        "selector": "0x00000064"
+        "selector": "0x00000065"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::admin_unbond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000066"
       },
       {
         "args": [
@@ -338,7 +417,7 @@
         ],
         "default": false,
         "docs": [],
-        "label": "admin_withdraw_bond",
+        "label": "INominationAgent::admin_withdraw_bond",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -348,7 +427,7 @@
           ],
           "type": 8
         },
-        "selector": "0x00000065"
+        "selector": "0x00000067"
       }
     ]
   },
@@ -395,12 +474,55 @@
             },
             {
               "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 3
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "Option",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "None"
+                    },
+                    "1": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x00000000",
+                              "ty": 3
+                            }
+                          },
+                          "name": "0"
+                        }
+                      ],
+                      "name": "Some"
+                    }
+                  }
                 }
               },
               "name": "pool_id"
+            },
+            {
+              "layout": {
+                "enum": {
+                  "dispatchKey": "0x00000000",
+                  "name": "PoolState",
+                  "variants": {
+                    "0": {
+                      "fields": [],
+                      "name": "Open"
+                    },
+                    "1": {
+                      "fields": [],
+                      "name": "Blocked"
+                    },
+                    "2": {
+                      "fields": [],
+                      "name": "Destroying"
+                    }
+                  }
+                }
+              },
+              "name": "pool_state"
             },
             {
               "layout": {
@@ -430,7 +552,7 @@
               "name": "creation_bond"
             }
           ],
-          "name": "RuntimeCaller"
+          "name": "NominationAgent"
         }
       },
       "root_key": "0x00000000"
@@ -662,13 +784,25 @@
               {
                 "index": 2,
                 "name": "Active"
+              },
+              {
+                "index": 3,
+                "name": "InvalidPoolState"
+              },
+              {
+                "index": 4,
+                "name": "Initialized"
+              },
+              {
+                "index": 5,
+                "name": "NotInitialized"
               }
             ]
           }
         },
         "path": [
           "mock_nominator",
-          "mock_nominator",
+          "errors",
           "RuntimeError"
         ]
       }
@@ -827,7 +961,7 @@
               {
                 "fields": [
                   {
-                    "type": 17
+                    "type": 0
                   }
                 ],
                 "index": 0,
@@ -848,7 +982,7 @@
         "params": [
           {
             "name": "T",
-            "type": 17
+            "type": 0
           },
           {
             "name": "E",
@@ -869,7 +1003,7 @@
               {
                 "fields": [
                   {
-                    "type": 4
+                    "type": 18
                   }
                 ],
                 "index": 0,
@@ -878,7 +1012,7 @@
               {
                 "fields": [
                   {
-                    "type": 10
+                    "type": 7
                   }
                 ],
                 "index": 1,
@@ -890,11 +1024,11 @@
         "params": [
           {
             "name": "T",
-            "type": 4
+            "type": 18
           },
           {
             "name": "E",
-            "type": 10
+            "type": 7
           }
         ],
         "path": [
@@ -904,6 +1038,109 @@
     },
     {
       "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "None"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 1,
+                "name": "Some"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 3
+          }
+        ],
+        "path": [
+          "Option"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 20
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 20
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Open"
+              },
+              {
+                "index": 1,
+                "name": "Blocked"
+              },
+              {
+                "index": 2,
+                "name": "Destroying"
+              }
+            ]
+          }
+        },
+        "path": [
+          "mock_nominator",
+          "data",
+          "PoolState"
+        ]
+      }
+    },
+    {
+      "id": 21,
       "type": {
         "def": {
           "composite": {
@@ -923,7 +1160,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 22,
       "type": {
         "def": {
           "primitive": "u64"
@@ -931,7 +1168,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 23,
       "type": {
         "def": {
           "variant": {}
