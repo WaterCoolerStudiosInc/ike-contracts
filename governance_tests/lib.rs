@@ -397,9 +397,45 @@ mod tests {
         Ok(())           
     }
     #[test]
+    fn burn_remint() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn earn_interest() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn change_interest_rate() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
+
+        Ok(())
+    }
+    #[test]
     fn make_and_vote_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn double_proposals_fail() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn double_votes_fail() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
+
         Ok(())
     }
 }

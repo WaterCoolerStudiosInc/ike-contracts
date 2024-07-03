@@ -30,25 +30,32 @@ mod validator_whitelist {
         NFTError(PSP34Error),
         TokenError(PSP22Error),
     }
+
     impl ValidatorWhitelist {
         fn transfer_psp34(
             &self,
             from: &AccountId,
             to: &AccountId,
             amount: Balance,
-        ) -> Result<(), StakingError> {
+        ) -> Result<(), WhitelistError> {
             let mut token: contract_ref!(PSP34) = self.gov_nft.into();
             if let Err(e) = token.transfer_from(*from, *to, amount, Vec::new()) {
-                return Err(StakingError::TokenError(e));
+                return Err(WhitelistError::TokenError(e));
             }
             Ok(())
         }
         #[ink(constructor)]
-        pub fn new(_admin: AccountId, _registry: AccountId) -> Self {
+        pub fn new(
+            _admin: AccountId,
+            _registry: AccountId,
+            _gov_nft: AccountId,
+            treasury: AccountId,
+        ) -> Self {
             Self {
                 admin: _admin,
+                treasury: treasury,
                 registry: _registry,
-                gov_nft: AccountId,
+                gov_nft: _gov_nft,
                 validators: Vec::new(),
                 token_stake_amount: 100000_u128,
                 create_deposit: 100000_u128,
@@ -58,6 +65,15 @@ mod validator_whitelist {
         pub fn join_whitelist(&mut self) -> Result<(), WhitelistError> {
             Ok(())
         }
+        //Validator addition flow
+        // Step 1. Call Registry AddAgent  Existential Deposit:,
+        //Mainnet
+        //staking.minNominatorBond: 2,000,000,000,000,000
+        //balances.existentialDeposit: 500
+        //Testnet
+        //taking.minNominatorBond: 100,000,000,000,000
+        //balances.existentialDeposit: 500
+        // Step 2. Initialize Agent call with poolid and Account
         #[ink(message)]
         pub fn init_add_validator(&mut self, validator: AccountId) -> Result<(), WhitelistError> {
             Ok(())
