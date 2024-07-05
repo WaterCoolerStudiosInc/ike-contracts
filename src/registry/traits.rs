@@ -1,10 +1,17 @@
-use crate::registry::{RegistryError,Agent};
+use crate::registry::{Agent, RegistryError};
 use ink::{prelude::vec::Vec, primitives::AccountId};
 
 #[ink::trait_definition]
 pub trait Registry {
     #[ink(message, selector = 1)]
-    fn add_agent(&mut self, account: AccountId, new_weight: u64) -> Result<(), RegistryError>;
+    fn add_agent(
+        &mut self,
+        admin: AccountId,
+        validator: AccountId,
+        pool_id: u32,
+        pool_create_amount: Balance,
+        existential_deposit: Balance,
+    ) -> Result<(), RegistryError>;
     #[ink(message, selector = 2)]
     fn update_agents(
         &mut self,
