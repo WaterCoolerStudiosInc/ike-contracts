@@ -1,3 +1,6 @@
+use ink::{primitives::AccountId};
+use psp22::PSP22Error;
+use crate::data::VaultError;
 #[ink::trait_definition]
 pub trait RateProvider {
     // Get "rate" of a particular token with respect to a given base token.
@@ -8,4 +11,12 @@ pub trait RateProvider {
     // supported rate is of the order of 10^8, but in practice one would expect (get_rate() / 10^12) \in [0.001, 1000.0].
     #[ink(message)]
     fn get_rate(&mut self) -> u128;
+}
+
+
+#[ink::trait_definition]
+pub trait Vault {   
+
+    #[ink(message, selector = 7)]
+    fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError>;
 }

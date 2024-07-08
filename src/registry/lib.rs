@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+mod traits;
 pub use crate::registry::RegistryRef;
-
+pub use traits::Registry;
 #[ink::contract]
 pub mod registry {
 
@@ -328,26 +329,20 @@ pub mod registry {
                 if self.agents[index].initialized == false {
                     return Err(RegistryError::Initialization);
                 }
-
                 let mut agent_contract: contract_ref!(INominationAgent) = agent.into();
-
                 // Do not delete agents with AZERO staked
                 if agent_contract.get_staked_value() > 0 {
                     return Err(RegistryError::ActiveAgent);
                 }
-
                 // Do not delete agents with AZERO unbonding
                 if agent_contract.get_unbonding_value() > 0 {
                     return Err(RegistryError::ActiveAgent);
                 }
-
                 let weight = self.agents[index].weight;
                 if weight > 0 {
                     self.total_weight -= weight;
                 }
-
                 self.agents.remove(index);
-
                 agent_contract
                     .destroy()
                     .expect("Agent begins the destruction process");
@@ -356,7 +351,6 @@ pub mod registry {
             } else {
                 return Err(RegistryError::AgentNotFound);
             }
-
             Ok(())
         }
 

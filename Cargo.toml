@@ -7,7 +7,6 @@ members = [
     "src/registry",
     "src/nomination_agent",
     "src/mock_nominator",
-    "src/governor",
     "src/governance",
     "src/governance_nft",
     "src/governance_staking",

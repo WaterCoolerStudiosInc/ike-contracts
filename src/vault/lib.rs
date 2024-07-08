@@ -2,7 +2,7 @@
 mod traits;
 mod data;
 mod nomination_agent_utils;
-
+pub use traits::Vault;
 #[ink::contract]
 mod vault {
     use crate::data::*;

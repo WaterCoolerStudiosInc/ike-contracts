@@ -400,7 +400,7 @@ mod tests {
     fn burn_remint() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
-
+        
         Ok(())
     }
     #[test]
@@ -414,7 +414,8 @@ mod tests {
     fn change_interest_rate() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
-
+        let prop= PropType::UpdateStakingRewards(70000000_128);
+        let sess=call_function(ctx.sess,&ctx.governance,&ctx.alice,String::from('create_proposal'),Some(vec![prop,1]),None,transcoder_governance());
         Ok(())
     }
     #[test]

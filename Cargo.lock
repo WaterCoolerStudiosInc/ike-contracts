@@ -1047,18 +1047,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "governor"
-version = "0.1.0"
-dependencies = [
- "ink",
- "parity-scale-codec",
- "psp22",
- "registry",
- "scale-info",
- "vault",
-]
-
-[[package]]
 name = "group"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1634,9 +1622,7 @@ dependencies = [
  "parity-scale-codec",
  "psp22",
  "psp34",
- "registry",
  "scale-info",
- "vault",
 ]
 
 [[package]]

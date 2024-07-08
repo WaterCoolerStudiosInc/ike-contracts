@@ -30,10 +30,7 @@ mod governance_nft {
             debug_println,
             DefaultEnvironment,
          
-        },
-        prelude::{string::String, vec::Vec},
-      
-        storage::Mapping,
+        }, prelude::{string::String, vec::Vec}, storage::Mapping
     };
     use psp34::{
         metadata, Id, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata,
@@ -101,6 +98,18 @@ mod governance_nft {
                     }
                 }
             }
+        }
+        #[ink(message, selector = 7)]
+        pub fn transfer_from(
+            &mut self,
+            from:AccountId,
+            to: AccountId,
+            id: Id,
+            data: ink::prelude::vec::Vec<u8>,
+        ) -> Result<(), PSP34Error> {
+            let events = self.data.transfer(from, to, id, data)?;
+            self.emit_events(events);
+            Ok(())
         }
         #[ink(message,selector = 31337)]
         pub fn get_governance_data(&self,id:u128)->GovernanceData{
@@ -231,7 +240,7 @@ mod governance_nft {
             self.emit_events(events);
             Ok(())
         }
-
+       
         #[ink(message)]
         fn approve(
             &mut self,

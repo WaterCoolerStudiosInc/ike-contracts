@@ -13,4 +13,12 @@ pub trait GovernanceNFT{
     fn increment_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>;
     #[ink(message, selector = 77)]
     fn decrement_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>;
+    #[ink(message, selector = 17)]
+    fn transfer_from(
+        &mut self,
+        from:AccountId,
+        to: AccountId,
+        id: u128,
+        data: ink::prelude::vec::Vec<u8>,
+    ) -> Result<(), PSP34Error> ;
 }

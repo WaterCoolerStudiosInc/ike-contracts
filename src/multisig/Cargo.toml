@@ -13,12 +13,7 @@ scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
 psp34 = { git = "https://github.com/Cardinal-Cryptography/PSP34.git", default-features = false }
-registry = { path = "../registry", default-features = false, features = [
-    "ink-as-dependency",
-] }
-vault = { path = "../vault", default-features = false, features = [
-    "ink-as-dependency",
-] }
+
 
 psp22 = { version = "=0.2.1", default-features = false }
 [lib]
