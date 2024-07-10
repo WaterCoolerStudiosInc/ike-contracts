@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x6d79129f0bf703367c59ca346136a9c6729aaaf633a167a0ad3d4a57bf5b02d2",
+    "hash": "0xcb4b9da981c07a7fe58bade8555109cc8b60c0e43c077091be6418ef1e7d5d47",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -14,7 +14,7 @@
     }
   },
   "contract": {
-    "name": "validator_whitelist",
+    "name": "governance",
     "version": "0.1.0",
     "authors": [
       "[your_name] <[your_email]>"
@@ -25,7 +25,7 @@
       {
         "args": [
           {
-            "label": "_admin",
+            "label": "vault",
             "type": {
               "displayName": [
                 "AccountId"
@@ -34,7 +34,7 @@
             }
           },
           {
-            "label": "_registry",
+            "label": "_multisig",
             "type": {
               "displayName": [
                 "AccountId"
@@ -52,12 +52,30 @@
             }
           },
           {
-            "label": "_treasury",
+            "label": "exec_threshold",
             "type": {
               "displayName": [
-                "AccountId"
+                "u128"
               ],
-              "type": 0
+              "type": 3
+            }
+          },
+          {
+            "label": "reject_threshold",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "label": "acc_threshold",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 3
             }
           }
         ],
@@ -70,7 +88,7 @@
             "ink_primitives",
             "ConstructorResult"
           ],
-          "type": 7
+          "type": 12
         },
         "selector": "0x9bae9d5e"
       }
@@ -87,77 +105,176 @@
         "displayName": [
           "Balance"
         ],
-        "type": 5
+        "type": 3
       },
       "blockNumber": {
         "displayName": [
           "BlockNumber"
         ],
-        "type": 21
+        "type": 22
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 22
+        "type": 23
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 19
+        "type": 21
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 20
+        "type": 4
       }
     },
-    "events": [],
+    "events": [
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal",
+            "type": {
+              "displayName": [
+                "Proposal"
+              ],
+              "type": 6
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposlCreated"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal_id",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 7
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "nft_id",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "pro_vote",
+            "type": {
+              "displayName": [
+                "bool"
+              ],
+              "type": 11
+            }
+          }
+        ],
+        "docs": [],
+        "label": "VoteSubmitted"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal",
+            "type": {
+              "displayName": [
+                "Proposal"
+              ],
+              "type": 6
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposlRejected"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal",
+            "type": {
+              "displayName": [
+                "Proposal"
+              ],
+              "type": 6
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposlExecuted"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposals",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 5
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposalsExpired"
+      }
+    ],
     "lang_error": {
       "displayName": [
         "ink",
         "LangError"
       ],
-      "type": 9
+      "type": 14
     },
     "messages": [
       {
         "args": [
           {
-            "label": "new_create",
+            "label": "id",
             "type": {
               "displayName": [
-                "Option"
+                "String"
               ],
-              "type": 10
-            }
-          },
-          {
-            "label": "new_existential",
-            "type": {
-              "displayName": [
-                "Option"
-              ],
-              "type": 10
+              "type": 7
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "update_deposits",
-        "mutates": true,
+        "label": "get_proposal_by_id",
+        "mutates": false,
         "payable": false,
         "returnType": {
           "displayName": [
             "ink",
             "MessageResult"
           ],
-          "type": 11
+          "type": 15
         },
-        "selector": "0xa5f2f969"
+        "selector": "0x9d880359"
       },
       {
         "args": [
@@ -167,22 +284,48 @@
               "displayName": [
                 "u128"
               ],
-              "type": 5
-            }
-          },
-          {
-            "label": "validator",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 0
+              "type": 3
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "join_whitelist",
+        "label": "get_proposal_by_nft",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 15
+        },
+        "selector": "0xa80380cc"
+      },
+      {
+        "args": [
+          {
+            "label": "prop",
+            "type": {
+              "displayName": [
+                "PropType"
+              ],
+              "type": 8
+            }
+          },
+          {
+            "label": "nft_id",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 3
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "create_proposal",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -190,60 +333,43 @@
             "ink",
             "MessageResult"
           ],
-          "type": 11
+          "type": 17
         },
-        "selector": "0x44f449b6"
+        "selector": "0xf9fb13d3"
       },
       {
         "args": [
           {
-            "label": "validator",
+            "label": "prop_id",
             "type": {
               "displayName": [
-                "AccountId"
+                "String"
               ],
-              "type": 0
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "init_add_validator",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 11
-        },
-        "selector": "0x529c214d"
-      },
-      {
-        "args": [
-          {
-            "label": "validator",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 0
+              "type": 7
             }
           },
           {
-            "label": "slash",
+            "label": "nft_id",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 3
+            }
+          },
+          {
+            "label": "pro",
             "type": {
               "displayName": [
                 "bool"
               ],
-              "type": 18
+              "type": 11
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "reject_application",
+        "label": "vote",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -251,44 +377,9 @@
             "ink",
             "MessageResult"
           ],
-          "type": 11
+          "type": 17
         },
-        "selector": "0x13632a07"
-      },
-      {
-        "args": [
-          {
-            "label": "agent",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 0
-            }
-          },
-          {
-            "label": "slash",
-            "type": {
-              "displayName": [
-                "bool"
-              ],
-              "type": 18
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "remove_validator_by_agent",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 11
-        },
-        "selector": "0x14d034dc"
+        "selector": "0x083be260"
       }
     ]
   },
@@ -304,34 +395,25 @@
                   "ty": 0
                 }
               },
-              "name": "admin"
-            },
-            {
-              "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 0
-                }
-              },
-              "name": "registry"
-            },
-            {
-              "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 0
-                }
-              },
-              "name": "treasury"
-            },
-            {
-              "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 0
-                }
-              },
               "name": "gov_nft"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "vault"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "multisig"
             },
             {
               "layout": {
@@ -340,88 +422,92 @@
                   "ty": 3
                 }
               },
-              "name": "queued_validators"
+              "name": "execution_threshold"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 3
+                }
+              },
+              "name": "rejection_threshold"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 3
+                }
+              },
+              "name": "acceptance_threshold"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "creation_time"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "voting_delay"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "voting_period"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 5
+                }
+              },
+              "name": "proposals"
             },
             {
               "layout": {
                 "root": {
                   "layout": {
-                    "struct": {
-                      "fields": [
-                        {
-                          "layout": {
-                            "leaf": {
-                              "key": "0x043fc6e6",
-                              "ty": 0
-                            }
-                          },
-                          "name": "validator"
-                        },
-                        {
-                          "layout": {
-                            "leaf": {
-                              "key": "0x043fc6e6",
-                              "ty": 0
-                            }
-                          },
-                          "name": "admin"
-                        },
-                        {
-                          "layout": {
-                            "leaf": {
-                              "key": "0x043fc6e6",
-                              "ty": 5
-                            }
-                          },
-                          "name": "stake"
-                        }
-                      ],
-                      "name": "Validator"
+                    "leaf": {
+                      "key": "0x875249ad",
+                      "ty": 4
                     }
                   },
-                  "root_key": "0x043fc6e6"
+                  "root_key": "0x875249ad"
                 }
               },
-              "name": "deployed_validators"
+              "name": "last_proposal"
             },
             {
               "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 5
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0x56483f07",
+                      "ty": 11
+                    }
+                  },
+                  "root_key": "0x56483f07"
                 }
               },
-              "name": "token_stake_amount"
-            },
-            {
-              "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 5
-                }
-              },
-              "name": "create_deposit"
-            },
-            {
-              "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 5
-                }
-              },
-              "name": "existential_deposit"
-            },
-            {
-              "layout": {
-                "leaf": {
-                  "key": "0x00000000",
-                  "ty": 6
-                }
-              },
-              "name": "max_applicants"
+              "name": "voted"
             }
           ],
-          "name": "ValidatorWhitelist"
+          "name": "Governance"
         }
       },
       "root_key": "0x00000000"
@@ -471,9 +557,7 @@
       "id": 3,
       "type": {
         "def": {
-          "sequence": {
-            "type": 4
-          }
+          "primitive": "u128"
         }
       }
     },
@@ -481,38 +565,17 @@
       "id": 4,
       "type": {
         "def": {
-          "composite": {
-            "fields": [
-              {
-                "name": "validator",
-                "type": 0,
-                "typeName": "AccountId"
-              },
-              {
-                "name": "admin",
-                "type": 0,
-                "typeName": "AccountId"
-              },
-              {
-                "name": "stake",
-                "type": 5,
-                "typeName": "u128"
-              }
-            ]
-          }
-        },
-        "path": [
-          "validator_whitelist",
-          "validator_whitelist",
-          "Validator"
-        ]
+          "primitive": "u64"
+        }
       }
     },
     {
       "id": 5,
       "type": {
         "def": {
-          "primitive": "u128"
+          "sequence": {
+            "type": 6
+          }
         }
       }
     },
@@ -520,12 +583,68 @@
       "id": 6,
       "type": {
         "def": {
-          "primitive": "u16"
-        }
+          "composite": {
+            "fields": [
+              {
+                "name": "creation_timestamp",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "creator_id",
+                "type": 3,
+                "typeName": "u128"
+              },
+              {
+                "name": "prop_id",
+                "type": 7,
+                "typeName": "String"
+              },
+              {
+                "name": "prop_type",
+                "type": 8,
+                "typeName": "PropType"
+              },
+              {
+                "name": "pro_vote_count",
+                "type": 3,
+                "typeName": "u128"
+              },
+              {
+                "name": "con_vote_count",
+                "type": 3,
+                "typeName": "u128"
+              },
+              {
+                "name": "vote_start",
+                "type": 4,
+                "typeName": "u64"
+              },
+              {
+                "name": "vote_end",
+                "type": 4,
+                "typeName": "u64"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governance",
+          "governance",
+          "Proposal"
+        ]
       }
     },
     {
       "id": 7,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
+      "id": 8,
       "type": {
         "def": {
           "variant": {
@@ -533,7 +652,150 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 9,
+                    "typeName": "TokenTransfer"
+                  }
+                ],
+                "index": 0,
+                "name": "TransferFunds"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 1,
+                "name": "UpdateStakingRewards"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  }
+                ],
+                "index": 2,
+                "name": "AddCouncilMember"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  }
+                ],
+                "index": 3,
+                "name": "RemoveCouncilMember"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 10,
+                    "typeName": "u16"
+                  }
+                ],
+                "index": 4,
+                "name": "ThresholdChange"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 10,
+                    "typeName": "u16"
+                  }
+                ],
+                "index": 5,
+                "name": "FeeChange"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 4,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 6,
+                "name": "VoteDelayUpdate"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 4,
+                    "typeName": "u64"
+                  }
+                ],
+                "index": 7,
+                "name": "VotePeriodUpdate"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governance",
+          "governance",
+          "PropType"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "token",
+                "type": 0,
+                "typeName": "AccountId"
+              },
+              {
+                "name": "amount",
+                "type": 3,
+                "typeName": "u128"
+              },
+              {
+                "name": "to",
+                "type": 0,
+                "typeName": "AccountId"
+              }
+            ]
+          }
+        },
+        "path": [
+          "governance",
+          "governance",
+          "TokenTransfer"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "type": {
+        "def": {
+          "primitive": "u16"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "primitive": "bool"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 13
                   }
                 ],
                 "index": 0,
@@ -542,7 +804,7 @@
               {
                 "fields": [
                   {
-                    "type": 9
+                    "type": 14
                   }
                 ],
                 "index": 1,
@@ -554,11 +816,11 @@
         "params": [
           {
             "name": "T",
-            "type": 8
+            "type": 13
           },
           {
             "name": "E",
-            "type": 9
+            "type": 14
           }
         ],
         "path": [
@@ -567,7 +829,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 13,
       "type": {
         "def": {
           "tuple": []
@@ -575,7 +837,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 14,
       "type": {
         "def": {
           "variant": {
@@ -594,7 +856,49 @@
       }
     },
     {
-      "id": 10,
+      "id": 15,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 16
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 16
+          },
+          {
+            "name": "E",
+            "type": 14
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 16,
       "type": {
         "def": {
           "variant": {
@@ -606,7 +910,7 @@
               {
                 "fields": [
                   {
-                    "type": 5
+                    "type": 6
                   }
                 ],
                 "index": 1,
@@ -618,7 +922,7 @@
         "params": [
           {
             "name": "T",
-            "type": 5
+            "type": 6
           }
         ],
         "path": [
@@ -627,7 +931,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 17,
       "type": {
         "def": {
           "variant": {
@@ -635,7 +939,7 @@
               {
                 "fields": [
                   {
-                    "type": 12
+                    "type": 18
                   }
                 ],
                 "index": 0,
@@ -644,7 +948,7 @@
               {
                 "fields": [
                   {
-                    "type": 9
+                    "type": 14
                   }
                 ],
                 "index": 1,
@@ -656,11 +960,11 @@
         "params": [
           {
             "name": "T",
-            "type": 12
+            "type": 18
           },
           {
             "name": "E",
-            "type": 9
+            "type": 14
           }
         ],
         "path": [
@@ -669,26 +973,26 @@
       }
     },
     {
-      "id": 12,
+      "id": 18,
       "type": {
         "def": {
           "variant": {
             "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 8
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
               {
                 "fields": [
                   {
                     "type": 13
                   }
                 ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 19
+                  }
+                ],
                 "index": 1,
                 "name": "Err"
               }
@@ -698,11 +1002,11 @@
         "params": [
           {
             "name": "T",
-            "type": 8
+            "type": 13
           },
           {
             "name": "E",
-            "type": 13
+            "type": 19
           }
         ],
         "path": [
@@ -711,77 +1015,81 @@
       }
     },
     {
-      "id": 13,
+      "id": 19,
       "type": {
         "def": {
           "variant": {
             "variants": [
               {
                 "index": 0,
-                "name": "Invalid"
+                "name": "RegistryFailure"
               },
               {
                 "index": 1,
+                "name": "MultiSigError"
+              },
+              {
+                "index": 2,
+                "name": "VaultFailure"
+              },
+              {
+                "index": 3,
                 "name": "Unauthorized"
               },
               {
-                "index": 2,
-                "name": "InvalidStake"
-              },
-              {
-                "index": 3,
-                "name": "InvalidTimeWindow"
-              },
-              {
                 "index": 4,
-                "name": "AlreadyOnList"
+                "name": "InvalidInput"
               },
               {
                 "index": 5,
-                "name": "RegistryError"
+                "name": "InvalidVotePeriodUpdate"
               },
               {
-                "fields": [
-                  {
-                    "type": 14,
-                    "typeName": "PSP34Error"
-                  }
-                ],
                 "index": 6,
-                "name": "NFTError"
+                "name": "InvalidVoteWeight"
+              },
+              {
+                "index": 7,
+                "name": "MaxProposals"
+              },
+              {
+                "index": 8,
+                "name": "ExistingProposal"
+              },
+              {
+                "index": 9,
+                "name": "NonExistingProposal"
+              },
+              {
+                "index": 10,
+                "name": "ProposalInactive"
+              },
+              {
+                "index": 11,
+                "name": "DoubleVote"
               },
               {
                 "fields": [
                   {
-                    "type": 16,
+                    "type": 20,
                     "typeName": "PSP22Error"
                   }
                 ],
-                "index": 7,
+                "index": 12,
                 "name": "TokenError"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 17,
-                    "typeName": "RuntimeError"
-                  }
-                ],
-                "index": 8,
-                "name": "InternalError"
               }
             ]
           }
         },
         "path": [
-          "validator_whitelist",
-          "validator_whitelist",
-          "WhitelistError"
+          "governance",
+          "governance",
+          "GovernanceError"
         ]
       }
     },
     {
-      "id": 14,
+      "id": 20,
       "type": {
         "def": {
           "variant": {
@@ -789,67 +1097,7 @@
               {
                 "fields": [
                   {
-                    "type": 15,
-                    "typeName": "String"
-                  }
-                ],
-                "index": 0,
-                "name": "Custom"
-              },
-              {
-                "index": 1,
-                "name": "SelfApprove"
-              },
-              {
-                "index": 2,
-                "name": "NotApproved"
-              },
-              {
-                "index": 3,
-                "name": "TokenExists"
-              },
-              {
-                "index": 4,
-                "name": "TokenNotExists"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 15,
-                    "typeName": "String"
-                  }
-                ],
-                "index": 5,
-                "name": "SafeTransferCheckFailed"
-              }
-            ]
-          }
-        },
-        "path": [
-          "psp34",
-          "errors",
-          "PSP34Error"
-        ]
-      }
-    },
-    {
-      "id": 15,
-      "type": {
-        "def": {
-          "primitive": "str"
-        }
-      }
-    },
-    {
-      "id": 16,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 15,
+                    "type": 7,
                     "typeName": "String"
                   }
                 ],
@@ -875,7 +1123,7 @@
               {
                 "fields": [
                   {
-                    "type": 15,
+                    "type": 7,
                     "typeName": "String"
                   }
                 ],
@@ -893,39 +1141,7 @@
       }
     },
     {
-      "id": 17,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "index": 0,
-                "name": "CallRuntimeFailed"
-              },
-              {
-                "index": 1,
-                "name": "Unauthorized"
-              }
-            ]
-          }
-        },
-        "path": [
-          "validator_whitelist",
-          "validator_whitelist",
-          "RuntimeError"
-        ]
-      }
-    },
-    {
-      "id": 18,
-      "type": {
-        "def": {
-          "primitive": "bool"
-        }
-      }
-    },
-    {
-      "id": 19,
+      "id": 21,
       "type": {
         "def": {
           "composite": {
@@ -945,15 +1161,7 @@
       }
     },
     {
-      "id": 20,
-      "type": {
-        "def": {
-          "primitive": "u64"
-        }
-      }
-    },
-    {
-      "id": 21,
+      "id": 22,
       "type": {
         "def": {
           "primitive": "u32"
@@ -961,7 +1169,7 @@
       }
     },
     {
-      "id": 22,
+      "id": 23,
       "type": {
         "def": {
           "variant": {}

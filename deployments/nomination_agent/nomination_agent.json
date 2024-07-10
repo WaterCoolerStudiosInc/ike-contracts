@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xb5ed3f109891772608dd099feed5f022a9c9ba4550e5f27c1f6bb931cd9818df",
+    "hash": "0x078f05794be18274eee7815633d93f838533e9242e568edb04472d6e215f6a07",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -14,7 +14,7 @@
     }
   },
   "contract": {
-    "name": "share_token",
+    "name": "nomination_agent",
     "version": "0.1.0",
     "authors": [
       "Brandon <brandon@kintsu.xyz>",
@@ -24,36 +24,78 @@
   "spec": {
     "constructors": [
       {
-        "args": [
-          {
-            "label": "name",
-            "type": {
-              "displayName": [
-                "Option"
-              ],
-              "type": 5
-            }
-          },
-          {
-            "label": "symbol",
-            "type": {
-              "displayName": [
-                "Option"
-              ],
-              "type": 5
-            }
-          }
-        ],
+        "args": [],
         "default": false,
         "docs": [],
-        "label": "new",
+        "label": "deploy_hash",
         "payable": false,
         "returnType": {
           "displayName": [
             "ink_primitives",
             "ConstructorResult"
           ],
-          "type": 6
+          "type": 5
+        },
+        "selector": "0x5b7f6cd1"
+      },
+      {
+        "args": [
+          {
+            "label": "vault",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "validator",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "creation_bond",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          },
+          {
+            "label": "existential_deposit",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "new",
+        "payable": true,
+        "returnType": {
+          "displayName": [
+            "ink_primitives",
+            "ConstructorResult"
+          ],
+          "type": 5
         },
         "selector": "0x9bae9d5e"
       }
@@ -64,152 +106,64 @@
         "displayName": [
           "AccountId"
         ],
-        "type": 1
+        "type": 0
       },
       "balance": {
         "displayName": [
           "Balance"
         ],
-        "type": 0
+        "type": 4
       },
       "blockNumber": {
         "displayName": [
           "BlockNumber"
         ],
-        "type": 20
+        "type": 3
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 21
+        "type": 23
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 18
+        "type": 21
       },
       "maxEventTopics": 4,
       "timestamp": {
         "displayName": [
           "Timestamp"
         ],
-        "type": 19
+        "type": 22
       }
     },
-    "events": [
-      {
-        "args": [
-          {
-            "docs": [],
-            "indexed": true,
-            "label": "owner",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "docs": [],
-            "indexed": true,
-            "label": "spender",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "amount",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          }
-        ],
-        "docs": [],
-        "label": "Approval"
-      },
-      {
-        "args": [
-          {
-            "docs": [],
-            "indexed": true,
-            "label": "from",
-            "type": {
-              "displayName": [
-                "Option"
-              ],
-              "type": 17
-            }
-          },
-          {
-            "docs": [],
-            "indexed": true,
-            "label": "to",
-            "type": {
-              "displayName": [
-                "Option"
-              ],
-              "type": 17
-            }
-          },
-          {
-            "docs": [],
-            "indexed": false,
-            "label": "value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          }
-        ],
-        "docs": [],
-        "label": "Transfer"
-      }
-    ],
+    "events": [],
     "lang_error": {
       "displayName": [
         "ink",
         "LangError"
       ],
-      "type": 8
+      "type": 7
     },
     "messages": [
       {
         "args": [
           {
-            "label": "to",
+            "label": "pool_id",
             "type": {
               "displayName": [
-                "AccountId"
+                "u32"
               ],
-              "type": 1
-            }
-          },
-          {
-            "label": "value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
+              "type": 3
             }
           }
         ],
         "default": false,
         "docs": [],
-        "label": "mint",
+        "label": "INominationAgent::initialize",
         "mutates": true,
         "payable": false,
         "returnType": {
@@ -217,16 +171,84 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 8
         },
-        "selector": "0x00001e61"
+        "selector": "0x00000000"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_owner",
-        "mutates": false,
+        "label": "INominationAgent::deposit",
+        "mutates": true,
+        "payable": true,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000001"
+      },
+      {
+        "args": [
+          {
+            "label": "amount",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 4
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::start_unbond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000002"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::withdraw_unbonded",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000003"
+      },
+      {
+        "args": [
+          {
+            "label": "incentive_percentage",
+            "type": {
+              "displayName": [
+                "u16"
+              ],
+              "type": 11
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::compound",
+        "mutates": true,
         "payable": false,
         "returnType": {
           "displayName": [
@@ -235,318 +257,13 @@
           ],
           "type": 12
         },
-        "selector": "0x07fcd0b1"
-      },
-      {
-        "args": [
-          {
-            "label": "value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22Burnable::burn",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0x7a9da510"
+        "selector": "0x00000004"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "PSP22::total_supply",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 13
-        },
-        "selector": "0x162df8c2"
-      },
-      {
-        "args": [
-          {
-            "label": "owner",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::balance_of",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 13
-        },
-        "selector": "0x6568382f"
-      },
-      {
-        "args": [
-          {
-            "label": "owner",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "spender",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::allowance",
-        "mutates": false,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 13
-        },
-        "selector": "0x4d47d921"
-      },
-      {
-        "args": [
-          {
-            "label": "to",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          },
-          {
-            "label": "_data",
-            "type": {
-              "displayName": [
-                "Vec"
-              ],
-              "type": 14
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::transfer",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0xdb20f9f5"
-      },
-      {
-        "args": [
-          {
-            "label": "from",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "to",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          },
-          {
-            "label": "_data",
-            "type": {
-              "displayName": [
-                "Vec"
-              ],
-              "type": 14
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::transfer_from",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0x54b3c76e"
-      },
-      {
-        "args": [
-          {
-            "label": "spender",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::approve",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0xb20f1bbd"
-      },
-      {
-        "args": [
-          {
-            "label": "spender",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "delta_value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::increase_allowance",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0x96d6b57a"
-      },
-      {
-        "args": [
-          {
-            "label": "spender",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "label": "delta_value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 0
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "PSP22::decrease_allowance",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 9
-        },
-        "selector": "0xfecb57d5"
-      },
-      {
-        "args": [],
-        "default": false,
-        "docs": [],
-        "label": "PSP22Metadata::token_name",
+        "label": "INominationAgent::get_staked_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -556,13 +273,13 @@
           ],
           "type": 15
         },
-        "selector": "0x3d261bd4"
+        "selector": "0x0000000c"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "PSP22Metadata::token_symbol",
+        "label": "INominationAgent::get_unbonding_value",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -572,13 +289,13 @@
           ],
           "type": 15
         },
-        "selector": "0x34205be5"
+        "selector": "0x0000000d"
       },
       {
         "args": [],
         "default": false,
         "docs": [],
-        "label": "PSP22Metadata::token_decimals",
+        "label": "INominationAgent::get_vault",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -588,7 +305,157 @@
           ],
           "type": 16
         },
-        "selector": "0x7271b782"
+        "selector": "0x49767b99"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_admin",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xe63ca2d5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_validator",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xe55bf6b5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_pool_id",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x78810bd5"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "INominationAgent::get_pool_state",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 19
+        },
+        "selector": "0xd0ef7b93"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Step 1 of 3 in finalizing the nomination pool's lifecycle",
+          " Performs the following actions:",
+          "     1) Puts the pool in a Destroying state",
+          "     2) Removes the validator nomination",
+          "     3) Begins unbonding the initial bond",
+          "",
+          " Can only be called by registry",
+          " Must have no protocol funds staked",
+          " Must have no protocol funds unbonding",
+          " Must have been initialized"
+        ],
+        "label": "INominationAgent::destroy",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000065"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [
+          " Step 2 of 3 in finalizing the nomination pool's lifecycle",
+          " Might need to permissionlessly unbond/withdraw members",
+          " When a pool state is Destroying, `unbond` and `withdrawUnbonded` become permissionless",
+          " Performs the following actions:",
+          "     1) Begins unbonding the initial bond",
+          "",
+          " Can only be called by admin",
+          " Must be called after `destroy()`"
+        ],
+        "label": "INominationAgent::admin_unbond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000066"
+      },
+      {
+        "args": [
+          {
+            "label": "to",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Step 3 of 3 in finalizing the nomination pool's lifecycle",
+          " Performs the following actions:",
+          "     1) Withdraws the (now unbonded) initial bond",
+          "     2) Transfers the initial bond to any account of choice",
+          "",
+          " Can only be called by admin",
+          " Must be called after `destroy()`"
+        ],
+        "label": "INominationAgent::admin_withdraw_bond",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x00000067"
       }
     ]
   },
@@ -599,68 +466,39 @@
           "fields": [
             {
               "layout": {
-                "struct": {
-                  "fields": [
-                    {
-                      "layout": {
-                        "leaf": {
-                          "key": "0x00000000",
-                          "ty": 0
-                        }
-                      },
-                      "name": "total_supply"
-                    },
-                    {
-                      "layout": {
-                        "root": {
-                          "layout": {
-                            "leaf": {
-                              "key": "0x45c746d4",
-                              "ty": 0
-                            }
-                          },
-                          "root_key": "0x45c746d4"
-                        }
-                      },
-                      "name": "balances"
-                    },
-                    {
-                      "layout": {
-                        "root": {
-                          "layout": {
-                            "leaf": {
-                              "key": "0x00efb3a1",
-                              "ty": 0
-                            }
-                          },
-                          "root_key": "0x00efb3a1"
-                        }
-                      },
-                      "name": "allowances"
-                    }
-                  ],
-                  "name": "PSP22Data"
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
                 }
               },
-              "name": "data"
+              "name": "vault"
             },
             {
               "layout": {
                 "leaf": {
                   "key": "0x00000000",
-                  "ty": 1
+                  "ty": 0
                 }
               },
-              "name": "owner"
+              "name": "registry"
             },
             {
               "layout": {
                 "leaf": {
                   "key": "0x00000000",
-                  "ty": 1
+                  "ty": 0
                 }
               },
-              "name": "operator"
+              "name": "admin"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "validator"
             },
             {
               "layout": {
@@ -678,7 +516,7 @@
                           "layout": {
                             "leaf": {
                               "key": "0x00000000",
-                              "ty": 4
+                              "ty": 3
                             }
                           },
                           "name": "0"
@@ -689,48 +527,60 @@
                   }
                 }
               },
-              "name": "name"
+              "name": "pool_id"
             },
             {
               "layout": {
                 "enum": {
                   "dispatchKey": "0x00000000",
-                  "name": "Option",
+                  "name": "PoolState",
                   "variants": {
                     "0": {
                       "fields": [],
-                      "name": "None"
+                      "name": "Open"
                     },
                     "1": {
-                      "fields": [
-                        {
-                          "layout": {
-                            "leaf": {
-                              "key": "0x00000000",
-                              "ty": 4
-                            }
-                          },
-                          "name": "0"
-                        }
-                      ],
-                      "name": "Some"
+                      "fields": [],
+                      "name": "Blocked"
+                    },
+                    "2": {
+                      "fields": [],
+                      "name": "Destroying"
                     }
                   }
                 }
               },
-              "name": "symbol"
+              "name": "pool_state"
             },
             {
               "layout": {
                 "leaf": {
                   "key": "0x00000000",
-                  "ty": 3
+                  "ty": 4
                 }
               },
-              "name": "decimals"
+              "name": "staked"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "unbonding"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 4
+                }
+              },
+              "name": "creation_bond"
             }
           ],
-          "name": "Token"
+          "name": "NominationAgent"
         }
       },
       "root_key": "0x00000000"
@@ -741,18 +591,10 @@
       "id": 0,
       "type": {
         "def": {
-          "primitive": "u128"
-        }
-      }
-    },
-    {
-      "id": 1,
-      "type": {
-        "def": {
           "composite": {
             "fields": [
               {
-                "type": 2,
+                "type": 1,
                 "typeName": "[u8; 32]"
               }
             ]
@@ -766,18 +608,18 @@
       }
     },
     {
-      "id": 2,
+      "id": 1,
       "type": {
         "def": {
           "array": {
             "len": 32,
-            "type": 3
+            "type": 2
           }
         }
       }
     },
     {
-      "id": 3,
+      "id": 2,
       "type": {
         "def": {
           "primitive": "u8"
@@ -785,10 +627,18 @@
       }
     },
     {
+      "id": 3,
+      "type": {
+        "def": {
+          "primitive": "u32"
+        }
+      }
+    },
+    {
       "id": 4,
       "type": {
         "def": {
-          "primitive": "str"
+          "primitive": "u128"
         }
       }
     },
@@ -799,42 +649,9 @@
           "variant": {
             "variants": [
               {
-                "index": 0,
-                "name": "None"
-              },
-              {
                 "fields": [
                   {
-                    "type": 4
-                  }
-                ],
-                "index": 1,
-                "name": "Some"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 4
-          }
-        ],
-        "path": [
-          "Option"
-        ]
-      }
-    },
-    {
-      "id": 6,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 7
+                    "type": 6
                   }
                 ],
                 "index": 0,
@@ -843,7 +660,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 7
                   }
                 ],
                 "index": 1,
@@ -855,11 +672,11 @@
         "params": [
           {
             "name": "T",
-            "type": 7
+            "type": 6
           },
           {
             "name": "E",
-            "type": 8
+            "type": 7
           }
         ],
         "path": [
@@ -868,7 +685,7 @@
       }
     },
     {
-      "id": 7,
+      "id": 6,
       "type": {
         "def": {
           "tuple": []
@@ -876,7 +693,7 @@
       }
     },
     {
-      "id": 8,
+      "id": 7,
       "type": {
         "def": {
           "variant": {
@@ -895,7 +712,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 8,
       "type": {
         "def": {
           "variant": {
@@ -903,7 +720,7 @@
               {
                 "fields": [
                   {
-                    "type": 10
+                    "type": 9
                   }
                 ],
                 "index": 0,
@@ -912,7 +729,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 7
                   }
                 ],
                 "index": 1,
@@ -924,11 +741,53 @@
         "params": [
           {
             "name": "T",
-            "type": 10
+            "type": 9
           },
           {
             "name": "E",
-            "type": 8
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 6
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 10
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 6
+          },
+          {
+            "name": "E",
+            "type": 10
           }
         ],
         "path": [
@@ -943,38 +802,36 @@
           "variant": {
             "variants": [
               {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
                 "index": 0,
-                "name": "Ok"
+                "name": "CallRuntimeFailed"
               },
               {
-                "fields": [
-                  {
-                    "type": 11
-                  }
-                ],
                 "index": 1,
-                "name": "Err"
+                "name": "Unauthorized"
+              },
+              {
+                "index": 2,
+                "name": "Active"
+              },
+              {
+                "index": 3,
+                "name": "InvalidPoolState"
+              },
+              {
+                "index": 4,
+                "name": "Initialized"
+              },
+              {
+                "index": 5,
+                "name": "NotInitialized"
               }
             ]
           }
         },
-        "params": [
-          {
-            "name": "T",
-            "type": 7
-          },
-          {
-            "name": "E",
-            "type": 11
-          }
-        ],
         "path": [
-          "Result"
+          "nomination_agent",
+          "errors",
+          "RuntimeError"
         ]
       }
     },
@@ -982,52 +839,8 @@
       "id": 11,
       "type": {
         "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 4,
-                    "typeName": "String"
-                  }
-                ],
-                "index": 0,
-                "name": "Custom"
-              },
-              {
-                "index": 1,
-                "name": "InsufficientBalance"
-              },
-              {
-                "index": 2,
-                "name": "InsufficientAllowance"
-              },
-              {
-                "index": 3,
-                "name": "ZeroRecipientAddress"
-              },
-              {
-                "index": 4,
-                "name": "ZeroSenderAddress"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 4,
-                    "typeName": "String"
-                  }
-                ],
-                "index": 5,
-                "name": "SafeTransferCheckFailed"
-              }
-            ]
-          }
-        },
-        "path": [
-          "psp22",
-          "errors",
-          "PSP22Error"
-        ]
+          "primitive": "u16"
+        }
       }
     },
     {
@@ -1039,7 +852,7 @@
               {
                 "fields": [
                   {
-                    "type": 1
+                    "type": 13
                   }
                 ],
                 "index": 0,
@@ -1048,7 +861,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 7
                   }
                 ],
                 "index": 1,
@@ -1060,11 +873,11 @@
         "params": [
           {
             "name": "T",
-            "type": 1
+            "type": 13
           },
           {
             "name": "E",
-            "type": 8
+            "type": 7
           }
         ],
         "path": [
@@ -1081,7 +894,7 @@
               {
                 "fields": [
                   {
-                    "type": 0
+                    "type": 14
                   }
                 ],
                 "index": 0,
@@ -1090,7 +903,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 10
                   }
                 ],
                 "index": 1,
@@ -1102,11 +915,11 @@
         "params": [
           {
             "name": "T",
-            "type": 0
+            "type": 14
           },
           {
             "name": "E",
-            "type": 8
+            "type": 10
           }
         ],
         "path": [
@@ -1118,9 +931,10 @@
       "id": 14,
       "type": {
         "def": {
-          "sequence": {
-            "type": 3
-          }
+          "tuple": [
+            4,
+            4
+          ]
         }
       }
     },
@@ -1133,7 +947,7 @@
               {
                 "fields": [
                   {
-                    "type": 5
+                    "type": 4
                   }
                 ],
                 "index": 0,
@@ -1142,7 +956,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 7
                   }
                 ],
                 "index": 1,
@@ -1154,11 +968,11 @@
         "params": [
           {
             "name": "T",
-            "type": 5
+            "type": 4
           },
           {
             "name": "E",
-            "type": 8
+            "type": 7
           }
         ],
         "path": [
@@ -1175,7 +989,7 @@
               {
                 "fields": [
                   {
-                    "type": 3
+                    "type": 0
                   }
                 ],
                 "index": 0,
@@ -1184,7 +998,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 7
                   }
                 ],
                 "index": 1,
@@ -1196,11 +1010,11 @@
         "params": [
           {
             "name": "T",
-            "type": 3
+            "type": 0
           },
           {
             "name": "E",
-            "type": 8
+            "type": 7
           }
         ],
         "path": [
@@ -1215,13 +1029,55 @@
           "variant": {
             "variants": [
               {
+                "fields": [
+                  {
+                    "type": 18
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 18
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
                 "index": 0,
                 "name": "None"
               },
               {
                 "fields": [
                   {
-                    "type": 1
+                    "type": 3
                   }
                 ],
                 "index": 1,
@@ -1233,7 +1089,7 @@
         "params": [
           {
             "name": "T",
-            "type": 1
+            "type": 3
           }
         ],
         "path": [
@@ -1242,13 +1098,83 @@
       }
     },
     {
-      "id": 18,
+      "id": 19,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 20
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 20
+          },
+          {
+            "name": "E",
+            "type": 7
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 0,
+                "name": "Open"
+              },
+              {
+                "index": 1,
+                "name": "Blocked"
+              },
+              {
+                "index": 2,
+                "name": "Destroying"
+              }
+            ]
+          }
+        },
+        "path": [
+          "nomination_agent",
+          "data",
+          "PoolState"
+        ]
+      }
+    },
+    {
+      "id": 21,
       "type": {
         "def": {
           "composite": {
             "fields": [
               {
-                "type": 2,
+                "type": 1,
                 "typeName": "[u8; 32]"
               }
             ]
@@ -1262,7 +1188,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 22,
       "type": {
         "def": {
           "primitive": "u64"
@@ -1270,15 +1196,7 @@
       }
     },
     {
-      "id": 20,
-      "type": {
-        "def": {
-          "primitive": "u32"
-        }
-      }
-    },
-    {
-      "id": 21,
+      "id": 23,
       "type": {
         "def": {
           "variant": {}
