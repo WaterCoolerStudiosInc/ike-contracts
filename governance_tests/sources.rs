@@ -109,6 +109,12 @@ pub fn hash_share_token() -> String {
     artifact.source.hash
 }
 
+pub fn hash_nominator() -> String {
+    let json = read_to_string("../deployments/mock_nominator/mock_nominator.json").unwrap();
+    let artifact: Artifact = from_str(&json).expect("Should extract hash from mock_nominator.json");
+    artifact.source.hash
+}
+
 // Transcoders for making contract calls
 
 pub fn transcoder_registry() -> Option<Rc<ContractMessageTranscoder>> {
@@ -143,9 +149,19 @@ pub fn transcoder_nominator() -> Option<Rc<ContractMessageTranscoder>> {
             .expect("Failed to create transcoder"),
     ))
 }
-
+pub fn transcoder_multisig() -> Option<Rc<ContractMessageTranscoder>> {
+    Some(Rc::new(
+        ContractMessageTranscoder::load(PathBuf::from(
+            "../deployments/multisig/multisig.json",
+        ))
+            .expect("Failed to create transcoder"),
+    ))
+}
 // Bytes for instantiating contracts
-
+pub fn bytes_multisig() -> Vec<u8> {
+    read("../deployments/multisig/multisig.wasm")
+        .expect("Failed to find or read contract file")
+}
 pub fn bytes_registry() -> Vec<u8> {
     read("../deployments/registry/registry.wasm")
         .expect("Failed to find or read contract file")

@@ -7,24 +7,57 @@ mod tests {
         chain_api::ChainApi,
         runtime::MinimalRuntime,
         session::Session,
-        AccountId32,
+        AccountId32
+
     };
-   
+    use std::fmt;
+
     use drink::session::NO_ARGS;
     use drink::session::contract_transcode::ContractMessageTranscoder;
     use std::error::Error;
     use crate::sources::*;
     use std::rc::Rc;
-    use governance::PropType;
+    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct TokenTransfer {
+        token: AccountId32,
+        amount: u128,
+        to: AccountId32,
+    }
+    #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum PropType {
+        TransferFunds(TokenTransfer),
+        UpdateStakingRewards(u128),
+        AddCouncilMember(AccountId32),
+        RemoveCouncilMember(AccountId32),
+        ThresholdChange(u16),
+        FeeChange(u16),
+        VoteDelayUpdate(u64),
+        VotePeriodUpdate(u64),
+    }
+    impl fmt::Display for PropType {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "{:?}", self)
+            // or, alternatively:
+            // fmt::Debug::fmt(self, f)
+        }
+    }
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     pub struct GovernanceData {
         pub block_created:u64,
         pub vote_weight:u128
      }
     const TOTAL_SUPPLY:u128=100_000_000_000_000_000_u128;
-    let ACC_THRESHOLD=TOTAL_SUPPLY/5;
-    let REJECT_THRESHOLD=TOTAL_SUPPLY/5;
-    let EXEC_THRESHOLD=TOTAL_SUPPLY/5;
+    const ACC_THRESHOLD:u128=TOTAL_SUPPLY/5;
+    const REJECT_THRESHOLD:u128=TOTAL_SUPPLY/5;
+    const EXEC_THRESHOLD:u128=TOTAL_SUPPLY/5;
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token:AccountId32,
@@ -175,11 +208,26 @@ mod tests {
             &[
                 hash_share_token(),
                 hash_registry(),
+                hash_nominator()
             ],
             vec![1],
             None,
             &transcoder_vault().unwrap(),
         )?;
+        let mut sess = call_function(
+            sess,
+            &vault,
+            &bob,
+            String::from("get_registry_contract"),
+            None,
+            None,
+            transcoder_vault(),
+        )
+            .unwrap();
+        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let registry = rr.unwrap();
+        println!("{:?}",registry);
+        //sess.set_transcoder(registry.clone)
         /**
          * vault: AccountId,
             _multisig:AccountId,
@@ -192,13 +240,15 @@ mod tests {
             bytes_multisig(),
             "new",
             &[
-                hash_share_token(),
-                hash_registry(),
+                bob.to_string(),
+                vault.to_string(),
+                registry.to_string(),
             ],
             vec![1],
             None,
-            &transcoder_vault().unwrap(),
+            &transcoder_multisig().unwrap(),
         )?;
+        println!("{:?}","Deployed multisig");
         let governance = sess.deploy(
             bytes_governance(),
             "new",
@@ -214,7 +264,7 @@ mod tests {
             None,
             &transcoder_governance().unwrap(),
         )?;
-        
+        println!("{:?}","Deployed governance");
         Ok(TestContext {
             sess,
             gov_token,
@@ -415,7 +465,7 @@ mod tests {
         let mut ctx = setup().unwrap();
         ctx=wrap_tokens(ctx,TOTAL_SUPPLY/5).unwrap();
         let prop= PropType::UpdateStakingRewards(70000000_128);
-        let sess=call_function(ctx.sess,&ctx.governance,&ctx.alice,String::from('create_proposal'),Some(vec![prop,1]),None,transcoder_governance());
+        let sess=call_function(ctx.sess,&ctx.governance,&ctx.alice,String::from("create_proposal"),Some(vec![prop.to_string(),1.to_string()]),None,transcoder_governance());
         Ok(())
     }
     #[test]
