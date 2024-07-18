@@ -2,7 +2,7 @@
 
 #[ink::contract]
 pub mod governance {
-    
+    use hex::*;
     use vault::Vault;
     use governance_nft::GovernanceNFT;
     use multisig::MultiSig;
@@ -46,6 +46,7 @@ pub mod governance {
     )]
     pub enum PropType {
         TransferFunds(TokenTransfer),
+        NativeTokenTransfer(u128),
         UpdateStakingRewards(u128),
         AddCouncilMember(AccountId),
         RemoveCouncilMember(AccountId),
@@ -296,14 +297,36 @@ pub mod governance {
             }
         }
         #[ink(message)]
-        pub fn get_proposal_by_id(&self,id:String) -> Option<Proposal>{
+        pub fn get_proposal_by_id(&self,id:String) -> Proposal{
             self.proposals.clone().into_iter()
-            .find(|p| p.prop_id == id)    
+            .find(|p| p.prop_id == id).unwrap_or(Proposal {
+                creation_timestamp:0,
+                creator_id:0,
+                prop_type: PropType::FeeChange(0),
+                prop_id: String::from("EMPTY"),
+                pro_vote_count: 0u128,
+                con_vote_count: 0u128,
+                vote_start: 0,
+                vote_end: 0,
+            })   
         }
         #[ink(message)]
-        pub fn get_proposal_by_nft(&self,id:u128) -> Option<Proposal>{
+        pub fn get_all_proposals(&self)->Vec<Proposal>{
+            self.proposals.clone()
+        }
+        #[ink(message)]
+        pub fn get_proposal_by_nft(&self,id:u128) -> Proposal{
             self.proposals.clone().into_iter()
-            .find(|p| p.creator_id == id)    
+            .find(|p| p.creator_id == id).unwrap_or(Proposal {
+                creation_timestamp:0,
+                creator_id:0,
+                prop_type: PropType::FeeChange(0),
+                prop_id: String::from("EMPTY"),
+                pro_vote_count: 0u128,
+                con_vote_count: 0u128,
+                vote_start: 0,
+                vote_end: 0,
+            })    
         }
         #[ink(message)]
         pub fn create_proposal(
@@ -320,7 +343,8 @@ pub mod governance {
                        proposals:expired
                     }),
                 );
-            }            
+            } 
+                      
             if self.check_ownership(nft_id, Self::env().caller()) != true {
                 return Err(GovernanceError::Unauthorized);
             }
@@ -348,11 +372,15 @@ pub mod governance {
             {
                 return Err(GovernanceError::ExistingProposal);
             }
+            
             // Generate Unique ID for proposals 
             let encodable = (Self::env().block_timestamp(), nft_id);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
-            let key_string = String::from_utf8(output.to_vec()).unwrap();
+            debug_println!("{:?}{}",output.to_vec(),"Hash VALUE");
+            // encode as hex string
+            let key_string=encode(output);
+           
             let new_prop=Proposal {
                 creation_timestamp: Self::env().block_timestamp(),
                 creator_id: nft_id,
@@ -370,6 +398,7 @@ pub mod governance {
                    proposal:new_prop
                 }),
             );
+            
             Ok(())
         }
 

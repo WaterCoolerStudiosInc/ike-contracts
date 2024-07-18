@@ -163,11 +163,11 @@ mod governance_nft {
         #[ink(message,selector = 8057)]
         pub fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
              // Add security, restrict usage of the message
-             if self.env().caller() != self.admin {
+            if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
 
-             let _id=Id::U128(self.mint_count);
+             let _id=Id::U128(id);
             
              let events = self.data.burn(self.env().caller(), account, _id)?;
              self.emit_events(events);

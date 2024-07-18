@@ -123,8 +123,14 @@ mod staking {
             Ok(())
         }
         fn calculate_reward_share(&mut self,curr_time: u64,last_update:u64,stake_balance:u128)-> u128{
+            debug_println!("{}{}",curr_time," CURRTIME");
+            debug_println!("{}{}",last_update," UPDATE");
+            debug_println!("{}{}",stake_balance," STAKE");
+            debug_println!("{}{}",self.accumulated_rewards," ACCUMULATED");
+            debug_println!("{}{}",self.reward_stake_accumulation," REWARD");
             let user_stake_weight=stake_balance*((curr_time-last_update) as u128);
             (self.accumulated_rewards*user_stake_weight)/self.reward_stake_accumulation
+            //0_u128
         }
 
         #[ink(constructor)]
@@ -172,6 +178,8 @@ mod staking {
             if caller != self.governor{
                 return Err(StakingError::Unauthorized)
             }
+            let now = Self::env().block_timestamp();
+            self.update_stake_accumulation(now)?;
             self.rewards_per_second=new_rate;
             Ok(())
         }
@@ -225,7 +233,7 @@ mod staking {
             }
             Ok(())
         }
-        #[ink(message)]
+        /*#[ink(message)]
         pub fn remove_token_value(
             &mut self,
             token_value: u128,
@@ -242,6 +250,7 @@ mod staking {
             self.staked_token_balance-=token_value;
             Ok(())
         }
+        */
         #[ink(message)]
         pub fn claim_staking_rewards(&mut self,token_id: u128)->Result<(), StakingError> {
             let now = Self::env().block_timestamp();
@@ -268,14 +277,14 @@ mod staking {
             let last_claim= self.last_reward_claim.get(token_id).unwrap_or(data.block_created);
             let reward= self.calculate_reward_share(now,last_claim,data.vote_weight);
            
-            self.staked_token_balance-=data.vote_weight;
+            self.staked_token_balance-= data.vote_weight;
             self.unstake_requests
-                .insert(token_id, &UnstakeRequest{time:now, token_value:data.vote_weight+reward,owner:caller});
+               .insert(token_id, &UnstakeRequest{time:now, token_value:data.vote_weight+reward,owner:caller});
             self.burn_psp34(caller, token_id)?;
             Ok(())
         }
         #[ink(message)]
-        pub fn unwrap(&mut self, token_id: u128) -> Result<(), StakingError> {
+        pub fn complete_request(&mut self, token_id: u128) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
             let data=  self.unstake_requests.get(token_id).unwrap();

@@ -8,8 +8,8 @@ mod helpers;
 mod tests {
     use drink::{chain_api::ChainApi, runtime::MinimalRuntime, session::Session, AccountId32};
     use std::fmt;
-
-    use crate::helpers::{call_function, query_proposal, update_days};
+    use psp34::{Id};
+    use crate::helpers::{call_function, query_proposal,query_token_balance,query_allowance, update_days};
     use crate::sources::*;
     use drink::session::contract_transcode::ContractMessageTranscoder;
     use drink::session::NO_ARGS;
@@ -63,15 +63,18 @@ mod tests {
             // fmt::Debug::fmt(self, f)
         }
     }
+   
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     pub struct GovernanceData {
         pub block_created: u64,
         pub vote_weight: u128,
     }
     const TOTAL_SUPPLY: u128 = 100_000_000_000_000_000_u128;
-    const ACC_THRESHOLD: u128 = TOTAL_SUPPLY / 5;
-    const REJECT_THRESHOLD: u128 = TOTAL_SUPPLY / 5;
-    const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 5;
+    const ACC_THRESHOLD: u128 = TOTAL_SUPPLY / 20;
+    const REJECT_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
+    const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
+    const USER_SUPPLY:u128=TOTAL_SUPPLY / 10;
+
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token: AccountId32,
@@ -151,7 +154,7 @@ mod tests {
         println!("{:?}", stake_contract.to_string());
         println!("{:?}", gov_token.to_string());
         println!("{:?}", gov_nft.to_string());
-        let user_tokens = TOTAL_SUPPLY / 5;
+        let user_tokens = USER_SUPPLY;
         let sess = call_function(
             sess,
             &gov_token,
@@ -231,6 +234,7 @@ mod tests {
             transcoder_vault(),
         )
         .unwrap();
+    
         let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
         let registry = rr.unwrap();
         println!("{:?}", registry);
@@ -267,6 +271,7 @@ mod tests {
             None,
             &transcoder_governance().unwrap(),
         )?;
+        //https://www.notion.so/kintsuxyz/AZero-Governance-Contracts-9a71abb435bf4032b76e1be31e0e09d8
         println!("{:?}", "Deployed governance");
         Ok(TestContext {
             sess,
@@ -282,6 +287,12 @@ mod tests {
             ed,
         })
     }
+
+    //Alice id 1
+    //Bob id 2
+    //Charlie idi 3
+    //dave id 4
+    //ed id 5
     fn wrap_tokens(mut ctx: TestContext, amount: u128) -> Result<TestContext, Box<dyn Error>> {
         let mut sess = call_function(
             ctx.sess,
@@ -469,7 +480,7 @@ mod tests {
     #[test]
     fn burn_remint() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
         let sess = call_function(
             ctx.sess,
             &ctx.gov_nft,
@@ -477,8 +488,45 @@ mod tests {
             String::from("get_governance_data"),
             Some(vec![1_u128.to_string()]),
             None,
+            transcoder_governance_nft(),
+        ).unwrap();
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.alice,
+            String::from("PSP34::approve"),
+            Some(vec![(&ctx.stake_contract).to_string(),
+            String::from("None"),true.to_string()]),
+            None,
+            transcoder_governance_nft(),
+        ).unwrap();
+        let (allowed,sess)=query_allowance(sess,&ctx.gov_nft,&ctx.alice,&ctx.stake_contract).unwrap();
+        println!("{:?}",allowed);
+        let sess=update_days(sess,2);
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("create_unwrap_request"),
+            Some(vec![1_u128.to_string()]),
+            None,
             transcoder_governance_staking(),
-        );
+        ).unwrap();
+        
+        let sess=update_days(sess,14);
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("complete_request"),
+            Some(vec![1_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ).unwrap();
+        let (balance1,sess)=query_token_balance(sess,&ctx.gov_token,&ctx.alice).unwrap();
+        let (balance2,sess)=query_token_balance(sess,&ctx.gov_token,&ctx.stake_contract).unwrap();
+        assert_eq!(balance1,USER_SUPPLY);
+        assert_eq!(balance2,4*USER_SUPPLY);
         Ok(())
     }
     #[test]
@@ -489,10 +537,11 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn change_interest_rate() -> Result<(), Box<dyn Error>> {
+    fn change_interest_rate_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
         let prop = PropType::UpdateStakingRewards(70000000_128);
+        println!("{:?}",prop.to_string());
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
@@ -503,7 +552,27 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        println!("{}","Querying Proposal");
         let (res, sess) = query_proposal(sess, ctx.governance.clone(), 1_u128).unwrap();
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![res.prop_id.to_string(), 2.to_string(),true.to_string()]),
+            None,
+            transcoder_governance(),
+        ).unwrap();
+        let (res, sess) = query_proposal(sess, ctx.governance.clone(), 1_u128).unwrap();
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.charlie,
+            String::from("vote"),
+            Some(vec![res.prop_id.to_string(), 3.to_string(),true.to_string()]),
+            None,
+            transcoder_governance(),
+        ).unwrap();
         Ok(())
     }
     #[test]
@@ -522,6 +591,13 @@ mod tests {
     }
     #[test]
     fn double_votes_fail() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn proposal_creation() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
 
