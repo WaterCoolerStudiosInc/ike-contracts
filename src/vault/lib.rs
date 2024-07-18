@@ -104,7 +104,7 @@ mod vault {
         new_minimum_stake: Balance,
     }
     #[ink(event)]
-    pub struct RoleSetFeesTransferred {
+    pub struct RoleAdjustFeeTransferred {
         new_account: AccountId,
     }
     #[ink(event)]
@@ -238,7 +238,7 @@ mod vault {
             let azero = Self::env().transferred_value();
 
             // Verify minimum AZERO is being staked
-            if azero < 1e12 as u128 {
+            if azero < 1_000_000 {
                 return Err(VaultError::MinimumStake);
             }
 
@@ -703,6 +703,11 @@ mod vault {
             Ok(())
         }
 
+        #[ink(message)]
+        fn get_role_adjust_fee(&self) -> AccountId {
+            self.data.role_adjust_fee
+        }
+
         /// Transfers adjust fee role to a new account
         ///
         /// Caller must have the adjust fee role (`role_adjust_fee`)
@@ -722,12 +727,17 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleSetFeesTransferred(RoleSetFeesTransferred {
+                Event::RoleAdjustFeeTransferred(RoleAdjustFeeTransferred {
                     new_account,
                 }),
             );
 
             Ok(())
+        }
+
+        #[ink(message)]
+        fn get_role_fee_to(&self) -> AccountId {
+            self.data.role_fee_to
         }
 
         /// Transfers fee to role to a new account
@@ -745,7 +755,7 @@ mod vault {
                 return Err(VaultError::NoChange);
             }
 
-            self.data.role_adjust_fee = new_account;
+            self.data.role_fee_to = new_account;
 
             Self::emit_event(
                 Self::env(),
@@ -757,7 +767,10 @@ mod vault {
             Ok(())
         }
 
-        /// ================================= Non Mutable Queries =================================
+        #[ink(message)]
+        fn get_role_set_code(&self) -> Option<AccountId> {
+            self.data.role_set_code
+        }
 
         #[ink(message)]
         fn get_batch_id(&self) -> u64 {
@@ -767,11 +780,6 @@ mod vault {
         #[ink(message)]
         fn get_creation_time(&self) -> u64 {
             self.data.creation_time
-        }
-
-        #[ink(message)]
-        fn get_role_adjust_fee(&self) -> AccountId {
-            self.data.role_adjust_fee
         }
 
         /// Returns the total amount of bonded AZERO

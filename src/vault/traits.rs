@@ -67,19 +67,25 @@ pub trait IVault {
     fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError>;
 
     #[ink(message)]
+    fn get_role_adjust_fee(&self) -> AccountId;
+
+    #[ink(message)]
     fn transfer_role_adjust_fee(&mut self, new_account: AccountId) -> Result<(), VaultError>;
 
     #[ink(message)]
+    fn get_role_fee_to(&self) -> AccountId;
+
+    #[ink(message)]
     fn transfer_role_fee_to(&mut self, new_account: AccountId) -> Result<(), VaultError>;
+
+    #[ink(message)]
+    fn get_role_set_code(&self) -> Option<AccountId>;
 
     #[ink(message)]
     fn get_batch_id(&self) -> u64;
 
     #[ink(message)]
     fn get_creation_time(&self) -> u64;
-
-    #[ink(message)]
-    fn get_role_adjust_fee(&self) -> AccountId;
 
     #[ink(message)]
     fn get_total_pooled(&self) -> Balance;
