@@ -130,7 +130,7 @@ pub fn call_stake(
         sess,
         &vault,
         &sender,
-        String::from("stake"),
+        String::from("IVault::stake"),
         None,
         Some(amount),
         transcoder_vault(),
@@ -164,7 +164,7 @@ pub fn call_request_unlock(
     sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
 
     println!("Calling: request_unlock()");
-    sess.call_with_address(vault.clone(), "request_unlock", &[amount.to_string()], None)?;
+    sess.call_with_address(vault.clone(), "IVault::request_unlock", &[amount.to_string()], None)?;
 
     sess.set_transcoder(token.clone(), &transcoder_share_token().unwrap());
     sess.call_with_address(
@@ -178,6 +178,24 @@ pub fn call_request_unlock(
     Ok((balance.unwrap(), sess))
 }
 
+pub fn call_cancel_unlock_request(
+    sess: Session<MinimalRuntime>,
+    vault: &AccountId32,
+    sender: &AccountId32,
+    user_unlock_id: u128,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &vault,
+        &sender,
+        String::from("IVault::cancel_unlock_request"),
+        Some(vec![user_unlock_id.to_string()]),
+        None,
+        transcoder_vault(),
+    )?;
+    Ok(sess)
+}
+
 pub fn call_send_batch_unlock_requests(
     sess: Session<MinimalRuntime>,
     vault: &AccountId32,
@@ -188,7 +206,7 @@ pub fn call_send_batch_unlock_requests(
         sess,
         &vault,
         &sender,
-        String::from("send_batch_unlock_requests"),
+        String::from("IVault::send_batch_unlock_requests"),
         Some(vec![serde_json::to_string(&batch_ids).unwrap()]),
         None,
         transcoder_vault(),
@@ -277,14 +295,23 @@ pub fn transfer_role_admin(
     )?;
     Ok(sess)
 }
-pub fn get_role_owner(
+pub fn get_role_adjust_fee(
     mut sess: Session<MinimalRuntime>,
     vault: &AccountId32,
 ) -> Result<(AccountId32, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.call_with_address(vault.clone(), "get_role_owner", NO_ARGS, None)?;
+    sess.call_with_address(vault.clone(), "IVault::get_role_adjust_fee", NO_ARGS, None)?;
 
-    let owner: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
-    Ok((owner.unwrap(), sess))
+    let adjust_fee: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((adjust_fee.unwrap(), sess))
+}
+pub fn get_role_fee_to(
+    mut sess: Session<MinimalRuntime>,
+    vault: &AccountId32,
+) -> Result<(AccountId32, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(vault.clone(), "IVault::get_role_fee_to", NO_ARGS, None)?;
+
+    let fee_to: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((fee_to.unwrap(), sess))
 }
 
 #[derive(Debug, scale::Decode)]
@@ -312,7 +339,7 @@ pub fn get_current_virtual_shares(
         sess,
         vault,
         &AccountId32::new([1u8; 32]),
-        String::from("get_current_virtual_shares"),
+        String::from("IVault::get_current_virtual_shares"),
         None,
         None,
         transcoder_vault(),
@@ -330,7 +357,7 @@ pub fn get_azero_from_shares(
         sess,
         vault,
         &AccountId32::new([1u8; 32]),
-        String::from("get_azero_from_shares"),
+        String::from("IVault::get_azero_from_shares"),
         Some([shares.clone().to_string()].to_vec()),
         None,
         transcoder_vault(),
@@ -347,7 +374,7 @@ pub fn get_total_pooled(
         sess,
         vault,
         &AccountId32::new([1u8; 32]),
-        String::from("get_total_pooled"),
+        String::from("IVault::get_total_pooled"),
         None,
         None,
         transcoder_vault(),
@@ -356,22 +383,12 @@ pub fn get_total_pooled(
     let total_pooled: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((total_pooled.unwrap(), sess))
 }
-pub fn query_minimum_stake(
-    mut sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-) -> Result<(u128, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
-    sess.call_with_address(vault.clone(), "get_minimum_stake", NO_ARGS, None)?;
-
-    let minimum_stake: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
-    Ok((minimum_stake.unwrap(), sess))
-}
 pub fn query_batch_id(
     mut sess: Session<MinimalRuntime>,
     vault: &AccountId32,
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
-    sess.call_with_address(vault.clone(), "get_batch_id", NO_ARGS, None)?;
+    sess.call_with_address(vault.clone(), "IVault::get_batch_id", NO_ARGS, None)?;
 
     let batch_id: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((batch_id.unwrap(), sess))
@@ -415,7 +432,7 @@ pub fn get_unlock_request_count(
     sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
     sess.call_with_address(
         vault.clone(),
-        "get_unlock_request_count",
+        "IVault::get_unlock_request_count",
         &[user.to_string()],
         None,
     )?;
@@ -431,7 +448,7 @@ pub fn get_batch_unlock_requests(
     sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
     sess.call_with_address(
         vault.clone(),
-        "get_batch_unlock_requests",
+        "IVault::get_batch_unlock_requests",
         &[batch.to_string()],
         None,
     )?;
@@ -473,7 +490,7 @@ pub fn call_redeem(
         sess,
         &vault,
         &sender,
-        String::from("redeem"),
+        String::from("IVault::redeem"),
         Some([sender.clone().to_string(), index.to_string()].to_vec()),
         None,
         transcoder_vault(),
@@ -497,7 +514,7 @@ pub fn call_redeem_with_withdraw(
         sess,
         &vault,
         &sender,
-        String::from("redeem_with_withdraw"),
+        String::from("IVault::redeem_with_withdraw"),
         Some([sender.clone().to_string(), index.to_string()].to_vec()),
         None,
         transcoder_vault(),
@@ -507,6 +524,41 @@ pub fn call_redeem_with_withdraw(
     let gained = updated_balance - prev_balance;
 
     Ok((gained, sess))
+}
+
+pub fn call_withdraw_fees(
+    sess: Session<MinimalRuntime>,
+    vault: &AccountId32,
+    sender: &AccountId32,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess = call_function(
+        sess,
+        &vault,
+        &sender,
+        String::from("IVault::withdraw_fees"),
+        None,
+        None,
+        transcoder_vault(),
+    )?;
+    Ok(sess)
+}
+
+pub fn call_adjust_incentive(
+    sess: Session<MinimalRuntime>,
+    vault: &AccountId32,
+    sender: &AccountId32,
+    new_incentive: u16,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess = call_function(
+        sess,
+        &vault,
+        &sender,
+        String::from("IVault::adjust_incentive"),
+        Some(vec![new_incentive.to_string()]),
+        None,
+        transcoder_vault(),
+    )?;
+    Ok(sess)
 }
 
 pub fn call_function(
