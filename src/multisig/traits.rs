@@ -11,4 +11,6 @@ pub trait MultiSig {
    fn remove_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError>;
    #[ink(message,selector = 3)]
    fn update_threshold(&mut self,new_threshold:u16)-> Result<(),MultiSigError>;
+   #[ink(message,selector = 3)]
+   pub fn replace_signer(&mut self, signer_old: AccountId,signer_new:AccountId) -> Result<(), MultiSigError> {
 }

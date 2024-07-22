@@ -7,17 +7,11 @@ pub mod governance {
     use governance_nft::GovernanceNFT;
     use multisig::MultiSig;
     use ink::{
-        codegen::EmitEvent,
-        contract_ref,
-        env::{
+        codegen::EmitEvent, contract_ref, env::{
             debug_println,
             hash::{HashOutput, Sha2x256},
             hash_encoded, Error as InkEnvError,
-        },
-        prelude::{format, string::String, vec::Vec},
-        reflect::ContractEventBase,
-        storage::Mapping,
-        ToAccountId,
+        }, prelude::{format, string::String, vec::Vec}, primitives::AccountId, reflect::ContractEventBase, storage::Mapping, ToAccountId
     };
     use psp22::{PSP22Error, PSP22};
     use psp34::{Id, PSP34};
@@ -45,15 +39,34 @@ pub mod governance {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub enum PropType {
+        // Transfer Azero from governance
         TransferFunds(TokenTransfer),
+        // Transfer psp22 token from governance
         NativeTokenTransfer(u128),
-        UpdateStakingRewards(u128),
+        // update tokens per second for staker in staking contract
+        ChangeStakingRewardRate(u128),
+        // Add to multisig
         AddCouncilMember(AccountId),
+        // remove then add to multisig
+        ReplaceCouncilMember(AccountId,AccountId),
+        // remove from multisig
         RemoveCouncilMember(AccountId),
-        ThresholdChange(u16),
+        // change threshold for multisig acceptance
+        ChangeMultiSigThreshold(u16),
+        // change vault fee
         FeeChange(u16),
+        // change vault compound acceptance
+        CompoundIncentiveChange(u16),
+        // change  governance proposal acceptance weight requirement
+        AcceptanceWeightUpdate(u128),
+        // change vote periodi delay
         VoteDelayUpdate(u64),
+        // update voting perioud
         VotePeriodUpdate(u64),
+        // update threshold proposals
+        UpdateRejectThreshhold(u128),
+        // upddate execution threshhold for proposals
+        UpdateExecThreshhold(u128),
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
@@ -182,6 +195,13 @@ pub mod governance {
             }
             Ok(())
         }
+        fn update_incentive(&self, new_inventive: &u128) -> Result<(), GovernanceError> {
+            let mut vault: contract_ref!(Vault) = self.vault.into();
+            if let Err(e) = vault.adjust_fee(*new_fee) {
+                return Err(GovernanceError::VaultFailure);
+            }
+            Ok(())
+        }
         fn remove_expired_proposals(&mut self, current_time: u64) -> Vec<Proposal> {
             let (active, expired) = self
                 .proposals
@@ -206,16 +226,71 @@ pub mod governance {
             }
             Ok(())
         }
-        
+    }
+    fn change_multisig_threshold(&self,update:u16)->Result<(),GovernanceError>{
+        let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
+        //if let Err(e) = multisig.remove_signer(*member) {
+        //    return Err(GovernanceError::MultiSigError);
+        //}
+        Ok(())
+    }
+        fn replace_council_member(&self,member:&AccountId,new_member:AccountId)->Result<(),GovernanceError>{
+            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
+            if let Err(e) = multisig.replace_signer(*member,new_member) {
+                return Err(GovernanceError::MultiSigError);
+            }
+            Ok(())
+        }
+        fn update_reject_threshold(&mut self,update:u128){
+            self.rejection_threshold=update;
+        }
+        fn update_execution_threshold(&mut self,update:u128){
+            self.execution_threshold=update;
+        }
+        fn update_acceptance_threshold(&mut self,update:u128){
+            self.acceptance_threshold=update;
+        }
         /**
-         * TransferFunds(TokenTransfer),
-            AddCouncilMember(AccountId),
-            RemoveCouncilMember(AccountId),
-            ThresholdChange(u16),
-            FeeChange(u16),
-            VoteDelayUpdate(u64),
-            VotePeriodUpdate(u64),
-         */
+         // Transfer Azero from governance
+        TransferFunds(TokenTransfer),
+        // Transfer psp22 token from governance
+        NativeTokenTransfer(u128),
+        // update tokens per second for staker in staking contract
+         // change  governance proposal acceptance weight requirement
+        AcceptanceWeightUpdate(u128),
+        // update rejection proposals
+        UpdateRejectThreshhold(u128),
+        // upddate execution threshhold for proposals
+        UpdateExecThreshhold(u128),
+         // change vote periodi delay
+        VoteDelayUpdate(u64),
+        // update voting perioud
+        VotePeriodUpdate(u64),
+
+
+         // Add to multisig
+        AddCouncilMember(AccountId),
+        // remove then add to multisig
+        ReplaceCouncilMember(AccountId,AccountId),
+        // remove from multisig
+        RemoveCouncilMember(AccountId),
+        // change threshold for multisig acceptance
+        ChangeMultiSigThreshold(u16),
+
+        // change vault fee
+        FeeChange(u16),
+        // change vault compound acceptance
+        CompoundIncentiveChange(u16),
+        
+       
+      
+
+
+       
+
+
+           ChangeStakingRewardRate(u128),
+         **/
         fn handle_pro_vote(&mut self, index: usize, weight: u128) ->  Result<(), GovernanceError> {
             if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
                 match &self.proposals[index].prop_type {
@@ -225,12 +300,25 @@ pub mod governance {
                         &TokenTransfer.to,
                         TokenTransfer.amount,
                     )?,
+                    PropType::NativeTokenTransfer(funds) =>(),                   
+                    PropType::AcceptanceWeightUpdate(update)=>self.update_acceptance_threshold(update),
+                    PropType::UpdateRejectThreshhold(update)=>self.update_reject_threshold(update),        
+                    PropType::UpdateExecThreshhold(u128)=>self.update_execution_threshold(update),
                     PropType::VoteDelayUpdate(update)=>self.voting_delay=*update,
                     PropType::VotePeriodUpdate(update)=>self.voting_period=*update,
+
                     PropType::AddCouncilMember(member)=>self.add_council_member(member)?,
+                    PropType::ReplaceCouncilMember(member,replacement)=>self.replace_council_member(member,replacement)?,                    
                     PropType::RemoveCouncilMember(member)=>self.remove_council_member(member)?,
+                    PropType::ChangeMultiSigThreshold(update)=>self.change_multisig_threshold(update),
+                    
                     PropType::FeeChange(new_fee)=>self.update_vault_fee(new_fee)?,
-                    PropType::UpdateStakingRewards(new_rate)=>(),
+                    PropType::CompoundIncentiveChange(update)=self.update_incentive(update)?,
+                    
+                   
+                    PropType::ChangeStakingRewardRate(new_rate)=>(),
+                    
+                    
                     _ => (),
                 };
                 Self::emit_event(

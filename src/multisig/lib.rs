@@ -42,11 +42,18 @@ mod multisig {
         #[ink(topic)]
         signer: AccountId,
     }
-
     #[ink(event)]
     pub struct SignerRemoved {
         #[ink(topic)]
         signer: AccountId,
+    }
+
+
+    #[ink(event)]
+    pub struct SignerReplaced {
+        #[ink(topic)]
+        removed: AccountId,
+        added:AccountId
     }
     // Fee update process
     // Users have a vote weight based on token holdings
@@ -142,6 +149,27 @@ mod multisig {
                 return Err(MultiSigError::Unauthorized);
             }   
             self.threshold=new_threshold;
+            Ok(())
+        }
+        #[ink(message,selector = 4)]
+        pub fn replace_signer(&mut self, signer_old: AccountId,signer_new:AccountId) -> Result<(), MultiSigError> {
+            let caller = Self::env().caller();
+            if caller != self.admin {
+                return Err(MultiSigError::Unauthorized);
+            }
+            if let Some(index) = self.signers.iter().position(|a| *a == _signer_old) {
+                self.signers.remove(index);
+                self.signers.push(signer_new);
+                Self::emit_event(
+                    Self::env(),
+                    Event::SignerReplaced(SignerReplaced {
+                       removed:signer_old,
+                       added:signer_new
+                    }),
+                );
+            } else {
+                return Err(MultiSigError::SignerNotFound);
+            }
             Ok(())
         }
     }
