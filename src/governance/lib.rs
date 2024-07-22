@@ -2,8 +2,11 @@
 
 #[ink::contract]
 pub mod governance {
+    
+    use vault::traits::IVault;
     use hex::*;
     use vault::Vault;
+
     use governance_nft::GovernanceNFT;
     use multisig::MultiSig;
     use ink::{
@@ -189,7 +192,7 @@ pub mod governance {
             String::from_utf8(output.to_vec()).unwrap()
         }
         fn update_vault_fee(&self, new_fee: &u16) -> Result<(), GovernanceError> {
-            let mut vault: contract_ref!(Vault) = self.vault.into();
+            let mut vault: contract_ref!(IVault) = self.vault.into();
             if let Err(e) = vault.adjust_fee(*new_fee) {
                 return Err(GovernanceError::VaultFailure);
             }
