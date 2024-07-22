@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xe1634409641f870687676dc9f4bcdabee16dce3b7d239b6af6592bc21c916c78",
+    "hash": "0x7a265fd1ad31e8586c54b7647e907833b6ff99428657069775b9f30a9b814b93",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -275,6 +275,22 @@
           "type": 15
         },
         "selector": "0x9d880359"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_all_proposals",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xc1c80143"
       },
       {
         "args": [
@@ -864,7 +880,7 @@
               {
                 "fields": [
                   {
-                    "type": 16
+                    "type": 6
                   }
                 ],
                 "index": 0,
@@ -885,7 +901,7 @@
         "params": [
           {
             "name": "T",
-            "type": 16
+            "type": 6
           },
           {
             "name": "E",
@@ -904,17 +920,22 @@
           "variant": {
             "variants": [
               {
+                "fields": [
+                  {
+                    "type": 5
+                  }
+                ],
                 "index": 0,
-                "name": "None"
+                "name": "Ok"
               },
               {
                 "fields": [
                   {
-                    "type": 6
+                    "type": 14
                   }
                 ],
                 "index": 1,
-                "name": "Some"
+                "name": "Err"
               }
             ]
           }
@@ -922,11 +943,15 @@
         "params": [
           {
             "name": "T",
-            "type": 6
+            "type": 5
+          },
+          {
+            "name": "E",
+            "type": 14
           }
         ],
         "path": [
-          "Option"
+          "Result"
         ]
       }
     },

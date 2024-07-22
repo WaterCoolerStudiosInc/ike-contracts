@@ -24,6 +24,7 @@ governance_nft = { path = "../governance_nft", default-features = false, feature
 multisig = { path = "../multisig", default-features = false, features = [
     "ink-as-dependency",
 ] }
+hex = { version = "0.4", default-features = false }
 [lib]
 name = "governance"
 path = "lib.rs"

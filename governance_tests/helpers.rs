@@ -98,11 +98,47 @@ pub fn query_proposal(
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
-        "get_proposal_by_id",
+        "get_proposal_by_nft",
         &[prop_id.to_string()],
         None,
     )?;
 
     let prop: Result<Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
     Ok((prop.unwrap(), sess))
+}
+pub fn query_token_balance(
+    mut sess: Session<MinimalRuntime>,
+    token: &AccountId32,
+    user: &AccountId32,
+) -> Result<(u128, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(token.clone(), &transcoder_governance_token().unwrap());
+    sess.call_with_address(
+        token.clone(),
+        "PSP22::balance_of",
+        &[user.to_string()],
+        None,
+    )?;
+
+    let balance: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((balance.unwrap(), sess))
+}
+pub fn query_allowance(
+    mut sess: Session<MinimalRuntime>,
+    governance_nft: &AccountId32,
+    owner: &AccountId32,
+    operator:&AccountId32,
+    
+) -> Result<(bool, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(governance_nft.clone(), &transcoder_governance_nft().unwrap());
+    sess.call_with_address(
+        governance_nft.clone(),
+        "PSP34::allowance",
+        &[owner.to_string(),operator.to_string(),String::from("None")],
+        None,
+    )?;
+
+    let result: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((result.unwrap(), sess))
 }
