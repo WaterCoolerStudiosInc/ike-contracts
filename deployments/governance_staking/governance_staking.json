@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x2c19daeefa6f8ebe192339e50f0c4fe3c2e3501529b45d11ee2e4125020b4cf6",
+    "hash": "0xe0037a85f3213df205e3360fd085d7ccbd7bdfb0457bc4e2709ca40f9860c4b7",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -381,41 +381,6 @@
           "type": 11
         },
         "selector": "0xfe3c30f7"
-      },
-      {
-        "args": [
-          {
-            "label": "token_value",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 4
-            }
-          },
-          {
-            "label": "nft_id",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 4
-            }
-          }
-        ],
-        "default": false,
-        "docs": [],
-        "label": "remove_token_value",
-        "mutates": true,
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "ink",
-            "MessageResult"
-          ],
-          "type": 11
-        },
-        "selector": "0xac5d83a0"
       },
       {
         "args": [

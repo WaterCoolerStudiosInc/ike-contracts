@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xb378606469b1de80bfe94bd306ec9d7230a6a8b113d4cd849677dee55910fec7",
+    "hash": "0xa18db7759994394b28e80b26795cbf155f668f0931fab022b55ee16ea59023dc",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -140,6 +140,34 @@
         ],
         "docs": [],
         "label": "SignerRemoved"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": true,
+            "label": "removed",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "added",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "docs": [],
+        "label": "SignerReplaced"
       }
     ],
     "lang_error": {
@@ -227,6 +255,41 @@
           "type": 9
         },
         "selector": "0x00000003"
+      },
+      {
+        "args": [
+          {
+            "label": "signer_old",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          },
+          {
+            "label": "signer_new",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "replace_signer",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 9
+        },
+        "selector": "0x00000004"
       }
     ]
   },

@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x7a265fd1ad31e8586c54b7647e907833b6ff99428657069775b9f30a9b814b93",
+    "hash": "0x7decc9f5acd295235d82b1bf4607e2c56bb04eaef07b8ae4a5456a8b3b79d510",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -678,22 +678,26 @@
               {
                 "fields": [
                   {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  },
+                  {
                     "type": 3,
                     "typeName": "u128"
                   }
                 ],
                 "index": 1,
-                "name": "UpdateStakingRewards"
+                "name": "NativeTokenTransfer"
               },
               {
                 "fields": [
                   {
-                    "type": 0,
-                    "typeName": "AccountId"
+                    "type": 3,
+                    "typeName": "u128"
                   }
                 ],
                 "index": 2,
-                "name": "AddCouncilMember"
+                "name": "ChangeStakingRewardRate"
               },
               {
                 "fields": [
@@ -703,6 +707,30 @@
                   }
                 ],
                 "index": 3,
+                "name": "AddCouncilMember"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  },
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  }
+                ],
+                "index": 4,
+                "name": "ReplaceCouncilMember"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  }
+                ],
+                "index": 5,
                 "name": "RemoveCouncilMember"
               },
               {
@@ -712,8 +740,8 @@
                     "typeName": "u16"
                   }
                 ],
-                "index": 4,
-                "name": "ThresholdChange"
+                "index": 6,
+                "name": "ChangeMultiSigThreshold"
               },
               {
                 "fields": [
@@ -722,8 +750,28 @@
                     "typeName": "u16"
                   }
                 ],
-                "index": 5,
+                "index": 7,
                 "name": "FeeChange"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 10,
+                    "typeName": "u16"
+                  }
+                ],
+                "index": 8,
+                "name": "CompoundIncentiveChange"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 9,
+                "name": "AcceptanceWeightUpdate"
               },
               {
                 "fields": [
@@ -732,7 +780,7 @@
                     "typeName": "u64"
                   }
                 ],
-                "index": 6,
+                "index": 10,
                 "name": "VoteDelayUpdate"
               },
               {
@@ -742,8 +790,28 @@
                     "typeName": "u64"
                   }
                 ],
-                "index": 7,
+                "index": 11,
                 "name": "VotePeriodUpdate"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 12,
+                "name": "UpdateRejectThreshhold"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 3,
+                    "typeName": "u128"
+                  }
+                ],
+                "index": 13,
+                "name": "UpdateExecThreshhold"
               }
             ]
           }
