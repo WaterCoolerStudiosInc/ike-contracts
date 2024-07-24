@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x7decc9f5acd295235d82b1bf4607e2c56bb04eaef07b8ae4a5456a8b3b79d510",
+    "hash": "0x99c4b67d72a11f7e198fcd2ee3f3fb3f24ce923cef167539cb140e830c35eb24",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -34,7 +34,7 @@
             }
           },
           {
-            "label": "_multisig",
+            "label": "registry",
             "type": {
               "displayName": [
                 "AccountId"
@@ -43,12 +43,39 @@
             }
           },
           {
-            "label": "_gov_nft",
+            "label": "multisig_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 12
+            }
+          },
+          {
+            "label": "governance_token",
             "type": {
               "displayName": [
                 "AccountId"
               ],
               "type": 0
+            }
+          },
+          {
+            "label": "gov_nft_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 12
+            }
+          },
+          {
+            "label": "staking_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 12
             }
           },
           {
@@ -77,6 +104,15 @@
               ],
               "type": 3
             }
+          },
+          {
+            "label": "interest_rate",
+            "type": {
+              "displayName": [
+                "u128"
+              ],
+              "type": 3
+            }
           }
         ],
         "default": false,
@@ -88,7 +124,7 @@
             "ink_primitives",
             "ConstructorResult"
           ],
-          "type": 12
+          "type": 13
         },
         "selector": "0x9bae9d5e"
       }
@@ -111,19 +147,19 @@
         "displayName": [
           "BlockNumber"
         ],
-        "type": 22
+        "type": 23
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 23
+        "type": 24
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 21
+        "type": 12
       },
       "maxEventTopics": 4,
       "timestamp": {
@@ -247,9 +283,41 @@
         "ink",
         "LangError"
       ],
-      "type": 14
+      "type": 15
     },
     "messages": [
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_multsig",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x82c7f665"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_staking",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0xa36fda12"
+      },
       {
         "args": [
           {
@@ -272,7 +340,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 15
+          "type": 17
         },
         "selector": "0x9d880359"
       },
@@ -288,7 +356,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 16
+          "type": 18
         },
         "selector": "0xc1c80143"
       },
@@ -314,7 +382,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 15
+          "type": 17
         },
         "selector": "0xa80380cc"
       },
@@ -349,7 +417,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 17
+          "type": 19
         },
         "selector": "0xf9fb13d3"
       },
@@ -393,7 +461,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 17
+          "type": 19
         },
         "selector": "0x083be260"
       }
@@ -421,6 +489,15 @@
                 }
               },
               "name": "vault"
+            },
+            {
+              "layout": {
+                "leaf": {
+                  "key": "0x00000000",
+                  "ty": 0
+                }
+              },
+              "name": "staking"
             },
             {
               "layout": {
@@ -874,12 +951,32 @@
       "id": 12,
       "type": {
         "def": {
+          "composite": {
+            "fields": [
+              {
+                "type": 1,
+                "typeName": "[u8; 32]"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "types",
+          "Hash"
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "type": {
+        "def": {
           "variant": {
             "variants": [
               {
                 "fields": [
                   {
-                    "type": 13
+                    "type": 14
                   }
                 ],
                 "index": 0,
@@ -888,7 +985,7 @@
               {
                 "fields": [
                   {
-                    "type": 14
+                    "type": 15
                   }
                 ],
                 "index": 1,
@@ -900,11 +997,11 @@
         "params": [
           {
             "name": "T",
-            "type": 13
+            "type": 14
           },
           {
             "name": "E",
-            "type": 14
+            "type": 15
           }
         ],
         "path": [
@@ -913,7 +1010,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 14,
       "type": {
         "def": {
           "tuple": []
@@ -921,7 +1018,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 15,
       "type": {
         "def": {
           "variant": {
@@ -940,48 +1037,6 @@
       }
     },
     {
-      "id": 15,
-      "type": {
-        "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 6
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 14
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 6
-          },
-          {
-            "name": "E",
-            "type": 14
-          }
-        ],
-        "path": [
-          "Result"
-        ]
-      }
-    },
-    {
       "id": 16,
       "type": {
         "def": {
@@ -990,7 +1045,7 @@
               {
                 "fields": [
                   {
-                    "type": 5
+                    "type": 0
                   }
                 ],
                 "index": 0,
@@ -999,7 +1054,7 @@
               {
                 "fields": [
                   {
-                    "type": 14
+                    "type": 15
                   }
                 ],
                 "index": 1,
@@ -1011,11 +1066,11 @@
         "params": [
           {
             "name": "T",
-            "type": 5
+            "type": 0
           },
           {
             "name": "E",
-            "type": 14
+            "type": 15
           }
         ],
         "path": [
@@ -1032,7 +1087,7 @@
               {
                 "fields": [
                   {
-                    "type": 18
+                    "type": 6
                   }
                 ],
                 "index": 0,
@@ -1041,7 +1096,7 @@
               {
                 "fields": [
                   {
-                    "type": 14
+                    "type": 15
                   }
                 ],
                 "index": 1,
@@ -1053,11 +1108,11 @@
         "params": [
           {
             "name": "T",
-            "type": 18
+            "type": 6
           },
           {
             "name": "E",
-            "type": 14
+            "type": 15
           }
         ],
         "path": [
@@ -1074,7 +1129,7 @@
               {
                 "fields": [
                   {
-                    "type": 13
+                    "type": 5
                   }
                 ],
                 "index": 0,
@@ -1083,7 +1138,7 @@
               {
                 "fields": [
                   {
-                    "type": 19
+                    "type": 15
                   }
                 ],
                 "index": 1,
@@ -1095,11 +1150,11 @@
         "params": [
           {
             "name": "T",
-            "type": 13
+            "type": 5
           },
           {
             "name": "E",
-            "type": 19
+            "type": 15
           }
         ],
         "path": [
@@ -1109,6 +1164,90 @@
     },
     {
       "id": 19,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 20
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 15
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 20
+          },
+          {
+            "name": "E",
+            "type": 15
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 21
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 14
+          },
+          {
+            "name": "E",
+            "type": 21
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 21,
       "type": {
         "def": {
           "variant": {
@@ -1162,13 +1301,21 @@
                 "name": "DoubleVote"
               },
               {
+                "index": 12,
+                "name": "TransferError"
+              },
+              {
+                "index": 13,
+                "name": "StakingError"
+              },
+              {
                 "fields": [
                   {
-                    "type": 20,
+                    "type": 22,
                     "typeName": "PSP22Error"
                   }
                 ],
-                "index": 12,
+                "index": 14,
                 "name": "TokenError"
               }
             ]
@@ -1182,7 +1329,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 22,
       "type": {
         "def": {
           "variant": {
@@ -1234,27 +1381,7 @@
       }
     },
     {
-      "id": 21,
-      "type": {
-        "def": {
-          "composite": {
-            "fields": [
-              {
-                "type": 1,
-                "typeName": "[u8; 32]"
-              }
-            ]
-          }
-        },
-        "path": [
-          "ink_primitives",
-          "types",
-          "Hash"
-        ]
-      }
-    },
-    {
-      "id": 22,
+      "id": 23,
       "type": {
         "def": {
           "primitive": "u32"
@@ -1262,7 +1389,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 24,
       "type": {
         "def": {
           "variant": {}

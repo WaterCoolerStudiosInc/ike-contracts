@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 mod traits;
 pub use traits::MultiSig;
-
+pub use crate::multisig::MultiSigRef;
 #[ink::contract]
 mod multisig {
     use ink::{

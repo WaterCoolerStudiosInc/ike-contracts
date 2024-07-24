@@ -1,8 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
+mod traits;
+pub use crate::staking::StakingRef;
+pub use crate::traits::Staking;
 #[ink::contract]
-
-mod staking {
+mod staking{
     
    
     use ink::reflect::ContractEventBase;
@@ -23,7 +24,6 @@ mod staking {
 
     pub const DAY: u64 = 86400 * 1000;
     pub const WITHDRAW_DELAY: u64 = 14 * DAY;
-    
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum StakingError {

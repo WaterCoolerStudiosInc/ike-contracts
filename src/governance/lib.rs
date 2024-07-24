@@ -4,9 +4,11 @@
 pub mod governance {
 
     use hex::*;
+    
     use vault::traits::IVault;
 
-    use governance_nft::GovernanceNFT;
+    use governance_nft::{GovernanceNFT, GovernanceNFTRef};
+    use governance_staking::{Staking, StakingRef};
     use ink::{
         codegen::EmitEvent,
         contract_ref,
@@ -16,12 +18,13 @@ pub mod governance {
             hash_encoded, Error as InkEnvError,
         },
         prelude::{format, string::String, vec::Vec},
-       
+      
         reflect::ContractEventBase,
         storage::Mapping,
         ToAccountId,
     };
-    use multisig::MultiSig;
+    use multisig::{MultiSig, MultiSigRef};
+
     use psp22::{PSP22Error, PSP22};
     use psp34::{Id, PSP34};
 
@@ -40,6 +43,8 @@ pub mod governance {
         NonExistingProposal,
         ProposalInactive,
         DoubleVote,
+        TransferError,
+        StakingError,
         TokenError(PSP22Error),
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
@@ -51,7 +56,7 @@ pub mod governance {
         // Transfer Azero from governance
         TransferFunds(TokenTransfer),
         // Transfer psp22 token from governance
-        NativeTokenTransfer(AccountId,u128),
+        NativeTokenTransfer(AccountId, u128),
         // update tokens per second for staker in staking contract
         ChangeStakingRewardRate(u128),
         // Add to multisig
@@ -116,6 +121,7 @@ pub mod governance {
     pub struct Governance {
         pub gov_nft: AccountId,
         pub vault: AccountId,
+        pub staking: AccountId,
         pub multisig: AccountId,
         pub execution_threshold: u128,
         pub rejection_threshold: u128,  // threshold of votes to pass
@@ -252,7 +258,11 @@ pub mod governance {
             }
             Ok(())
         }
-        fn update_staking_rewards(&self,new_reward:u128)->Result<(), GovernanceError>{
+        fn update_staking_rewards(&self, new_reward: u128) -> Result<(), GovernanceError> {
+            let mut staking: contract_ref!(Staking) = self.staking.into();
+            if let Err(e)=  staking.update_rewards_rate(new_reward){
+                return Err(GovernanceError::StakingError);
+            }
             Ok(())
         }
         fn update_reject_threshold(&mut self, update: u128) {
@@ -264,8 +274,14 @@ pub mod governance {
         fn update_acceptance_threshold(&mut self, update: u128) {
             self.acceptance_threshold = update;
         }
-        fn transfer_native_funds(&self,to:AccountId,amount:u128)-> Result<(), GovernanceError>{
-            Self::env().transfer(to, amount);
+        fn transfer_native_funds(
+            &self,
+            to: AccountId,
+            amount: u128,
+        ) -> Result<(), GovernanceError> {
+            if let Err(e) = Self::env().transfer(to, amount) {
+                return Err(GovernanceError::TransferError);
+            }
             Ok(())
         }
         /**
@@ -300,14 +316,14 @@ pub mod governance {
         // change vault compound acceptance
         CompoundIncentiveChange(u16),
 
-        
+
 
 
 
 
            ChangeStakingRewardRate(u128),
          **/
-       
+
         fn handle_pro_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
             if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
                 match &self.proposals[index].prop_type {
@@ -317,14 +333,18 @@ pub mod governance {
                         &TokenTransfer.to,
                         TokenTransfer.amount,
                     )?,
-                    PropType::NativeTokenTransfer(to,funds) => self.transfer_native_funds(*to,*funds)?,
+                    PropType::NativeTokenTransfer(to, funds) => {
+                        self.transfer_native_funds(*to, *funds)?
+                    }
                     PropType::AcceptanceWeightUpdate(update) => {
                         self.update_acceptance_threshold(*update)
                     }
                     PropType::UpdateRejectThreshhold(update) => {
                         self.update_reject_threshold(*update)
                     }
-                    PropType::UpdateExecThreshhold(update) => self.update_execution_threshold(*update),
+                    PropType::UpdateExecThreshhold(update) => {
+                        self.update_execution_threshold(*update)
+                    }
                     PropType::VoteDelayUpdate(update) => self.voting_delay = *update,
                     PropType::VotePeriodUpdate(update) => self.voting_period = *update,
 
@@ -340,7 +360,9 @@ pub mod governance {
                     PropType::FeeChange(new_fee) => self.update_vault_fee(new_fee)?,
                     PropType::CompoundIncentiveChange(update) => self.update_incentive(update)?,
 
-                    PropType::ChangeStakingRewardRate(new_rate) => self.update_staking_rewards(*new_rate)?,
+                    PropType::ChangeStakingRewardRate(new_rate) => {
+                        self.update_staking_rewards(*new_rate)?
+                    }
 
                     _ => (),
                 };
@@ -386,16 +408,39 @@ pub mod governance {
         #[ink(constructor)]
         pub fn new(
             vault: AccountId,
-            _multisig: AccountId,
-            _gov_nft: AccountId,
+            registry: AccountId,
+            multisig_hash: Hash,
+            governance_token: AccountId,
+            gov_nft_hash: Hash,
+            staking_hash: Hash,
             exec_threshold: u128,
             reject_threshold: u128,
             acc_threshold: u128,
+            interest_rate: u128,
         ) -> Self {
+            let caller = Self::env().caller();
+
+            let multisig_ref = MultiSigRef::new(Self::env().account_id(), registry, vault)
+                .endowment(0)
+                .code_hash(multisig_hash)
+                .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                .instantiate();
+            let staking_ref = StakingRef::new(
+                governance_token,
+                Self::env().account_id(),
+                gov_nft_hash,
+                interest_rate,
+            )
+            .endowment(0)
+            .code_hash(staking_hash)
+            .salt_bytes(&[234_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+            .instantiate();
+            let _gov_nft=staking_ref.get_governance_nft();
             Self {
                 gov_nft: _gov_nft,
                 vault: vault,
-                multisig: _multisig,
+                multisig: MultiSigRef::to_account_id(&multisig_ref),
+                staking: StakingRef::to_account_id(&staking_ref),
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
                 acceptance_threshold: acc_threshold,
@@ -406,6 +451,14 @@ pub mod governance {
                 last_proposal: Mapping::new(),
                 voted: Mapping::new(),
             }
+        }
+        #[ink(message)]
+        pub fn get_multsig(&self)->AccountId{
+            self.multisig
+        }
+        #[ink(message)]
+        pub fn get_staking(&self)->AccountId{
+            self.staking
         }
         #[ink(message)]
         pub fn get_proposal_by_id(&self, id: String) -> Proposal {

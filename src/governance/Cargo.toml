@@ -21,6 +21,9 @@ psp22 = { version = "=0.2.1", default-features = false }
 governance_nft = { path = "../governance_nft", default-features = false, features = [
     "ink-as-dependency",
 ] }
+governance_staking = { path = "../governance_staking", default-features = false, features = [
+    "ink-as-dependency",
+] }
 multisig = { path = "../multisig", default-features = false, features = [
     "ink-as-dependency",
 ] }
@@ -31,5 +34,5 @@ path = "lib.rs"
 
 [features]
 default = ["std",]
-std = ["ink/std", "scale/std", "scale-info", "scale-info/std","psp34/std","psp22/std", "vault/std"]
+std = ["ink/std", "scale/std", "scale-info", "scale-info/std","psp34/std","psp22/std", "vault/std","governance_staking/std","multisig/std"]
 ink-as-dependency = []

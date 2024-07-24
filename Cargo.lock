@@ -1005,6 +1005,7 @@ name = "governance"
 version = "0.1.0"
 dependencies = [
  "governance_nft",
+ "governance_staking",
  "hex",
  "ink",
  "multisig",

@@ -114,6 +114,11 @@ pub fn hash_nominator() -> String {
     let artifact: Artifact = from_str(&json).expect("Should extract hash from mock_nominator.json");
     artifact.source.hash
 }
+pub fn hash_multisig() -> String {
+    let json = read_to_string("../deployments/multisig/multisig.json").unwrap();
+    let artifact: Artifact = from_str(&json).expect("Should extract hash from multisig.json");
+    artifact.source.hash
+}
 
 // Transcoders for making contract calls
 
