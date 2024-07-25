@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xcf89e57582518a72e3ff97509e1e837791e52e934423215de483296f00f29055",
+    "hash": "0xcee2de7b239f4921f410a953b37010ccfe3f1d968236173e958a5ab4b977e96c",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -447,6 +447,32 @@
           "type": 12
         },
         "selector": "0x00001f79"
+      },
+      {
+        "args": [
+          {
+            "label": "new_admin",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 0
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "set_admin",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 12
+        },
+        "selector": "0x000022b8"
       },
       {
         "args": [],

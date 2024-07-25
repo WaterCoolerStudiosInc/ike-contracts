@@ -4,7 +4,7 @@
 pub mod governance {
 
     use hex::*;
-    
+
     use vault::traits::IVault;
 
     use governance_nft::{GovernanceNFT, GovernanceNFTRef};
@@ -18,7 +18,6 @@ pub mod governance {
             hash_encoded, Error as InkEnvError,
         },
         prelude::{format, string::String, vec::Vec},
-      
         reflect::ContractEventBase,
         storage::Mapping,
         ToAccountId,
@@ -260,7 +259,7 @@ pub mod governance {
         }
         fn update_staking_rewards(&self, new_reward: u128) -> Result<(), GovernanceError> {
             let mut staking: contract_ref!(Staking) = self.staking.into();
-            if let Err(e)=  staking.update_rewards_rate(new_reward){
+            if let Err(e) = staking.update_rewards_rate(new_reward) {
                 return Err(GovernanceError::StakingError);
             }
             Ok(())
@@ -408,9 +407,9 @@ pub mod governance {
         #[ink(constructor)]
         pub fn new(
             vault: AccountId,
-            registry: AccountId,
-            multisig_hash: Hash,
+            registry: AccountId,          
             governance_token: AccountId,
+            multisig_hash: Hash,
             gov_nft_hash: Hash,
             staking_hash: Hash,
             exec_threshold: u128,
@@ -423,23 +422,33 @@ pub mod governance {
             let multisig_ref = MultiSigRef::new(Self::env().account_id(), registry, vault)
                 .endowment(0)
                 .code_hash(multisig_hash)
-                .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
                 .instantiate();
+            
+            let mut nft_ref: GovernanceNFTRef = GovernanceNFTRef::new(Self::env().account_id())
+                .endowment(0)
+                .code_hash(gov_nft_hash)
+                .salt_bytes(&[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                .instantiate();
+            
             let staking_ref = StakingRef::new(
                 governance_token,
                 Self::env().account_id(),
-                gov_nft_hash,
+                nft_ref.clone(),
                 interest_rate,
             )
             .endowment(0)
             .code_hash(staking_hash)
-            .salt_bytes(&[234_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+            .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
             .instantiate();
-            let _gov_nft=staking_ref.get_governance_nft();
+            
+            nft_ref.set_admin(StakingRef::to_account_id(&staking_ref));
+            
+            let _gov_nft = GovernanceNFTRef::to_account_id(&nft_ref);
             Self {
-                gov_nft: _gov_nft,
+                gov_nft:_gov_nft,
                 vault: vault,
-                multisig: MultiSigRef::to_account_id(&multisig_ref),
+                multisig: vault,
                 staking: StakingRef::to_account_id(&staking_ref),
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
@@ -453,11 +462,11 @@ pub mod governance {
             }
         }
         #[ink(message)]
-        pub fn get_multsig(&self)->AccountId{
+        pub fn get_multsig(&self) -> AccountId {
             self.multisig
         }
         #[ink(message)]
-        pub fn get_staking(&self)->AccountId{
+        pub fn get_staking(&self) -> AccountId {
             self.staking
         }
         #[ink(message)]

@@ -99,7 +99,7 @@ mod tests {
         let ed = AccountId32::new([5u8; 32]);
 
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
-        let gov_token = sess.deploy::<String>(
+        let gov_token:AccountId32 = sess.deploy::<String>(
             bytes_governance_token(),
             "new",
             &[],
@@ -168,18 +168,21 @@ mod tests {
         interest_rate: u128,
          **/
          println!("{:?}", vault);
-         
+         println!("{:?}", registry);
+         println!("{:?}", gov_token);
+         println!("{:?}", hash_multisig());
+         println!("{:?}", hash_governance_nft());
+         println!("{:?}", hash_governance_staking());
         let governance = sess.deploy(
             bytes_governance(),
             "new",
             &[
                 vault.to_string(),
-                registry.to_string(),
-                hash_multisig().to_string(),
+                registry.to_string(),               
                 gov_token.to_string(),
-                hash_governance_nft(),
-               
-                hash_governance_staking().to_string(),              
+                hash_multisig(),
+                hash_governance_nft(),               
+                hash_governance_staking(),              
                 EXEC_THRESHOLD.to_string(),
                 REJECT_THRESHOLD.to_string(),
                 ACC_THRESHOLD.to_string(),
@@ -202,7 +205,7 @@ mod tests {
             String::from("get_staking"),
             None,
             None,
-            transcoder_governance_staking(),
+            transcoder_governance(),
         )
         .unwrap();
         let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
@@ -215,7 +218,7 @@ mod tests {
             String::from("get_multisig"),
             None,
             None,
-            transcoder_governance_staking(),
+            transcoder_governance(),
         )
         .unwrap();
         let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
@@ -223,7 +226,7 @@ mod tests {
 
         sess.set_transcoder(
             stake_contract.clone(),
-            &transcoder_governance_staking().unwrap(),
+            &transcoder_governance().unwrap(),
         );
         
         let mut sess = call_function(
