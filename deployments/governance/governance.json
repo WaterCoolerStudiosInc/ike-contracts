@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xf86f2e3b0e9ca38188d812dad21bf3cfad797d91278c721273c07ed89cdc4884",
+    "hash": "0x5d93932c7add78c30129563c03eeab300ea03987e1bbffd818e3ed126974f0ea",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -43,21 +43,21 @@
             }
           },
           {
-            "label": "multisig_hash",
-            "type": {
-              "displayName": [
-                "Hash"
-              ],
-              "type": 12
-            }
-          },
-          {
             "label": "governance_token",
             "type": {
               "displayName": [
                 "AccountId"
               ],
               "type": 0
+            }
+          },
+          {
+            "label": "multisig_hash",
+            "type": {
+              "displayName": [
+                "Hash"
+              ],
+              "type": 12
             }
           },
           {

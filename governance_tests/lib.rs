@@ -157,9 +157,9 @@ mod tests {
 
         /**
         vault: AccountId,
-        registry: AccountId,
-        multisig_hash: Hash,
+        registry: AccountId,        
         governance_token: AccountId,
+        multisig_hash: Hash,
         gov_nft_hash: Hash,
         staking_hash: Hash,
         exec_threshold: u128,
@@ -167,9 +167,9 @@ mod tests {
         acc_threshold: u128,
         interest_rate: u128,
          **/
-         println!("{:?}", vault);
-         println!("{:?}", registry);
-         println!("{:?}", gov_token);
+         println!("{:?}", vault.to_string());
+         println!("{:?}", registry.to_string());
+         println!("{:?}", gov_token.to_string());
          println!("{:?}", hash_multisig());
          println!("{:?}", hash_governance_nft());
          println!("{:?}", hash_governance_staking());

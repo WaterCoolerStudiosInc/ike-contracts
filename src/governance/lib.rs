@@ -442,7 +442,7 @@ pub mod governance {
             .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
             .instantiate();
             
-            nft_ref.set_admin(StakingRef::to_account_id(&staking_ref));
+            //nft_ref.set_admin(StakingRef::to_account_id(&staking_ref));
             
             let _gov_nft = GovernanceNFTRef::to_account_id(&nft_ref);
             Self {
