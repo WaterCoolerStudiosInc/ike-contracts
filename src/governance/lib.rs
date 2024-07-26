@@ -12,16 +12,19 @@ pub mod governance {
     use ink::{
         codegen::EmitEvent,
         contract_ref,
+        
         env::{
+            Error as InkEnvError,
             debug_println,
             hash::{HashOutput, Sha2x256},
-            hash_encoded, Error as InkEnvError,
+            hash_encoded,
         },
         prelude::{format, string::String, vec::Vec},
         reflect::ContractEventBase,
         storage::Mapping,
         ToAccountId,
     };
+    
     use multisig::{MultiSig, MultiSigRef};
 
     use psp22::{PSP22Error, PSP22};
@@ -45,6 +48,12 @@ pub mod governance {
         TransferError,
         StakingError,
         TokenError(PSP22Error),
+        InkEnvError(String),
+    }
+    impl From<InkEnvError> for GovernanceError {
+        fn from(e: InkEnvError) -> Self {
+            GovernanceError::InkEnvError(format!("{:?}", e))
+        }
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
@@ -80,6 +89,7 @@ pub mod governance {
         UpdateRejectThreshhold(u128),
         // upddate execution threshhold for proposals
         UpdateExecThreshhold(u128),
+        SetCodeHash([u8;32])
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
@@ -283,6 +293,10 @@ pub mod governance {
             }
             Ok(())
         }
+        fn set_code_internal(&mut self,code_hash:[u8;32]) ->Result<(), GovernanceError> {
+            ink::env::set_code_hash(&code_hash)?;
+            Ok(())
+        }
         /**
          // Transfer Azero from governance
         TransferFunds(TokenTransfer),
@@ -362,7 +376,9 @@ pub mod governance {
                     PropType::ChangeStakingRewardRate(new_rate) => {
                         self.update_staking_rewards(*new_rate)?
                     }
-
+                    PropType::SetCodeHash(code_hash)=>{
+                        self.set_code_internal(*code_hash)?
+                    }
                     _ => (),
                 };
                 Self::emit_event(

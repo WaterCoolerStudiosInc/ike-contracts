@@ -5,14 +5,18 @@
 mod validator_whitelist {
     use governance_nft::GovernanceNFT;
     use ink::{
-        contract_ref, env::{call::{build_call, ExecutionInput, Selector}, debug_println, DefaultEnvironment}, prelude::{string::String, vec::Vec}, storage::Mapping
-      
-      
+        contract_ref,
+        env::{
+            call::{build_call, ExecutionInput, Selector},
+            debug_println, DefaultEnvironment,
+        },
+        prelude::{string::String, vec::Vec},
+        storage::Mapping,
     };
-    
+
     use psp22::{PSP22Error, PSP22};
     use psp34::{Id, PSP34Error, PSP34};
-    use registry::{registry::RegistryError,Registry};
+    use registry::{registry::RegistryError, Registry};
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -30,7 +34,7 @@ mod validator_whitelist {
         pub registry: AccountId,
         pub treasury: AccountId,
         pub gov_nft: AccountId,
-        pub queued_validators:Vec<Validator>,
+        pub queued_validators: Vec<Validator>,
         pub deployed_validators: Mapping<AccountId, Validator>,
         pub token_stake_amount: u128,
         pub create_deposit: u128,
@@ -55,7 +59,7 @@ mod validator_whitelist {
         RegistryError,
         NFTError(PSP34Error),
         TokenError(PSP22Error),
-        InternalError(RuntimeError)
+        InternalError(RuntimeError),
     }
     const ADD_SELECTOR: Selector = Selector::new([0, 0, 0, 1]);
     impl ValidatorWhitelist {
@@ -66,7 +70,7 @@ mod validator_whitelist {
             id: Balance,
         ) -> Result<(), WhitelistError> {
             let mut token: contract_ref!(GovernanceNFT) = self.gov_nft.into();
-            if let Err(e) = token.transfer_from(*from, *to, id,Vec::new()) {
+            if let Err(e) = token.transfer_from(*from, *to, id, Vec::new()) {
                 return Err(WhitelistError::NFTError(e));
             }
             Ok(())
@@ -87,7 +91,7 @@ mod validator_whitelist {
         fn call_add_agent(
             &self,
             admin: AccountId,
-            validator: AccountId,            
+            validator: AccountId,
             pool_create_amount: u128,
             existential_deposit: u128,
         ) -> Result<AccountId, RuntimeError> {
@@ -106,14 +110,14 @@ mod validator_whitelist {
                 .invoke()
         }
         /**
-         *  if let Err(e) = call_withdraw_unbonded(a.address) {
-                return Err(VaultError::InternalError(e));
-            }
-         */
+        *  if let Err(e) = call_withdraw_unbonded(a.address) {
+               return Err(VaultError::InternalError(e));
+           }
+        */
         fn call_remove_validator(&self, agent: AccountId) -> Result<(), WhitelistError> {
             let mut registry: contract_ref!(Registry) = self.registry.into();
-            if let Err(e) = registry.remove_agent(agent){
-                return Err(WhitelistError::RegistryError)
+            if let Err(e) = registry.remove_agent(agent) {
+                return Err(WhitelistError::RegistryError);
             }
             Ok(())
         }
@@ -130,11 +134,11 @@ mod validator_whitelist {
                 registry: _registry,
                 gov_nft: _gov_nft,
                 queued_validators: Vec::new(),
-                deployed_validators:Mapping::new(),
+                deployed_validators: Mapping::new(),
                 token_stake_amount: 100000_u128,
                 create_deposit: 100_000_000_000_000_u128,
                 existential_deposit: 500_u128,
-                max_applicants:100_u16
+                max_applicants: 100_u16,
             }
         }
         #[ink(message)]
@@ -177,14 +181,11 @@ mod validator_whitelist {
                 return Err(WhitelistError::AlreadyOnList);
             }
             self.transfer_psp34(&caller, &Self::env().account_id(), id)?;
-            self.queued_validators.push(
-               
-                Validator {
-                    validator: validator,
-                    admin: caller,
-                    stake: id,
-                },
-            );
+            self.queued_validators.push(Validator {
+                validator: validator,
+                admin: caller,
+                stake: id,
+            });
             Ok(())
         }
         //Validator addition flow
@@ -205,24 +206,25 @@ mod validator_whitelist {
             let v = self
                 .queued_validators
                 .clone()
-                .into_iter().enumerate()
+                .into_iter()
+                .enumerate()
                 .find(|p| p.1.validator == validator);
 
-            
-            if let Some(_validator)= (v) {
-
-                let new_agent = self.call_add_agent(
-                    _validator.1.clone().admin,
-                    _validator.1.clone().validator,
-                    self.create_deposit,
-                    self.existential_deposit,
-                ).unwrap();
+            if let Some(_validator) = (v) {
+                let new_agent = self
+                    .call_add_agent(
+                        _validator.1.clone().admin,
+                        _validator.1.clone().validator,
+                        self.create_deposit,
+                        self.existential_deposit,
+                    )
+                    .unwrap();
                 self.deployed_validators.insert(new_agent, &_validator.1);
                 self.queued_validators.swap_remove(_validator.0);
-            }else{
+            } else {
                 return Err(WhitelistError::AlreadyOnList);
             }
-            
+
             Ok(())
         }
         #[ink(message)]
@@ -239,12 +241,20 @@ mod validator_whitelist {
             agent: AccountId,
             slash: bool,
         ) -> Result<(), WhitelistError> {
-            let validator_info=self.deployed_validators.get(agent).unwrap();
+            let validator_info = self.deployed_validators.get(agent).unwrap();
             self.call_remove_validator(agent)?;
             if slash {
-                self.transfer_psp34(&Self::env().account_id(), &self.treasury, validator_info.stake)?;
-                } else {               
-                self.transfer_psp34(&validator_info.admin, &Self::env().account_id(), validator_info.stake)?;
+                self.transfer_psp34(
+                    &Self::env().account_id(),
+                    &self.treasury,
+                    validator_info.stake,
+                )?;
+            } else {
+                self.transfer_psp34(
+                    &validator_info.admin,
+                    &Self::env().account_id(),
+                    validator_info.stake,
+                )?;
             }
             self.deployed_validators.remove(agent);
             Ok(())

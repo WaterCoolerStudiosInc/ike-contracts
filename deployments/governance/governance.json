@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x5d93932c7add78c30129563c03eeab300ea03987e1bbffd818e3ed126974f0ea",
+    "hash": "0x891c260f2e4a88671e27b64ddc931072e074fce740a6a9a569e8bbbb1623b82b",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -889,6 +889,16 @@
                 ],
                 "index": 13,
                 "name": "UpdateExecThreshhold"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 1,
+                    "typeName": "[u8; 32]"
+                  }
+                ],
+                "index": 14,
+                "name": "SetCodeHash"
               }
             ]
           }
@@ -1317,6 +1327,16 @@
                 ],
                 "index": 14,
                 "name": "TokenError"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 7,
+                    "typeName": "String"
+                  }
+                ],
+                "index": 15,
+                "name": "InkEnvError"
               }
             ]
           }
