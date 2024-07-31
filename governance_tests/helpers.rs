@@ -4,7 +4,8 @@ use drink::{
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
     AccountId32,
 };
-use std::{error::Error, rc::Rc};
+use std::{error::Error, rc::Rc,fmt};
+use psp34::{Id};
 
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
@@ -13,6 +14,7 @@ pub const SECOND: u64 = 1_000;
 pub const DAY: u64 = SECOND * 86400;
 pub const YEAR: u64 = DAY * 365_25 / 100;
 pub const BIPS: u128 = 10000;
+
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
 #[cfg_attr(
     feature = "std",
@@ -106,6 +108,23 @@ pub fn query_proposal(
     let prop: Result<Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((prop.unwrap(), sess))
+}
+pub fn query_owner(
+    mut sess: Session<MinimalRuntime>,
+    governance_nft:AccountId32,
+    nft_id: u128,
+) -> Result<(AccountId32, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(governance_nft.clone(), &transcoder_governance_nft().unwrap());
+    sess.call_with_address(
+        governance_nft.clone(),
+        "owner_of_id",
+        &[nft_id.to_string()],
+        None,
+    )?;
+
+    let owner: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((owner.unwrap(), sess))
 }
 pub fn query_token_balance(
     mut sess: Session<MinimalRuntime>,

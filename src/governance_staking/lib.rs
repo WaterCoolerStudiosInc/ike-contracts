@@ -186,6 +186,7 @@ mod staking{
             to: Option<AccountId>,
         ) -> Result<(), StakingError> {
             debug_println!("ADDing Value {}",token_value);
+           
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;

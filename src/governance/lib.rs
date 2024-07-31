@@ -12,19 +12,17 @@ pub mod governance {
     use ink::{
         codegen::EmitEvent,
         contract_ref,
-        
         env::{
-            Error as InkEnvError,
             debug_println,
             hash::{HashOutput, Sha2x256},
-            hash_encoded,
+            hash_encoded, Error as InkEnvError,
         },
         prelude::{format, string::String, vec::Vec},
         reflect::ContractEventBase,
         storage::Mapping,
         ToAccountId,
     };
-    
+
     use multisig::{MultiSig, MultiSigRef};
 
     use psp22::{PSP22Error, PSP22};
@@ -46,6 +44,7 @@ pub mod governance {
         ProposalInactive,
         DoubleVote,
         TransferError,
+        NFTError,
         StakingError,
         TokenError(PSP22Error),
         InkEnvError(String),
@@ -89,7 +88,7 @@ pub mod governance {
         UpdateRejectThreshhold(u128),
         // upddate execution threshhold for proposals
         UpdateExecThreshhold(u128),
-        SetCodeHash([u8;32])
+        SetCodeHash([u8; 32]),
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
@@ -293,7 +292,7 @@ pub mod governance {
             }
             Ok(())
         }
-        fn set_code_internal(&mut self,code_hash:[u8;32]) ->Result<(), GovernanceError> {
+        fn set_code_internal(&mut self, code_hash: [u8; 32]) -> Result<(), GovernanceError> {
             ink::env::set_code_hash(&code_hash)?;
             Ok(())
         }
@@ -376,9 +375,7 @@ pub mod governance {
                     PropType::ChangeStakingRewardRate(new_rate) => {
                         self.update_staking_rewards(*new_rate)?
                     }
-                    PropType::SetCodeHash(code_hash)=>{
-                        self.set_code_internal(*code_hash)?
-                    }
+                    PropType::SetCodeHash(code_hash) => self.set_code_internal(*code_hash)?,
                     _ => (),
                 };
                 Self::emit_event(
@@ -423,7 +420,7 @@ pub mod governance {
         #[ink(constructor)]
         pub fn new(
             vault: AccountId,
-            registry: AccountId,          
+            registry: AccountId,
             governance_token: AccountId,
             multisig_hash: Hash,
             gov_nft_hash: Hash,
@@ -440,13 +437,13 @@ pub mod governance {
                 .code_hash(multisig_hash)
                 .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
                 .instantiate();
-            
+
             let mut nft_ref: GovernanceNFTRef = GovernanceNFTRef::new(Self::env().account_id())
                 .endowment(0)
                 .code_hash(gov_nft_hash)
                 .salt_bytes(&[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
                 .instantiate();
-            
+
             let staking_ref = StakingRef::new(
                 governance_token,
                 Self::env().account_id(),
@@ -457,14 +454,17 @@ pub mod governance {
             .code_hash(staking_hash)
             .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
             .instantiate();
-            
-            //nft_ref.set_admin(StakingRef::to_account_id(&staking_ref));
-            
+            //if let Err(e) = multisig.remove_signer(*member) {
+            //    return Err(GovernanceError::MultiSigError);
+            //}
+            //
+             nft_ref.set_admin(StakingRef::to_account_id(&staking_ref)).unwrap();
+                
             let _gov_nft = GovernanceNFTRef::to_account_id(&nft_ref);
             Self {
-                gov_nft:_gov_nft,
+                gov_nft: _gov_nft,
                 vault: vault,
-                multisig: vault,
+                multisig: MultiSigRef::to_account_id(&multisig_ref),
                 staking: StakingRef::to_account_id(&staking_ref),
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
@@ -478,7 +478,7 @@ pub mod governance {
             }
         }
         #[ink(message)]
-        pub fn get_multsig(&self) -> AccountId {
+        pub fn get_multisig(&self) -> AccountId {
             self.multisig
         }
         #[ink(message)]

@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0x891c260f2e4a88671e27b64ddc931072e074fce740a6a9a569e8bbbb1623b82b",
+    "hash": "0x2376670bbca61a4dca411aceac45ccd0d1fbaf5a8b287cfa5e43585d95d06ff5",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -290,7 +290,7 @@
         "args": [],
         "default": false,
         "docs": [],
-        "label": "get_multsig",
+        "label": "get_multisig",
         "mutates": false,
         "payable": false,
         "returnType": {
@@ -300,7 +300,7 @@
           ],
           "type": 16
         },
-        "selector": "0x82c7f665"
+        "selector": "0x15979774"
       },
       {
         "args": [],
@@ -1316,6 +1316,10 @@
               },
               {
                 "index": 13,
+                "name": "NFTError"
+              },
+              {
+                "index": 14,
                 "name": "StakingError"
               },
               {
@@ -1325,7 +1329,7 @@
                     "typeName": "PSP22Error"
                   }
                 ],
-                "index": 14,
+                "index": 15,
                 "name": "TokenError"
               },
               {
@@ -1335,7 +1339,7 @@
                     "typeName": "String"
                   }
                 ],
-                "index": 15,
+                "index": 16,
                 "name": "InkEnvError"
               }
             ]

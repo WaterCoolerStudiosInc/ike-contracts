@@ -7,7 +7,7 @@ mod helpers;
 #[cfg(test)]
 mod tests {
     use crate::helpers::{
-        call_function, query_allowance, query_proposal, query_token_balance, update_days,
+        call_function, query_allowance, query_proposal, query_token_balance, update_days,query_owner
     };
     use crate::sources::*;
     use drink::session::contract_transcode::ContractMessageTranscoder;
@@ -99,7 +99,7 @@ mod tests {
         let ed = AccountId32::new([5u8; 32]);
 
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
-        let gov_token:AccountId32 = sess.deploy::<String>(
+        let gov_token: AccountId32 = sess.deploy::<String>(
             bytes_governance_token(),
             "new",
             &[],
@@ -125,7 +125,10 @@ mod tests {
             .expect("Session should upload registry bytes");
         sess.upload(bytes_share_token())
             .expect("Session should upload token bytes");
-
+        sess.upload(bytes_multisig())
+            .expect("Session should upload token bytes");
+        sess.upload(bytes_governance_staking())
+            .expect("Session should upload token bytes");
         let vault = sess.deploy(
             bytes_vault(),
             "new",
@@ -134,10 +137,7 @@ mod tests {
             None,
             &transcoder_vault().unwrap(),
         )?;
-        sess.set_transcoder(
-            vault.clone(),
-            &transcoder_vault().unwrap(),
-        );
+        sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
         //get_registry_contract
         let mut sess = call_function(
             sess,
@@ -153,11 +153,10 @@ mod tests {
         let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
         let registry = rr.unwrap();
         println!("{:?}", registry);
-        
 
         /**
         vault: AccountId,
-        registry: AccountId,        
+        registry: AccountId,
         governance_token: AccountId,
         multisig_hash: Hash,
         gov_nft_hash: Hash,
@@ -167,22 +166,22 @@ mod tests {
         acc_threshold: u128,
         interest_rate: u128,
          **/
-         println!("{:?}", vault.to_string());
-         println!("{:?}", registry.to_string());
-         println!("{:?}", gov_token.to_string());
-         println!("{:?}", hash_multisig());
-         println!("{:?}", hash_governance_nft());
-         println!("{:?}", hash_governance_staking());
+        println!("{:?}", vault.to_string());
+        println!("{:?}", registry.to_string());
+        println!("{:?}", gov_token.to_string());
+        println!("{:?}", hash_multisig());
+        println!("{:?}", hash_governance_nft());
+        println!("{:?}", hash_governance_staking());
         let governance = sess.deploy(
             bytes_governance(),
             "new",
             &[
                 vault.to_string(),
-                registry.to_string(),               
+                registry.to_string(),
                 gov_token.to_string(),
                 hash_multisig(),
-                hash_governance_nft(),               
-                hash_governance_staking(),              
+                hash_governance_nft(),
+                hash_governance_staking(),
                 EXEC_THRESHOLD.to_string(),
                 REJECT_THRESHOLD.to_string(),
                 ACC_THRESHOLD.to_string(),
@@ -193,11 +192,8 @@ mod tests {
             &transcoder_governance().unwrap(),
         )?;
         println!("{:?}", "!!!!!!!!!!!!!!!!!!!!!!!!!!");
-        sess.set_transcoder(
-            governance.clone(),
-            &transcoder_governance().unwrap(),
-        );
-        
+        sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
+
         let mut sess = call_function(
             sess,
             &governance,
@@ -213,7 +209,7 @@ mod tests {
 
         let mut sess = call_function(
             sess,
-            &stake_contract,
+            &governance,
             &bob,
             String::from("get_multisig"),
             None,
@@ -223,12 +219,9 @@ mod tests {
         .unwrap();
         let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
         let multisig = rr.unwrap();
+        println!("{}","GETTING NFT!!!!!");
+        sess.set_transcoder(stake_contract.clone(), &transcoder_governance().unwrap());
 
-        sess.set_transcoder(
-            stake_contract.clone(),
-            &transcoder_governance().unwrap(),
-        );
-        
         let mut sess = call_function(
             sess,
             &stake_contract,
@@ -245,6 +238,20 @@ mod tests {
         println!("{:?}", stake_contract.to_string());
         println!("{:?}", gov_token.to_string());
         println!("{:?}", gov_nft.to_string());
+        let sess = call_function(
+            sess,
+            &gov_token,
+            &bob,
+            String::from("PSP22::transfer_from"),
+            Some(vec![
+                bob.to_string(),
+                stake_contract.to_string(),
+                (TOTAL_SUPPLY/10).to_string(),
+                "[]".to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )?;
         let user_tokens = USER_SUPPLY;
         let sess = call_function(
             sess,
@@ -488,21 +495,12 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_token_value"),
-            Some(vec![10000_u128.to_string(), 1_u128.to_string()]),
-            None,
-            transcoder_governance_staking(),
-        )
-        .unwrap();
-        let sess = call_function(
-            sess,
-            &ctx.stake_contract,
-            &ctx.bob,
-            String::from("remove_token_value"),
             Some(vec![5000_u128.to_string(), 1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
         .unwrap();
+       
         let sess = call_function(
             sess,
             &ctx.gov_nft,
@@ -521,7 +519,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn burn_remint() -> Result<(), Box<dyn Error>> {
+    fn test_burn_remint() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
         let sess = call_function(
@@ -551,6 +549,8 @@ mod tests {
         let (allowed, sess) =
             query_allowance(sess, &ctx.gov_nft, &ctx.alice, &ctx.stake_contract).unwrap();
         println!("{:?}", allowed);
+        let (result,sess)=query_owner(sess,ctx.gov_nft,1_u128).unwrap();
+        println!("{:?}", result);
         let sess = update_days(sess, 2);
         let sess = call_function(
             sess,
@@ -661,7 +661,7 @@ mod tests {
     #[test]
     fn proposal_creation() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
     }

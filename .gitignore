@@ -2,7 +2,7 @@
 node_modules/
 target/
 debug/
-deployments
+deployments/*
 .idea/
 
 # misc
