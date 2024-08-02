@@ -113,7 +113,7 @@ pub fn query_owner(
     mut sess: Session<MinimalRuntime>,
     governance_nft:AccountId32,
     nft_id: u128,
-) -> Result<(AccountId32, Session<MinimalRuntime>), Box<dyn Error>> {
+) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance_nft.clone(), &transcoder_governance_nft().unwrap());
     sess.call_with_address(
         governance_nft.clone(),
@@ -122,7 +122,7 @@ pub fn query_owner(
         None,
     )?;
 
-    let owner: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let owner: Result<Option<AccountId32>, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((owner.unwrap(), sess))
 }

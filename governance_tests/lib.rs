@@ -7,7 +7,13 @@ mod helpers;
 #[cfg(test)]
 mod tests {
     use crate::helpers::{
-        call_function, query_allowance, query_proposal, query_token_balance, update_days,query_owner
+        DAY,
+        call_function,
+        query_allowance,
+        query_owner,
+        query_proposal,
+        query_token_balance,
+        update_days,
     };
     use crate::sources::*;
     use drink::session::contract_transcode::ContractMessageTranscoder;
@@ -76,6 +82,7 @@ mod tests {
     const REJECT_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const USER_SUPPLY: u128 = TOTAL_SUPPLY / 10;
+    const REWARDS_PER_SECOND: u128 = 100_000u128;
 
     struct TestContext {
         sess: Session<MinimalRuntime>,
@@ -185,7 +192,7 @@ mod tests {
                 EXEC_THRESHOLD.to_string(),
                 REJECT_THRESHOLD.to_string(),
                 ACC_THRESHOLD.to_string(),
-                100_000.to_string(),
+                REWARDS_PER_SECOND.to_string(),
             ],
             vec![1],
             None,
@@ -574,11 +581,14 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let (balance1, sess) = query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
-        let (balance2, sess) =
-            query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
-        assert_eq!(balance1, USER_SUPPLY);
-        assert_eq!(balance2, 4 * USER_SUPPLY);
+
+        let (balance_in_wallet, sess) = query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
+        let (balance_in_staking, sess) = query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
+        let total_rewards_2_days = REWARDS_PER_SECOND * 2 * DAY as u128;
+        let rewards_share_alice = total_rewards_2_days / 5;
+        assert_eq!(balance_in_wallet, USER_SUPPLY + rewards_share_alice);
+        assert_eq!(balance_in_staking, (TOTAL_SUPPLY / 10) + (4 * USER_SUPPLY) - rewards_share_alice);
+
         Ok(())
     }
     #[test]

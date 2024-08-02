@@ -169,7 +169,7 @@ mod governance_nft {
 
             let _id = Id::U128(id);
 
-            let events = self.data.burn(self.env().caller(), account, _id)?;
+            let events = self.data.burn(account, self.env().caller(), _id)?;
             self.emit_events(events);
             Ok(())
         }
