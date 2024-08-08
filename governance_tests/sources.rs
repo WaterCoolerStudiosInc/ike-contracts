@@ -120,6 +120,12 @@ pub fn hash_multisig() -> String {
     artifact.source.hash
 }
 
+pub fn hash_vesting() -> String {
+    let json = read_to_string("../deployments/vesting/vesting.json").unwrap();
+    let artifact: Artifact = from_str(&json).expect("Should extract hash from vesting.json");
+    artifact.source.hash
+}
+
 // Transcoders for making contract calls
 
 pub fn transcoder_registry() -> Option<Rc<ContractMessageTranscoder>> {
@@ -162,6 +168,14 @@ pub fn transcoder_multisig() -> Option<Rc<ContractMessageTranscoder>> {
             .expect("Failed to create transcoder"),
     ))
 }
+pub fn transcoder_vesting() -> Option<Rc<ContractMessageTranscoder>> {
+    Some(Rc::new(
+        ContractMessageTranscoder::load(PathBuf::from(
+            "../deployments/vesting/vesting.json",
+        ))
+            .expect("Failed to create transcoder"),
+    ))
+}
 // Bytes for instantiating contracts
 pub fn bytes_multisig() -> Vec<u8> {
     read("../deployments/multisig/multisig.wasm")
@@ -181,5 +195,9 @@ pub fn bytes_vault() -> Vec<u8> {
 }
 pub fn bytes_nominator() -> Vec<u8> {
     read("../deployments/mock_nominator/mock_nominator.wasm")
+        .expect("Failed to find or read contract file")
+}
+pub fn bytes_vesting() -> Vec<u8> {
+    read("../deployments/vesting/vesting.wasm")
         .expect("Failed to find or read contract file")
 }

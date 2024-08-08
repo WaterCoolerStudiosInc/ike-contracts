@@ -4,8 +4,7 @@ use drink::{
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
     AccountId32,
 };
-use std::{error::Error, rc::Rc,fmt};
-use psp34::{Id};
+use std::{error::Error, rc::Rc};
 
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
@@ -147,7 +146,6 @@ pub fn query_allowance(
     governance_nft: &AccountId32,
     owner: &AccountId32,
     operator:&AccountId32,
-    
 ) -> Result<(bool, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance_nft.clone(), &transcoder_governance_nft().unwrap());
     sess.call_with_address(
@@ -160,4 +158,27 @@ pub fn query_allowance(
     let result: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((result.unwrap(), sess))
+}
+
+pub fn gov_token_transfer(
+    mut sess: Session<MinimalRuntime>,
+    gov_token: &AccountId32,
+    sender: &AccountId32,
+    to: &AccountId32,
+    amount: u128,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &gov_token,
+        &sender,
+        String::from("PSP22::transfer"),
+        Some(vec![
+            to.to_string(),
+            amount.to_string(),
+            "[]".to_string(),
+        ]),
+        None,
+        transcoder_governance_token(),
+    )?;
+    Ok(sess)
 }
