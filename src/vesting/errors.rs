@@ -13,6 +13,7 @@ pub enum VestingError {
     NoAdmin,
     AdminOnly,
     InsufficientFunding,
+    InvalidInput,
     InkEnvError(String),
     TokenError(PSP22Error),
 }

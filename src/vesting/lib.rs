@@ -31,7 +31,7 @@ pub mod vesting {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
     pub struct Schedule {
         pub amount: u128,
-        pub tge: u128,
+        pub cliff: u128,
         pub offset: u64,
         pub duration: u64,
     }
@@ -111,6 +111,10 @@ pub mod vesting {
                 return Err(VestingError::Active);
             }
 
+            if recipients.len() != schedules.len() {
+                return Err(VestingError::InvalidInput);
+            }
+
             let mut additional_funding_required = 0u128;
 
             for (recipient, schedule) in recipients.iter().zip(schedules) {
@@ -118,7 +122,7 @@ pub mod vesting {
                     return Err(VestingError::RecipientAlreadyExists);
                 }
 
-                additional_funding_required += schedule.amount + schedule.tge;
+                additional_funding_required += schedule.amount + schedule.cliff;
 
                 self.schedules.insert(recipient, &schedule);
             }
@@ -162,7 +166,7 @@ pub mod vesting {
                     .ok_or(VestingError::RecipientDoesNotExist)
                     .unwrap();
 
-                removed_funding_required += schedule.amount + schedule.tge;
+                removed_funding_required += schedule.amount + schedule.cliff;
 
                 self.schedules.remove(recipient);
             }
@@ -293,10 +297,10 @@ pub mod vesting {
 
             let mut payable: u128 = 0;
 
-            // Vest TGE if not already vested
-            if schedule.tge > 0 {
-                payable += schedule.tge;
-                schedule.tge = 0;
+            // Vest cliff if not already vested
+            if schedule.cliff > 0 {
+                payable += schedule.cliff;
+                schedule.cliff = 0;
             }
 
             if now < end {

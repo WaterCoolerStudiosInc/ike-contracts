@@ -4,6 +4,7 @@ use drink::{
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
     AccountId32,
 };
+use serde::{Serialize, Deserialize};
 use std::{error::Error, rc::Rc};
 
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
@@ -179,6 +180,121 @@ pub fn gov_token_transfer(
         ]),
         None,
         transcoder_governance_token(),
+    )?;
+    Ok(sess)
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, scale::Decode)]
+pub struct Schedule {
+    pub amount: u128,
+    pub cliff: u128,
+    pub offset: u64,
+    pub duration: u64,
+}
+
+pub fn query_vesting_get_admin(
+    mut sess: Session<MinimalRuntime>,
+    vesting: &AccountId32,
+) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(
+        vesting.clone(),
+        "get_admin",
+        NO_ARGS,
+        None,
+    )?;
+
+    let admin: Result<Option<AccountId32>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((admin.unwrap(), sess))
+}
+
+pub fn query_vesting_get_schedule(
+    mut sess: Session<MinimalRuntime>,
+    vesting: &AccountId32,
+    recipient: &AccountId32,
+) -> Result<(Option<Schedule>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(
+        vesting.clone(),
+        "get_schedule",
+        &[recipient.to_string()],
+        None,
+    )?;
+
+    let schedule: Result<Option<Schedule>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((schedule.unwrap(), sess))
+}
+
+pub fn vesting_add_recipients(
+    sess: Session<MinimalRuntime>,
+    vesting: &AccountId32,
+    sender: &AccountId32,
+    recipients: Vec<&AccountId32>,
+    schedules: Vec<&Schedule>,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &vesting,
+        &sender,
+        String::from("add_recipients"),
+        Some(vec![
+            serde_json::to_string(&recipients).unwrap(),
+            serde_json::to_string(&schedules).unwrap(),
+        ]),
+        None,
+        transcoder_vesting(),
+    )?;
+    Ok(sess)
+}
+
+pub fn vesting_remove_recipients(
+    sess: Session<MinimalRuntime>,
+    vesting: &AccountId32,
+    sender: &AccountId32,
+    recipients: Vec<&AccountId32>,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &vesting,
+        &sender,
+        String::from("remove_recipients"),
+        Some(vec![
+            serde_json::to_string(&recipients).unwrap(),
+        ]),
+        None,
+        transcoder_vesting(),
+    )?;
+    Ok(sess)
+}
+
+pub fn vesting_activate(
+    sess: Session<MinimalRuntime>,
+    vesting: &AccountId32,
+    sender: &AccountId32,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &vesting,
+        &sender,
+        String::from("activate"),
+        None,
+        None,
+        transcoder_vesting(),
+    )?;
+    Ok(sess)
+}
+
+pub fn vesting_claim(
+    sess: Session<MinimalRuntime>,
+    vesting: &AccountId32,
+    sender: &AccountId32,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &vesting,
+        &sender,
+        String::from("claim"),
+        None,
+        None,
+        transcoder_vesting(),
     )?;
     Ok(sess)
 }

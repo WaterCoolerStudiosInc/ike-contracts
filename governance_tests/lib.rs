@@ -16,6 +16,7 @@ mod tests {
         update_days,
         gov_token_transfer,
     };
+    use crate::helpers;
     use crate::sources::*;
     use drink::{
         AccountId32,
@@ -589,6 +590,479 @@ mod tests {
     fn proposal_creation() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_admin_can_transfer() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        // Bob is admin
+        let (admin, sess) = helpers::query_vesting_get_admin(ctx.sess, &ctx.vesting)?;
+        assert_eq!(admin.unwrap(), ctx.bob);
+
+        // Transfer admin to Charlie
+        let sess = call_function(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            String::from("admin_transfer"),
+            Some(vec![ctx.charlie.to_string()]),
+            None,
+            transcoder_vesting(),
+        )?;
+
+        // Charlie is admin
+        let (admin, _sess) = helpers::query_vesting_get_admin(sess, &ctx.vesting)?;
+        assert_eq!(admin.unwrap(), ctx.charlie);
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_admin_can_relinquish() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = helpers::vesting_activate(ctx.sess, &ctx.vesting, &ctx.bob)?;
+
+        let sess = call_function(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            String::from("admin_relinquish"),
+            None,
+            None,
+            transcoder_vesting(),
+        )?;
+
+        let (admin, _sess) = helpers::query_vesting_get_admin(sess, &ctx.vesting)?;
+        assert!(admin.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_admin_can_abort_contract() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let cliff = 100e12 as u128;
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff,
+            offset: 0,
+            duration: 0,
+        };
+
+        // Add funding
+        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
+
+        let sess = helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        // Abort
+        let (admin_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.bob)?;
+        let sess = call_function(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            String::from("admin_abort"),
+            None,
+            None,
+            transcoder_vesting(),
+        )?;
+        let (admin_balance_after, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.bob)?;
+        let (contract_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.vesting)?;
+        assert_eq!(admin_balance_after, admin_balance_before + cliff);
+        assert_eq!(contract_balance_after, 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_admin_can_add_recipient() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let (schedule, sess) = helpers::query_vesting_get_schedule(ctx.sess, &ctx.vesting, &ctx.charlie)?;
+        assert!(schedule.is_none());
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        let sess = helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let (schedule, _sess) = helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        assert_eq!(schedule.unwrap(), charlie_schedule);
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_admin_cannot_add_recipient_once_active() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        let sess = helpers::vesting_activate(ctx.sess, &ctx.vesting, &ctx.bob)?;
+
+        match helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        ) {
+            Ok(_) => panic!("Should panic because vesting has been activated"),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn vesting_admin_cannot_add_duplicate_recipient() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        let sess = helpers::vesting_add_recipients(
+            ctx.sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        match helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        ) {
+            Ok(_) => panic!("Should panic because charlie already has schedule"),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn vesting_non_admin_cannot_add_recipient() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        match helpers::vesting_add_recipients(
+            ctx.sess,
+            &ctx.vesting,
+            &ctx.ed, // not admin
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        ) {
+            Ok(_) => panic!("Should panic because caller is not admin"),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn vesting_admin_can_remove_recipient() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        let sess = helpers::vesting_add_recipients(
+            ctx.sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let (schedule, sess) = helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        assert_eq!(schedule.unwrap(), charlie_schedule);
+
+        let sess = helpers::vesting_remove_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+        )?;
+
+        let (schedule, _sess) = helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        assert!(schedule.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_admin_cannot_remove_recipient_once_active() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        let sess = helpers::vesting_add_recipients(
+            ctx.sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let sess = helpers::vesting_activate(sess, &ctx.vesting, &ctx.bob)?;
+
+        match helpers::vesting_remove_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+        ) {
+            Ok(_) => panic!("Should panic because vesting has been activated"),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn vesting_non_admin_cannot_remove_recipient() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff: 0,
+            offset: 0,
+            duration: 0,
+        };
+
+        let sess = helpers::vesting_add_recipients(
+            ctx.sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        match helpers::vesting_remove_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.ed, // not bob
+            vec![&ctx.charlie],
+        ) {
+            Ok(_) => panic!("Should panic because caller is not admin"),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn vesting_can_not_claim_before_active() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let cliff = 100e12 as u128;
+        let offset = helpers::DAY;
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff,
+            offset,
+            duration: 0,
+        };
+
+        // Add funding
+        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
+
+        let sess = helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let sess = helpers::update_in_milliseconds(sess, offset);
+
+        match helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie) {
+            Ok(_) => panic!("Should panic because vesting is not active"),
+            Err(_) => Ok(()),
+        }
+    }
+
+    #[test]
+    fn vesting_claim_cliff_only() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let cliff = 100e12 as u128;
+        let offset = helpers::DAY;
+
+        let charlie_schedule = helpers::Schedule {
+            amount: 0,
+            cliff,
+            offset,
+            duration: 0,
+        };
+
+        // Add funding
+        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
+
+        let sess = helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let sess = helpers::vesting_activate(sess, &ctx.vesting, &ctx.bob)?;
+
+        let sess = helpers::update_in_milliseconds(sess, offset);
+
+        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+
+        let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
+
+        let (charlie_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+
+        assert_eq!(charlie_balance_after, charlie_balance_before + cliff);
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_claim_amount_only_with_no_duration() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let amount = 100e12 as u128;
+        let offset = helpers::DAY;
+
+        let charlie_schedule = helpers::Schedule {
+            amount,
+            cliff: 0,
+            offset,
+            duration: 0,
+        };
+
+        // Add funding
+        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, amount)?;
+
+        let sess = helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let sess = helpers::vesting_activate(sess, &ctx.vesting, &ctx.bob)?;
+
+        let sess = helpers::update_in_milliseconds(sess, offset);
+
+        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+
+        let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
+
+        let (charlie_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+
+        assert_eq!(charlie_balance_after, charlie_balance_before + amount);
+
+        Ok(())
+    }
+
+    #[test]
+    fn vesting_claim_flow() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let amount = 100e12 as u128;
+        let cliff = 50e12 as u128;
+        let offset = helpers::DAY;
+        let duration = helpers::DAY * 14;
+
+        let charlie_schedule = helpers::Schedule {
+            amount,
+            cliff,
+            offset,
+            duration,
+        };
+
+        // Add funding
+        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, amount + cliff)?;
+
+        let sess = helpers::vesting_add_recipients(
+            sess,
+            &ctx.vesting,
+            &ctx.bob,
+            vec![&ctx.charlie],
+            vec![&charlie_schedule],
+        )?;
+
+        let sess = helpers::vesting_activate(sess, &ctx.vesting, &ctx.bob)?;
+
+        let (charlie_balance_initial, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+
+        // Claim cliff and half of amount
+        let sess = helpers::update_in_milliseconds(sess, offset + duration / 2);
+        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
+        let (charlie_balance_after, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        assert_eq!(charlie_balance_after, charlie_balance_before + cliff + amount / 2);
+
+        // Claim remaining half of amount
+        let sess = helpers::update_in_milliseconds(sess, duration / 2);
+        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
+        let (charlie_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        assert_eq!(charlie_balance_after, charlie_balance_before + amount / 2);
+
+        // Ensure 100% was claimed
+        assert_eq!(charlie_balance_after, charlie_balance_initial + amount + cliff);
 
         Ok(())
     }
