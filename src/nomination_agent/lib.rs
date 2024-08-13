@@ -407,5 +407,20 @@ mod nomination_agent {
 
             Ok(())
         }
+
+        /// Allows the Registry to effectively "upgrade" the contract logic
+        ///
+        /// Can only be called by registry
+        #[ink(message, selector = 999)]
+        fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), RuntimeError> {
+            // Restricted to registry
+            if Self::env().caller() != self.registry {
+                return Err(RuntimeError::Unauthorized);
+            }
+
+            ink::env::set_code_hash(&code_hash)?;
+
+            Ok(())
+        }
     }
 }

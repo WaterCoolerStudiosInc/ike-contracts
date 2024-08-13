@@ -48,4 +48,7 @@ pub trait INominationAgent {
 
     #[ink(message, selector = 103)]
     fn admin_withdraw_bond(&mut self, to: AccountId) -> Result<(), RuntimeError>;
+
+    #[ink(message, selector = 999)]
+    fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), RuntimeError>;
 }

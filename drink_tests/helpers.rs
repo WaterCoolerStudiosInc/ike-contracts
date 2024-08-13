@@ -218,6 +218,7 @@ pub enum RoleType {
     AddAgent,
     UpdateAgents,
     RemoveAgent,
+    SetCodeHash,
 }
 pub fn get_role(
     mut sess: Session<MinimalRuntime>,
@@ -228,6 +229,7 @@ pub fn get_role(
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
         RoleType::RemoveAgent => "RemoveAgent",
+        RoleType::SetCodeHash => "SetCodeHash",
     };
     sess.call_with_address(registry.clone(), "get_role", &[role_string], None)?;
 
@@ -243,6 +245,7 @@ pub fn get_role_admin(
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
         RoleType::RemoveAgent => "RemoveAgent",
+        RoleType::SetCodeHash => "SetCodeHash",
     };
     sess.call_with_address(registry.clone(), "get_role_admin", &[role_string], None)?;
 
@@ -260,6 +263,7 @@ pub fn transfer_role(
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
         RoleType::RemoveAgent => "RemoveAgent",
+        RoleType::SetCodeHash => "SetCodeHash",
     };
     let sess = call_function(
         sess,
@@ -283,6 +287,7 @@ pub fn transfer_role_admin(
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
         RoleType::RemoveAgent => "RemoveAgent",
+        RoleType::SetCodeHash => "SetCodeHash",
     };
     let sess = call_function(
         sess,

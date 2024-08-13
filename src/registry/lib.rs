@@ -59,6 +59,8 @@ pub mod registry {
         UpdateAgents,
         // Permission to remove deprecated agents
         RemoveAgent,
+        // Permission to set code hash aka "upgrade" logic
+        SetCodeHash,
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -137,6 +139,7 @@ pub mod registry {
             role_add: AccountId,
             role_update: AccountId,
             role_remove: AccountId,
+            role_set_code_hash: AccountId,
             nomination_agent_hash: Hash,
         ) -> Self {
             let mut initial_roles = Mapping::default();
@@ -159,6 +162,13 @@ pub mod registry {
                 &Role {
                     admin: role_remove,
                     account: role_remove,
+                },
+            );
+            initial_roles.insert(
+                RoleType::SetCodeHash,
+                &Role {
+                    admin: role_set_code_hash,
+                    account: role_set_code_hash,
                 },
             );
 
@@ -421,6 +431,47 @@ pub mod registry {
             } else {
                 return Err(RegistryError::InvalidRole);
             }
+
+            Ok(())
+        }
+
+        /// ================================ Code Hash Methods ================================
+
+        /// "Upgrade" the Registry contract logic
+        ///
+        /// Caller must have the SetCodeHash role.
+        #[ink(message)]
+        pub fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), RegistryError> {
+            let caller = Self::env().caller();
+
+            if caller != self.roles.get(RoleType::SetCodeHash).unwrap().account {
+                return Err(RegistryError::InvalidPermissions);
+            }
+
+            ink::env::set_code_hash(&code_hash)?;
+
+            Ok(())
+        }
+
+        /// "Upgrade" the logic of all nomination agent contracts
+        ///
+        /// Caller must have the SetCodeHash role.
+        #[ink(message)]
+        pub fn set_agent_code(&mut self, nomination_agent_hash: [u8; 32]) -> Result<(), RegistryError> {
+            let caller = Self::env().caller();
+
+            if caller != self.roles.get(RoleType::SetCodeHash).unwrap().account {
+                return Err(RegistryError::InvalidPermissions);
+            }
+
+            for agent in self.agents.iter() {
+                let mut agent_contract: contract_ref!(INominationAgent) = agent.address.into();
+                agent_contract
+                    .set_code(nomination_agent_hash)
+                    .expect("Agent code hash is updated");
+            }
+
+            self.nomination_agent_hash = Hash::from(nomination_agent_hash);
 
             Ok(())
         }
