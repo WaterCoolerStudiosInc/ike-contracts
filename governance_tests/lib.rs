@@ -6,23 +6,17 @@ mod helpers;
 
 #[cfg(test)]
 mod tests {
-    use crate::helpers::{
-        DAY,
-        call_function,
-        query_allowance,
-        query_owner,
-        query_proposal,
-        query_token_balance,
-        update_days,
-        gov_token_transfer,
-    };
     use crate::helpers;
+    use crate::helpers::{
+        call_function, get_all_props, gov_token_transfer, query_allowance, query_owner,
+        query_proposal_by_nft, query_token_balance, update_days, DAY,
+    };
     use crate::sources::*;
     use drink::{
-        AccountId32,
         chain_api::ChainApi,
         runtime::MinimalRuntime,
-        session::{NO_ARGS, Session},
+        session::{Session, NO_ARGS},
+        AccountId32,
     };
     use std::error::Error;
     use std::fmt;
@@ -43,14 +37,36 @@ mod tests {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub enum PropType {
+        // Transfer Azero from governance
         TransferFunds(TokenTransfer),
-        UpdateStakingRewards(u128),
+        // Transfer psp22 token from governance
+        NativeTokenTransfer(AccountId32, u128),
+        // update tokens per second for staker in staking contract
+        ChangeStakingRewardRate(u128),
+        // Add to multisig
         AddCouncilMember(AccountId32),
+        // remove then add to multisig
+        ReplaceCouncilMember(AccountId32, AccountId32),
+        // remove from multisig
         RemoveCouncilMember(AccountId32),
-        ThresholdChange(u16),
+        // change threshold for multisig acceptance
+        ChangeMultiSigThreshold(u16),
+        // change vault fee
         FeeChange(u16),
+        // change vault compound acceptance
+        CompoundIncentiveChange(u16),
+        // change  governance proposal acceptance weight requirement
+        AcceptanceWeightUpdate(u128),
+        // change vote periodi delay
         VoteDelayUpdate(u64),
+        // update voting perioud
         VotePeriodUpdate(u64),
+        // update threshold proposals
+        UpdateRejectThreshhold(u128),
+        // upddate execution threshhold for proposals
+        UpdateExecThreshhold(u128),
+
+        SetCodeHash([u8; 32]),
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -112,11 +128,16 @@ mod tests {
 
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
 
-        sess.chain_api().add_tokens(alice.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(bob.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(charlie.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(dave.clone(), 100_000_000e10 as u128);
-        sess.chain_api().add_tokens(ed.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(alice.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(bob.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(charlie.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(dave.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(ed.clone(), 100_000_000e10 as u128);
 
         sess.upload(bytes_governance_nft())?;
         sess.upload(bytes_registry())?;
@@ -146,7 +167,6 @@ mod tests {
         )?;
         sess.set_transcoder(vesting.clone(), &transcoder_vesting().unwrap());
         println!("vesting: {:?}", vesting.to_string());
-
 
         let vault = sess.deploy(
             bytes_vault(),
@@ -241,7 +261,7 @@ mod tests {
         sess.set_transcoder(gov_nft.clone(), &transcoder_governance_nft().unwrap());
         println!("gov_nft: {:?}", gov_nft.to_string());
 
-        let sess = gov_token_transfer(sess, &gov_token, &bob, &stake_contract, TOTAL_SUPPLY/10)?;
+        let sess = gov_token_transfer(sess, &gov_token, &bob, &stake_contract, TOTAL_SUPPLY / 10)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &alice, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &charlie, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &dave, USER_SUPPLY)?;
@@ -425,7 +445,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-       
+
         let sess = call_function(
             sess,
             &ctx.gov_nft,
@@ -474,7 +494,7 @@ mod tests {
         let (allowed, sess) =
             query_allowance(sess, &ctx.gov_nft, &ctx.alice, &ctx.stake_contract).unwrap();
         println!("{:?}", allowed);
-        let (result,sess)=query_owner(sess,ctx.gov_nft,1_u128).unwrap();
+        let (result, sess) = query_owner(sess, ctx.gov_nft, 1_u128).unwrap();
         println!("{:?}", result);
         let sess = update_days(sess, 2);
         let sess = call_function(
@@ -500,19 +520,24 @@ mod tests {
         )
         .unwrap();
 
-        let (balance_in_wallet, sess) = query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
-        let (balance_in_staking, sess) = query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
+        let (balance_in_wallet, sess) =
+            query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
+        let (balance_in_staking, sess) =
+            query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
         let total_rewards_2_days = REWARDS_PER_SECOND * 2 * DAY as u128;
         let rewards_share_alice = total_rewards_2_days / 5;
         assert_eq!(balance_in_wallet, USER_SUPPLY + rewards_share_alice);
-        assert_eq!(balance_in_staking, (TOTAL_SUPPLY / 10) + (4 * USER_SUPPLY) - rewards_share_alice);
+        assert_eq!(
+            balance_in_staking,
+            (TOTAL_SUPPLY / 10) + (4 * USER_SUPPLY) - rewards_share_alice
+        );
 
         Ok(())
     }
     #[test]
     fn earn_interest() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
     }
@@ -520,9 +545,9 @@ mod tests {
     fn change_interest_rate_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
-        let prop = PropType::UpdateStakingRewards(70000000_128);
+        let prop = PropType::ChangeStakingRewardRate(70000000_128);
         println!("{:?}", prop.to_string());
-        let sess = call_function(
+        let sess: Session<MinimalRuntime> = call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
@@ -532,8 +557,9 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        println!("{}", "Querying Proposal");
-        let (res, sess) = query_proposal(sess, ctx.governance.clone(), 1_u128).unwrap();
+        let (props, sess) = get_all_props(sess, ctx.governance.clone()).unwrap();
+        println!("{:?}", props);
+        let (res, sess) = query_proposal_by_nft(sess, ctx.governance.clone(), 1_u128).unwrap();
         let sess = call_function(
             sess,
             &ctx.governance,
@@ -548,7 +574,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (res, sess) = query_proposal(sess, ctx.governance.clone(), 1_u128).unwrap();
+        let (res, sess) = query_proposal_by_nft(sess, ctx.governance.clone(), 1_u128).unwrap();
+
         let sess = call_function(
             sess,
             &ctx.governance,
@@ -563,26 +590,27 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+
         Ok(())
     }
     #[test]
     fn make_and_vote_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
     }
     #[test]
     fn double_proposals_fail() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
     }
     #[test]
     fn double_votes_fail() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 5).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
     }
@@ -659,7 +687,8 @@ mod tests {
         };
 
         // Add funding
-        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
+        let sess =
+            helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
 
         let sess = helpers::vesting_add_recipients(
             sess,
@@ -670,7 +699,8 @@ mod tests {
         )?;
 
         // Abort
-        let (admin_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.bob)?;
+        let (admin_balance_before, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.bob)?;
         let sess = call_function(
             sess,
             &ctx.vesting,
@@ -680,8 +710,10 @@ mod tests {
             None,
             transcoder_vesting(),
         )?;
-        let (admin_balance_after, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.bob)?;
-        let (contract_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.vesting)?;
+        let (admin_balance_after, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.bob)?;
+        let (contract_balance_after, _sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.vesting)?;
         assert_eq!(admin_balance_after, admin_balance_before + cliff);
         assert_eq!(contract_balance_after, 0);
 
@@ -693,7 +725,8 @@ mod tests {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
-        let (schedule, sess) = helpers::query_vesting_get_schedule(ctx.sess, &ctx.vesting, &ctx.charlie)?;
+        let (schedule, sess) =
+            helpers::query_vesting_get_schedule(ctx.sess, &ctx.vesting, &ctx.charlie)?;
         assert!(schedule.is_none());
 
         let charlie_schedule = helpers::Schedule {
@@ -711,7 +744,8 @@ mod tests {
             vec![&charlie_schedule],
         )?;
 
-        let (schedule, _sess) = helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        let (schedule, _sess) =
+            helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
         assert_eq!(schedule.unwrap(), charlie_schedule);
 
         Ok(())
@@ -819,17 +853,15 @@ mod tests {
             vec![&charlie_schedule],
         )?;
 
-        let (schedule, sess) = helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        let (schedule, sess) =
+            helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
         assert_eq!(schedule.unwrap(), charlie_schedule);
 
-        let sess = helpers::vesting_remove_recipients(
-            sess,
-            &ctx.vesting,
-            &ctx.bob,
-            vec![&ctx.charlie],
-        )?;
+        let sess =
+            helpers::vesting_remove_recipients(sess, &ctx.vesting, &ctx.bob, vec![&ctx.charlie])?;
 
-        let (schedule, _sess) = helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        let (schedule, _sess) =
+            helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
         assert!(schedule.is_none());
 
         Ok(())
@@ -857,12 +889,7 @@ mod tests {
 
         let sess = helpers::vesting_activate(sess, &ctx.vesting, &ctx.bob)?;
 
-        match helpers::vesting_remove_recipients(
-            sess,
-            &ctx.vesting,
-            &ctx.bob,
-            vec![&ctx.charlie],
-        ) {
+        match helpers::vesting_remove_recipients(sess, &ctx.vesting, &ctx.bob, vec![&ctx.charlie]) {
             Ok(_) => panic!("Should panic because vesting has been activated"),
             Err(_) => Ok(()),
         }
@@ -915,7 +942,8 @@ mod tests {
         };
 
         // Add funding
-        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
+        let sess =
+            helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
 
         let sess = helpers::vesting_add_recipients(
             sess,
@@ -949,7 +977,8 @@ mod tests {
         };
 
         // Add funding
-        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
+        let sess =
+            helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, cliff)?;
 
         let sess = helpers::vesting_add_recipients(
             sess,
@@ -963,11 +992,13 @@ mod tests {
 
         let sess = helpers::update_in_milliseconds(sess, offset);
 
-        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_before, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
 
         let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
 
-        let (charlie_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_after, _sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
 
         assert_eq!(charlie_balance_after, charlie_balance_before + cliff);
 
@@ -990,7 +1021,8 @@ mod tests {
         };
 
         // Add funding
-        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, amount)?;
+        let sess =
+            helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, amount)?;
 
         let sess = helpers::vesting_add_recipients(
             sess,
@@ -1004,11 +1036,13 @@ mod tests {
 
         let sess = helpers::update_in_milliseconds(sess, offset);
 
-        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_before, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
 
         let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
 
-        let (charlie_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_after, _sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
 
         assert_eq!(charlie_balance_after, charlie_balance_before + amount);
 
@@ -1033,7 +1067,13 @@ mod tests {
         };
 
         // Add funding
-        let sess = helpers::gov_token_transfer(ctx.sess, &ctx.gov_token, &ctx.bob, &ctx.vesting, amount + cliff)?;
+        let sess = helpers::gov_token_transfer(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.bob,
+            &ctx.vesting,
+            amount + cliff,
+        )?;
 
         let sess = helpers::vesting_add_recipients(
             sess,
@@ -1045,24 +1085,35 @@ mod tests {
 
         let sess = helpers::vesting_activate(sess, &ctx.vesting, &ctx.bob)?;
 
-        let (charlie_balance_initial, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_initial, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
 
         // Claim cliff and half of amount
         let sess = helpers::update_in_milliseconds(sess, offset + duration / 2);
-        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_before, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
         let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
-        let (charlie_balance_after, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
-        assert_eq!(charlie_balance_after, charlie_balance_before + cliff + amount / 2);
+        let (charlie_balance_after, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        assert_eq!(
+            charlie_balance_after,
+            charlie_balance_before + cliff + amount / 2
+        );
 
         // Claim remaining half of amount
         let sess = helpers::update_in_milliseconds(sess, duration / 2);
-        let (charlie_balance_before, sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_before, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
         let sess = helpers::vesting_claim(sess, &ctx.vesting, &ctx.charlie)?;
-        let (charlie_balance_after, _sess) = helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
+        let (charlie_balance_after, _sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &ctx.charlie)?;
         assert_eq!(charlie_balance_after, charlie_balance_before + amount / 2);
 
         // Ensure 100% was claimed
-        assert_eq!(charlie_balance_after, charlie_balance_initial + amount + cliff);
+        assert_eq!(
+            charlie_balance_after,
+            charlie_balance_initial + amount + cliff
+        );
 
         Ok(())
     }

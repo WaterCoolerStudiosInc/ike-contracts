@@ -4,7 +4,7 @@ use drink::{
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
     AccountId32,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{error::Error, rc::Rc};
 
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
@@ -92,16 +92,16 @@ pub fn call_function(
     Ok(sess)
 }
 
-pub fn query_proposal(
+pub fn query_proposal_by_nft(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId32,
-    prop_id: u128,
+    nft_id: u128,
 ) -> Result<(Proposal, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
         "get_proposal_by_nft",
-        &[prop_id.to_string()],
+        &[nft_id.to_string()],
         None,
     )?;
 
@@ -109,12 +109,31 @@ pub fn query_proposal(
     //println!("{:?}",&prop.clone().unwrap());
     Ok((prop.unwrap(), sess))
 }
+pub fn get_all_props(
+    mut sess: Session<MinimalRuntime>,
+    governance: AccountId32,
+) -> Result<(Vec<Proposal>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
+    sess.call_with_address(
+        governance.clone(),
+        "get_all_proposals",
+        NO_ARGS,
+        None,
+    )?;
+
+    let props: Result<Vec<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((props.unwrap(), sess))
+}
 pub fn query_owner(
     mut sess: Session<MinimalRuntime>,
-    governance_nft:AccountId32,
+    governance_nft: AccountId32,
     nft_id: u128,
 ) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(governance_nft.clone(), &transcoder_governance_nft().unwrap());
+    sess.set_transcoder(
+        governance_nft.clone(),
+        &transcoder_governance_nft().unwrap(),
+    );
     sess.call_with_address(
         governance_nft.clone(),
         "owner_of_id",
@@ -122,7 +141,8 @@ pub fn query_owner(
         None,
     )?;
 
-    let owner: Result<Option<AccountId32>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let owner: Result<Option<AccountId32>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((owner.unwrap(), sess))
 }
@@ -146,13 +166,20 @@ pub fn query_allowance(
     mut sess: Session<MinimalRuntime>,
     governance_nft: &AccountId32,
     owner: &AccountId32,
-    operator:&AccountId32,
+    operator: &AccountId32,
 ) -> Result<(bool, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(governance_nft.clone(), &transcoder_governance_nft().unwrap());
+    sess.set_transcoder(
+        governance_nft.clone(),
+        &transcoder_governance_nft().unwrap(),
+    );
     sess.call_with_address(
         governance_nft.clone(),
         "PSP34::allowance",
-        &[owner.to_string(),operator.to_string(),String::from("None")],
+        &[
+            owner.to_string(),
+            operator.to_string(),
+            String::from("None"),
+        ],
         None,
     )?;
 
@@ -173,11 +200,7 @@ pub fn gov_token_transfer(
         &gov_token,
         &sender,
         String::from("PSP22::transfer"),
-        Some(vec![
-            to.to_string(),
-            amount.to_string(),
-            "[]".to_string(),
-        ]),
+        Some(vec![to.to_string(), amount.to_string(), "[]".to_string()]),
         None,
         transcoder_governance_token(),
     )?;
@@ -196,14 +219,10 @@ pub fn query_vesting_get_admin(
     mut sess: Session<MinimalRuntime>,
     vesting: &AccountId32,
 ) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.call_with_address(
-        vesting.clone(),
-        "get_admin",
-        NO_ARGS,
-        None,
-    )?;
+    sess.call_with_address(vesting.clone(), "get_admin", NO_ARGS, None)?;
 
-    let admin: Result<Option<AccountId32>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let admin: Result<Option<AccountId32>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     Ok((admin.unwrap(), sess))
 }
 
@@ -219,7 +238,8 @@ pub fn query_vesting_get_schedule(
         None,
     )?;
 
-    let schedule: Result<Option<Schedule>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let schedule: Result<Option<Schedule>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     Ok((schedule.unwrap(), sess))
 }
 
@@ -256,9 +276,7 @@ pub fn vesting_remove_recipients(
         &vesting,
         &sender,
         String::from("remove_recipients"),
-        Some(vec![
-            serde_json::to_string(&recipients).unwrap(),
-        ]),
+        Some(vec![serde_json::to_string(&recipients).unwrap()]),
         None,
         transcoder_vesting(),
     )?;
