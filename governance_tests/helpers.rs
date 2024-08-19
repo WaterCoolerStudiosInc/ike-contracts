@@ -5,15 +5,28 @@ use drink::{
     AccountId32,
 };
 use serde::{Deserialize, Serialize};
-use std::{error::Error, rc::Rc};
+use std::{
+    fmt,
+    error::Error, rc::Rc
+};
 
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
-use crate::tests::TokenTransfer;
 pub const SECOND: u64 = 1_000;
 pub const DAY: u64 = SECOND * 86400;
 pub const YEAR: u64 = DAY * 365_25 / 100;
 pub const BIPS: u128 = 10000;
+
+#[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+#[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+)]
+pub struct TokenTransfer {
+    token: AccountId32,
+    amount: u128,
+    to: AccountId32,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
 #[cfg_attr(
@@ -37,14 +50,28 @@ pub struct Proposal {
 )]
 pub enum PropType {
     TransferFunds(TokenTransfer),
-    UpdateStakingRewards(u128),
+    NativeTokenTransfer(AccountId32, u128),
+    ChangeStakingRewardRate(u128),
     AddCouncilMember(AccountId32),
+    ReplaceCouncilMember(AccountId32, AccountId32),
     RemoveCouncilMember(AccountId32),
-    ThresholdChange(u16),
+    ChangeMultiSigThreshold(u16),
     FeeChange(u16),
+    CompoundIncentiveChange(u16),
+    AcceptanceWeightUpdate(u128),
     VoteDelayUpdate(u64),
     VotePeriodUpdate(u64),
+    UpdateRejectThreshhold(u128),
+    UpdateExecThreshhold(u128),
+    SetCodeHash([u8; 32]),
 }
+
+impl fmt::Display for PropType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 pub fn update_days(mut sess: Session<MinimalRuntime>, days: u64) -> Session<MinimalRuntime> {
     let current_time = sess.chain_api().get_timestamp();
     let time_update = days * DAY;
@@ -92,9 +119,9 @@ pub fn call_function(
     Ok(sess)
 }
 
-pub fn query_proposal_by_nft(
+pub fn query_governance_get_proposal_by_nft(
     mut sess: Session<MinimalRuntime>,
-    governance: AccountId32,
+    governance: &AccountId32,
     nft_id: u128,
 ) -> Result<(Proposal, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
@@ -105,13 +132,12 @@ pub fn query_proposal_by_nft(
         None,
     )?;
 
-    let prop: Result<Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
-    //println!("{:?}",&prop.clone().unwrap());
-    Ok((prop.unwrap(), sess))
+    let proposal: Result<Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((proposal.unwrap(), sess))
 }
-pub fn get_all_props(
+pub fn query_governance_get_all_proposals(
     mut sess: Session<MinimalRuntime>,
-    governance: AccountId32,
+    governance: &AccountId32,
 ) -> Result<(Vec<Proposal>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
@@ -121,9 +147,8 @@ pub fn get_all_props(
         None,
     )?;
 
-    let props: Result<Vec<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
-    //println!("{:?}",&prop.clone().unwrap());
-    Ok((props.unwrap(), sess))
+    let proposals: Result<Vec<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((proposals.unwrap(), sess))
 }
 pub fn query_owner(
     mut sess: Session<MinimalRuntime>,

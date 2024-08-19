@@ -5,18 +5,15 @@ pub use traits::MultiSig;
 #[ink::contract]
 mod multisig {
     use core::fmt::Error;
-    use std::io::SeekFrom;
 
     use ink::{
         codegen::EmitEvent,
         contract_ref,
         env::{
-            call::{build_call, ExecutionInput, Selector},
-            debug_println,
             hash::{HashOutput, Sha2x256},
-            hash_encoded, DefaultEnvironment, Error as InkEnvError,
+            hash_encoded,
         },
-        prelude::{format, string::String, vec::Vec},
+        prelude::{string::String, vec::Vec},
         reflect::ContractEventBase,
         storage::Mapping,
     };

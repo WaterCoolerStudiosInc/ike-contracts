@@ -8,8 +8,8 @@ mod helpers;
 mod tests {
     use crate::helpers;
     use crate::helpers::{
-        call_function, get_all_props, gov_token_transfer, query_allowance, query_owner,
-        query_proposal_by_nft, query_token_balance, update_days, DAY,
+        call_function, gov_token_transfer, query_allowance, query_owner,
+        query_token_balance, update_days, DAY,
     };
     use crate::sources::*;
     use drink::{
@@ -19,78 +19,6 @@ mod tests {
         AccountId32,
     };
     use std::error::Error;
-    use std::fmt;
-
-    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct TokenTransfer {
-        token: AccountId32,
-        amount: u128,
-        to: AccountId32,
-    }
-    #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub enum PropType {
-        // Transfer Azero from governance
-        TransferFunds(TokenTransfer),
-        // Transfer psp22 token from governance
-        NativeTokenTransfer(AccountId32, u128),
-        // update tokens per second for staker in staking contract
-        ChangeStakingRewardRate(u128),
-        // Add to multisig
-        AddCouncilMember(AccountId32),
-        // remove then add to multisig
-        ReplaceCouncilMember(AccountId32, AccountId32),
-        // remove from multisig
-        RemoveCouncilMember(AccountId32),
-        // change threshold for multisig acceptance
-        ChangeMultiSigThreshold(u16),
-        // change vault fee
-        FeeChange(u16),
-        // change vault compound acceptance
-        CompoundIncentiveChange(u16),
-        // change  governance proposal acceptance weight requirement
-        AcceptanceWeightUpdate(u128),
-        // change vote periodi delay
-        VoteDelayUpdate(u64),
-        // update voting perioud
-        VotePeriodUpdate(u64),
-        // update threshold proposals
-        UpdateRejectThreshhold(u128),
-        // upddate execution threshhold for proposals
-        UpdateExecThreshhold(u128),
-
-        SetCodeHash([u8; 32]),
-    }
-
-    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-    #[cfg_attr(
-        feature = "std",
-        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-    )]
-    pub struct Proposal {
-        pub creation_timestamp: u64,
-        pub creator_id: u128,
-        pub prop_id: String,
-        pub prop_type: PropType,
-        pub pro_vote_count: u128,
-        pub con_vote_count: u128,
-        pub vote_start: u64,
-        pub vote_end: u64,
-    }
-    impl fmt::Display for PropType {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "{:?}", self)
-            // or, alternatively:
-            // fmt::Debug::fmt(self, f)
-        }
-    }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     pub struct GovernanceData {
@@ -545,28 +473,29 @@ mod tests {
     fn change_interest_rate_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
-        let prop = PropType::ChangeStakingRewardRate(70000000_128);
-        println!("{:?}", prop.to_string());
-        let sess: Session<MinimalRuntime> = call_function(
+
+        let sess = call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
             String::from("create_proposal"),
-            Some(vec![prop.to_string(), 1.to_string()]),
+            Some(vec![helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(), 1.to_string()]),
             None,
             transcoder_governance(),
         )
         .unwrap();
-        let (props, sess) = get_all_props(sess, ctx.governance.clone()).unwrap();
-        println!("{:?}", props);
-        let (res, sess) = query_proposal_by_nft(sess, ctx.governance.clone(), 1_u128).unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
         let sess = call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
             String::from("vote"),
             Some(vec![
-                res.prop_id.to_string(),
+                proposal.prop_id.to_string(),
                 2.to_string(),
                 true.to_string(),
             ]),
@@ -574,7 +503,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (res, sess) = query_proposal_by_nft(sess, ctx.governance.clone(), 1_u128).unwrap();
+
+        let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
 
         let sess = call_function(
             sess,
@@ -582,7 +512,7 @@ mod tests {
             &ctx.charlie,
             String::from("vote"),
             Some(vec![
-                res.prop_id.to_string(),
+                proposal.prop_id.to_string(),
                 3.to_string(),
                 true.to_string(),
             ]),
