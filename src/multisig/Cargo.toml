@@ -13,8 +13,12 @@ scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
 psp34 = { git = "https://github.com/Cardinal-Cryptography/PSP34.git", default-features = false }
-
-
+validator_whitelist={ path = "../validator_whitelist", default-features = false, features = [
+    "ink-as-dependency",
+] }
+registry = { path = "../registry", default-features = false, features = [
+    "ink-as-dependency",
+] }
 psp22 = { version = "=0.2.1", default-features = false }
 [lib]
 name = "multisig"
@@ -22,5 +26,5 @@ path = "lib.rs"
 
 [features]
 default = ["std"]
-std = ["ink/std", "scale/std", "scale-info", "scale-info/std","psp34/std"]
+std = ["ink/std", "scale/std", "scale-info", "scale-info/std","psp34/std","validator_whitelist/std","registry/std"]
 ink-as-dependency = []

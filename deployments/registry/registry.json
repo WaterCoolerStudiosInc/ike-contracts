@@ -1,12 +1,12 @@
 {
   "source": {
-    "hash": "0xeed0eae756c3e748e6774b79e7bc513769b93982078f082705ba7ba5ed8c798b",
+    "hash": "0xc3d4927007de7cfe7874ddf64a580f6644e71e8c3c9fdf8f7ec143ff5ff5e1af",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
       "build_mode": "Release",
       "cargo_contract_version": "3.2.0",
-      "rust_toolchain": "stable-aarch64-apple-darwin",
+      "rust_toolchain": "stable-x86_64-unknown-linux-gnu",
       "wasm_opt_settings": {
         "keep_debug_symbols": false,
         "optimization_passes": "Z"
@@ -60,6 +60,15 @@
           },
           {
             "label": "role_remove",
+            "type": {
+              "displayName": [
+                "AccountId"
+              ],
+              "type": 2
+            }
+          },
+          {
+            "label": "role_set_code_hash",
             "type": {
               "displayName": [
                 "AccountId"
@@ -556,6 +565,63 @@
           "type": 17
         },
         "selector": "0xd5466068"
+      },
+      {
+        "args": [
+          {
+            "label": "code_hash",
+            "type": {
+              "displayName": [],
+              "type": 3
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " ================================ Code Hash Methods ================================",
+          " \"Upgrade\" the Registry contract logic",
+          "",
+          " Caller must have the SetCodeHash role."
+        ],
+        "label": "set_code",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x694fb50f"
+      },
+      {
+        "args": [
+          {
+            "label": "nomination_agent_hash",
+            "type": {
+              "displayName": [],
+              "type": 3
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " \"Upgrade\" the logic of all nomination agent contracts",
+          "",
+          " Caller must have the SetCodeHash role."
+        ],
+        "label": "set_agent_code",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0xcef662b1"
       },
       {
         "args": [
@@ -1229,6 +1295,10 @@
               {
                 "index": 2,
                 "name": "RemoveAgent"
+              },
+              {
+                "index": 3,
+                "name": "SetCodeHash"
               }
             ]
           }

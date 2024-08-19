@@ -1,12 +1,12 @@
 {
   "source": {
-    "hash": "0xc6a86e1c979022990b64e95574d1ef57decb2d1d5843fe1f424cf8fd863c9ee1",
+    "hash": "0x05772305bbe0310aa616182bfb7bcac20c82f8b982b2e7efe5cf843e10161355",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
       "build_mode": "Release",
       "cargo_contract_version": "3.2.0",
-      "rust_toolchain": "stable-aarch64-apple-darwin",
+      "rust_toolchain": "stable-x86_64-unknown-linux-gnu",
       "wasm_opt_settings": {
         "keep_debug_symbols": false,
         "optimization_passes": "Z"
@@ -456,6 +456,34 @@
           "type": 8
         },
         "selector": "0x00000067"
+      },
+      {
+        "args": [
+          {
+            "label": "code_hash",
+            "type": {
+              "displayName": [],
+              "type": 1
+            }
+          }
+        ],
+        "default": false,
+        "docs": [
+          " Allows the Registry to effectively \"upgrade\" the contract logic",
+          "",
+          " Can only be called by registry"
+        ],
+        "label": "INominationAgent::set_code",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 8
+        },
+        "selector": "0x000003e7"
       }
     ]
   },

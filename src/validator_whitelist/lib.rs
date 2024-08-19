@@ -1,6 +1,7 @@
 //
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
+mod traits;
+pub use traits::ValidatorWhitelist;
 #[ink::contract]
 mod validator_whitelist {
     use governance_nft::GovernanceNFT;
@@ -26,6 +27,7 @@ mod validator_whitelist {
         validator: AccountId,
         admin: AccountId,
         stake: u128,
+        deposit:u128
     }
 
     #[ink(storage)]
@@ -51,7 +53,7 @@ mod validator_whitelist {
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum WhitelistError {
-        Invalid,
+        InvalidCreateDeposit,
         Unauthorized,
         InvalidStake,
         InvalidTimeWindow,
@@ -167,6 +169,10 @@ mod validator_whitelist {
         ) -> Result<(), WhitelistError> {
             let nft_weight = self.query_weight(id);
             let caller: ink::primitives::AccountId = Self::env().caller();
+            let azero = Self::env().transferred_value();
+            if azero != self.create_deposit+self.existential_deposit{
+                return Err(WhitelistError::InvalidCreateDeposit)
+            }
             if nft_weight < self.token_stake_amount {
                 return Err(WhitelistError::InvalidStake);
             }
@@ -185,6 +191,7 @@ mod validator_whitelist {
                 validator: validator,
                 admin: caller,
                 stake: id,
+                deposit:azero
             });
             Ok(())
         }
@@ -197,7 +204,7 @@ mod validator_whitelist {
         //taking.minNominatorBond: 100,000,000,000,000
         //balances.existentialDeposit: 500
         // Step 2. Initialize Agent call with poolid and Account in nomination pool contract
-        #[ink(message)]
+        #[ink(message, selector = 1)]
         pub fn init_add_validator(&mut self, validator: AccountId) -> Result<(), WhitelistError> {
             let caller = Self::env().caller();
             if caller != self.admin {
@@ -235,7 +242,7 @@ mod validator_whitelist {
         ) -> Result<(), WhitelistError> {
             Ok(())
         }
-        #[ink(message)]
+        #[ink(message, selector = 2)]
         pub fn remove_validator_by_agent(
             &mut self,
             agent: AccountId,

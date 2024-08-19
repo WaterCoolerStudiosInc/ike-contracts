@@ -7,7 +7,7 @@ pub trait Registry {
     fn add_agent(
         &mut self,
         admin: AccountId,
-        validator: AccountId,       
+        validator: AccountId,
         pool_create_amount: u128,
         existential_deposit: u128,
     ) -> Result<(), RegistryError>;
@@ -21,4 +21,6 @@ pub trait Registry {
     fn remove_agent(&mut self, account: AccountId) -> Result<(), RegistryError>;
     #[ink(message, selector = 4)]
     fn get_agents(&self) -> Result<(u64, Vec<Agent>), RegistryError>;
+    #[ink(message, selector = 5)]
+    fn initialize_agent(&mut self, agent: AccountId, pool_id: u32) -> Result<(), RegistryError>;
 }

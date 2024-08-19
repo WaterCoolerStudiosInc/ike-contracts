@@ -1624,7 +1624,9 @@ dependencies = [
  "parity-scale-codec",
  "psp22",
  "psp34",
+ "registry",
  "scale-info",
+ "validator_whitelist",
 ]
 
 [[package]]
@@ -3155,7 +3157,6 @@ version = "0.1.0"
 dependencies = [
  "governance_nft",
  "ink",
- "multisig",
  "parity-scale-codec",
  "psp22",
  "psp34",

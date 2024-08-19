@@ -88,6 +88,7 @@ pub mod governance {
         UpdateRejectThreshhold(u128),
         // upddate execution threshhold for proposals
         UpdateExecThreshhold(u128),
+
         SetCodeHash([u8; 32]),
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
@@ -458,8 +459,10 @@ pub mod governance {
             //    return Err(GovernanceError::MultiSigError);
             //}
             //
-             nft_ref.set_admin(StakingRef::to_account_id(&staking_ref)).unwrap();
-                
+            nft_ref
+                .set_admin(StakingRef::to_account_id(&staking_ref))
+                .unwrap();
+
             let _gov_nft = GovernanceNFTRef::to_account_id(&nft_ref);
             Self {
                 gov_nft: _gov_nft,
@@ -584,6 +587,7 @@ pub mod governance {
                 vote_end: Self::env().block_timestamp() + self.voting_delay + self.voting_period,
             };
             self.proposals.push(new_prop.clone());
+            debug_println!("{:?}{}", self.proposals.to_vec(), "Props");
             Self::emit_event(
                 Self::env(),
                 Event::ProposlCreated(ProposlCreated { proposal: new_prop }),
