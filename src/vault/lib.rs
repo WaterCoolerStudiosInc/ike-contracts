@@ -1,12 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
 mod data;
+pub mod errors;
 mod nomination_agent_utils;
-mod traits;
+pub mod traits;
 
 #[ink::contract]
 mod vault {
     use crate::data::*;
+    use crate::errors::VaultError;
     use crate::traits::*;
 
     use ink::{
@@ -103,21 +104,19 @@ mod vault {
         new_minimum_stake: Balance,
     }
     #[ink(event)]
-    pub struct OwnershipTransferred {
+    pub struct RoleAdjustFeeTransferred {
         new_account: AccountId,
     }
     #[ink(event)]
-    pub struct RoleSetFeesTransferred {
-        new_account: AccountId,
-    }
-    #[ink(event)]
-    pub struct RoleSetFeesAdminTransferred {
+    pub struct RoleFeeToTransferred {
         new_account: AccountId,
     }
     #[ink(event)]
     pub struct NewHash {
         code_hash: [u8; 32],
     }
+    #[ink(event)]
+    pub struct SetHashDisabled {}
 
     #[ink(storage)]
     pub struct Vault {
@@ -125,6 +124,51 @@ mod vault {
     }
 
     impl Vault {
+        #[ink(constructor)]
+        pub fn new(
+            share_token_hash: Hash,
+            registry_code_hash: Hash,
+            nomination_agent_hash: Hash,
+        ) -> Self {
+            Self::custom_era(share_token_hash, registry_code_hash, nomination_agent_hash, DAY)
+        }
+
+        #[ink(constructor)]
+        pub fn custom_era(
+            share_token_hash: Hash,
+            registry_code_hash: Hash,
+            nomination_agent_hash: Hash,
+            era: u64,
+        ) -> Self {
+            let caller = Self::env().caller();
+            let now = Self::env().block_timestamp();
+
+            let registry_ref = RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
+                .endowment(0)
+                .code_hash(registry_code_hash)
+                .salt_bytes(
+                    &[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
+                )
+                .instantiate();
+            let share_token_ref = TokenRef::new(Some(String::from("sAZERO")), Some(String::from("SAZ")))
+                .endowment(0)
+                .code_hash(share_token_hash)
+                .salt_bytes(
+                    &[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
+                )
+                .instantiate();
+
+            Self {
+                data: VaultData::new(
+                    caller,
+                    TokenRef::to_account_id(&share_token_ref),
+                    registry_ref,
+                    now,
+                    era,
+                ),
+            }
+        }
+
         fn emit_event<EE>(emitter: EE, event: Event)
         where
             EE: EmitEvent<Vault>,
@@ -182,64 +226,19 @@ mod vault {
         }
     }
 
-    impl Vault {
-        #[ink(constructor)]
-        pub fn new(
-            share_token_hash: Hash,
-            registry_code_hash: Hash,
-            nomination_agent_hash: Hash,
-        ) -> Self {
-            Self::custom_era(share_token_hash, registry_code_hash, nomination_agent_hash, DAY)
-        }
-
-        #[ink(constructor)]
-        pub fn custom_era(
-            share_token_hash: Hash,
-            registry_code_hash: Hash,
-            nomination_agent_hash: Hash,
-            era: u64,
-        ) -> Self {
-            let caller = Self::env().caller();
-            let now = Self::env().block_timestamp();
-
-            let registry_ref = RegistryRef::new(caller, caller, caller, nomination_agent_hash)
-                .endowment(0)
-                .code_hash(registry_code_hash)
-                .salt_bytes(
-                    &[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
-                )
-                .instantiate();
-            let share_token_ref = TokenRef::new(Some(String::from("sAZERO")), Some(String::from("SAZ")))
-                .endowment(0)
-                .code_hash(share_token_hash)
-                .salt_bytes(
-                    &[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
-                )
-                .instantiate();
-
-            Self {
-                data: VaultData::new(
-                    caller,
-                    TokenRef::to_account_id(&share_token_ref),
-                    registry_ref,
-                    now,
-                    era,
-                ),
-            }
-        }
-
+    impl IVault for Vault {
         /// Allow users to convert AZERO into sAZERO
         /// Mints the caller sAZERO based on the redemption ratio
         ///
         /// Minimum AZERO amount is required to stake
         /// AZERO must be transferred via transferred_value
         #[ink(message, payable)]
-        pub fn stake(&mut self) -> Result<Balance, VaultError> {
+        fn stake(&mut self) -> Result<Balance, VaultError> {
             let caller = Self::env().caller();
             let azero = Self::env().transferred_value();
 
             // Verify minimum AZERO is being staked
-            if azero < self.data.minimum_stake {
+            if azero < 1_000_000 {
                 return Err(VaultError::MinimumStake);
             }
 
@@ -267,7 +266,7 @@ mod vault {
         }
 
         #[ink(message, payable)]
-        pub fn stake_with_referral(&mut self, referral_id: AccountId) -> Result<Balance, VaultError> {
+        fn stake_with_referral(&mut self, referral_id: AccountId) -> Result<Balance, VaultError> {
             let new_shares = self.stake()?;
             Self::emit_event(
                 Self::env(),
@@ -286,7 +285,7 @@ mod vault {
         ///
         /// Caller must approve the psp22 token contract beforehand
         #[ink(message)]
-        pub fn request_unlock(&mut self, shares: Balance) -> Result<(), VaultError> {
+        fn request_unlock(&mut self, shares: Balance) -> Result<(), VaultError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
@@ -336,7 +335,7 @@ mod vault {
         ///
         /// Must be done in the same batch interval in which the request was originally sent
         #[ink(message)]
-        pub fn cancel_unlock_request(&mut self, user_unlock_id: u128) -> Result<(), VaultError> {
+        fn cancel_unlock_request(&mut self, user_unlock_id: u128) -> Result<(), VaultError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
@@ -387,7 +386,7 @@ mod vault {
         /// Cannot be called for a batch that has already been redeemed
         /// Batch IDs must be specified in ascending order (for gas efficient duplicate check)
         #[ink(message)]
-        pub fn send_batch_unlock_requests(&mut self, batch_ids: Vec<u64>) -> Result<(), VaultError> {
+        fn send_batch_unlock_requests(&mut self, batch_ids: Vec<u64>) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
             let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
@@ -455,7 +454,7 @@ mod vault {
 
         /// Attempts to claim unbonded AZERO from all validators
         #[ink(message)]
-        pub fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError> {
+        fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError> {
             self.data.delegate_withdraw_unbonded()?;
 
             Ok(())
@@ -469,7 +468,7 @@ mod vault {
         /// Deletes the user's unlock request
         /// Burns the associated sAZERO tokens
         #[ink(message)]
-        pub fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
+        fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
             let mut user_unlock_requests = self.data.user_unlock_requests.get(user).unwrap();
@@ -524,7 +523,7 @@ mod vault {
         /// This should be called instead of `redeem()` when insufficient AZERO exists in the Vault and
         /// validator(s) have unbonded AZERO which can be claimed
         #[ink(message)]
-        pub fn redeem_with_withdraw(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
+        fn redeem_with_withdraw(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             // Claim all unbonded AZERO into Vault
             self.data.delegate_withdraw_unbonded()?;
 
@@ -538,7 +537,7 @@ mod vault {
         /// Can be called by anyone
         /// Caller receives an AZERO incentive based on the total AZERO amount compounded
         #[ink(message)]
-        pub fn compound(&mut self) -> Result<Balance, VaultError> {
+        fn compound(&mut self) -> Result<Balance, VaultError> {
             let caller = Self::env().caller();
 
             // Delegate compounding to all nominator pools
@@ -562,27 +561,26 @@ mod vault {
             Ok(incentive)
         }
 
-        /// =========================== Restricted Functions: Owner Role ===========================
-
         /// Claim fees by inflating sAZERO supply
         ///
-        /// Caller must have the owner role (`role_owner`)
-        /// Mints virtual shares as sAZERO to the owner
+        /// Caller must have the fee to role (`role_fee_to`)
+        /// Mints virtual shares as sAZERO to the caller
         /// Effectively serves as a compounding for protocol fee
         /// sets total_shares_virtual to 0
         #[ink(message)]
-        pub fn withdraw_fees(&mut self) -> Result<(), VaultError> {
+        fn withdraw_fees(&mut self) -> Result<(), VaultError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
+            let role_fee_to = self.data.role_fee_to; // shadow
 
-            if caller != self.data.role_owner {
+            if caller != role_fee_to {
                 return Err(VaultError::InvalidPermissions);
             }
 
             self.data.update_fees(now);
 
             let shares = self.data.total_shares_virtual;
-            self.mint_shares(shares, self.data.role_owner)?;
+            self.mint_shares(shares, role_fee_to)?;
             self.data.total_shares_virtual = 0;
 
             Self::emit_event(
@@ -595,41 +593,17 @@ mod vault {
             Ok(())
         }
 
-        /// Update the minimum stake amount
-        ///
-        /// Caller must have the owner role (`role_owner`)
-        #[ink(message)]
-        pub fn adjust_minimum_stake(&mut self, new_minimum_stake: Balance) -> Result<(), VaultError> {
-            let caller = Self::env().caller();
-
-            if caller != self.data.role_owner {
-                return Err(VaultError::InvalidPermissions);
-            }
-            if self.data.minimum_stake == new_minimum_stake {
-                return Err(VaultError::NoChange);
-            }
-
-            self.data.minimum_stake = new_minimum_stake;
-
-            Self::emit_event(
-                Self::env(),
-                Event::MinimumStakeAdjusted(MinimumStakeAdjusted {
-                    new_minimum_stake,
-                }),
-            );
-
-            Ok(())
-        }
-
         /// Upgrade the contract by the ink env set_code_hash function
         ///
-        /// Caller must have the owner role (`role_owner`)
+        /// The set code role (`role_set_code`) must be set
+        /// Caller must have the set code role (`role_set_code`)
         /// See ink documentation for details https://paritytech.github.io/ink/ink_env/fn.set_code_hash.html
         #[ink(message)]
-        pub fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), VaultError> {
+        fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), VaultError> {
             let caller = Self::env().caller();
+            let role_set_code = self.data.role_set_code; // shadow
 
-            if caller != self.data.role_owner {
+            if role_set_code.is_none() || caller != role_set_code.unwrap() {
                 return Err(VaultError::InvalidPermissions);
             }
 
@@ -645,40 +619,34 @@ mod vault {
             Ok(())
         }
 
-        /// Transfers ownership to a new account
-        ///
-        /// Caller must have the owner role (`role_owner`)
         #[ink(message)]
-        pub fn transfer_role_owner(&mut self, new_account: AccountId) -> Result<(), VaultError> {
+        fn disable_set_code(&mut self) -> Result<(), VaultError> {
             let caller = Self::env().caller();
+            let role_set_code = self.data.role_set_code; // shadow
 
-            if caller != self.data.role_owner {
-                return Err(VaultError::InvalidPermissions);
-            }
-            if self.data.role_owner == new_account {
+            if role_set_code.is_none() {
                 return Err(VaultError::NoChange);
             }
+            if caller != role_set_code.unwrap() {
+                return Err(VaultError::InvalidPermissions);
+            }
 
-            self.data.role_owner = new_account;
+            self.data.role_set_code = None;
 
             Self::emit_event(
                 Self::env(),
-                Event::OwnershipTransferred(OwnershipTransferred {
-                    new_account,
-                }),
+                Event::SetHashDisabled(SetHashDisabled {}),
             );
 
             Ok(())
         }
-
-        /// ======================== Restricted Functions: Adjust Fee Role ========================
 
         /// Update the protocol fee
         ///
         /// Caller must have the adjust fee role (`role_adjust_fee`)
         /// Updates the total_shares_virtual accumulator at the old fee level first
         #[ink(message)]
-        pub fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError> {
+        fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
@@ -710,7 +678,7 @@ mod vault {
         ///
         /// Caller must have the adjust fee role (`role_adjust_fee`)
         #[ink(message)]
-        pub fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError> {
+        fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError> {
             let caller = Self::env().caller();
 
             if caller != self.data.role_adjust_fee {
@@ -735,17 +703,23 @@ mod vault {
             Ok(())
         }
 
+        #[ink(message)]
+        fn get_role_adjust_fee(&self) -> AccountId {
+            self.data.role_adjust_fee
+        }
+
         /// Transfers adjust fee role to a new account
         ///
-        /// Caller must be the admin for the adjust fee role (`role_adjust_fee_admin`)
+        /// Caller must have the adjust fee role (`role_adjust_fee`)
         #[ink(message)]
-        pub fn transfer_role_adjust_fee(&mut self, new_account: AccountId) -> Result<(), VaultError> {
+        fn transfer_role_adjust_fee(&mut self, new_account: AccountId) -> Result<(), VaultError> {
             let caller = Self::env().caller();
+            let role_adjust_fee = self.data.role_adjust_fee; // shadow
 
-            if caller != self.data.role_adjust_fee_admin {
+            if caller != role_adjust_fee {
                 return Err(VaultError::InvalidPermissions);
             }
-            if self.data.role_adjust_fee == new_account {
+            if role_adjust_fee == new_account {
                 return Err(VaultError::NoChange);
             }
 
@@ -753,7 +727,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleSetFeesTransferred(RoleSetFeesTransferred {
+                Event::RoleAdjustFeeTransferred(RoleAdjustFeeTransferred {
                     new_account,
                 }),
             );
@@ -761,25 +735,31 @@ mod vault {
             Ok(())
         }
 
-        /// Transfers administration of adjust fee role to a new account
-        ///
-        /// Caller must be the admin for the adjust fee role (`role_adjust_fee_admin`)
         #[ink(message)]
-        pub fn transfer_role_adjust_fee_admin(&mut self, new_account: AccountId) -> Result<(), VaultError> {
-            let caller = Self::env().caller();
+        fn get_role_fee_to(&self) -> AccountId {
+            self.data.role_fee_to
+        }
 
-            if caller != self.data.role_adjust_fee_admin {
+        /// Transfers fee to role to a new account
+        ///
+        /// Caller must have the fee to role (`role_fee_to`)
+        #[ink(message)]
+        fn transfer_role_fee_to(&mut self, new_account: AccountId) -> Result<(), VaultError> {
+            let caller = Self::env().caller();
+            let role_fee_to = self.data.role_fee_to; // shadow
+
+            if caller != role_fee_to {
                 return Err(VaultError::InvalidPermissions);
             }
-            if self.data.role_adjust_fee_admin == new_account {
+            if role_fee_to == new_account {
                 return Err(VaultError::NoChange);
             }
 
-            self.data.role_adjust_fee_admin = new_account;
+            self.data.role_fee_to = new_account;
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleSetFeesAdminTransferred(RoleSetFeesAdminTransferred {
+                Event::RoleFeeToTransferred(RoleFeeToTransferred {
                     new_account,
                 }),
             );
@@ -787,36 +767,24 @@ mod vault {
             Ok(())
         }
 
-        /// ================================= Non Mutable Queries =================================
+        #[ink(message)]
+        fn get_role_set_code(&self) -> Option<AccountId> {
+            self.data.role_set_code
+        }
 
         #[ink(message)]
-        pub fn get_batch_id(&self) -> u64 {
+        fn get_batch_id(&self) -> u64 {
             self.data.get_batch_unlock_id(Self::env().block_timestamp())
         }
 
         #[ink(message)]
-        pub fn get_creation_time(&self) -> u64 {
+        fn get_creation_time(&self) -> u64 {
             self.data.creation_time
-        }
-
-        #[ink(message)]
-        pub fn get_role_owner(&self) -> AccountId {
-            self.data.role_owner
-        }
-
-        #[ink(message)]
-        pub fn get_role_adjust_fee(&self) -> AccountId {
-            self.data.role_adjust_fee
-        }
-
-        #[ink(message)]
-        pub fn get_role_adjust_fee_admin(&self) -> AccountId {
-            self.data.role_adjust_fee_admin
         }
 
         /// Returns the total amount of bonded AZERO
         #[ink(message)]
-        pub fn get_total_pooled(&self) -> Balance {
+        fn get_total_pooled(&self) -> Balance {
             self.data.total_pooled
         }
 
@@ -824,45 +792,40 @@ mod vault {
         ///     1) sAZERO that has already been minted
         ///     2) sAZERO that could be minted (virtual) representing accumulating protocol fees
         #[ink(message)]
-        pub fn get_total_shares(&self) -> Balance {
+        fn get_total_shares(&self) -> Balance {
             self.data.total_shares_minted + self.get_current_virtual_shares()
         }
 
         /// Returns the protocol fees (sAZERO) which can be minted and withdrawn at the current block timestamp
         #[ink(message)]
-        pub fn get_current_virtual_shares(&self) -> Balance {
+        fn get_current_virtual_shares(&self) -> Balance {
             let now = Self::env().block_timestamp();
             self.data.get_virtual_shares_at_time(now)
         }
 
         #[ink(message)]
-        pub fn get_minimum_stake(&self) -> Balance {
-            self.data.minimum_stake
-        }
-
-        #[ink(message)]
-        pub fn get_fee_percentage(&self) -> u16 {
+        fn get_fee_percentage(&self) -> u16 {
             self.data.fee_percentage
         }
 
         #[ink(message)]
-        pub fn get_incentive_percentage(&self) -> u16 {
+        fn get_incentive_percentage(&self) -> u16 {
             self.data.incentive_percentage
         }
         
         #[ink(message)]
-        pub fn get_share_token_contract(&self) -> AccountId {
+        fn get_share_token_contract(&self) -> AccountId {
             self.data.shares_contract
         }
 
         #[ink(message)]
-        pub fn get_registry_contract(&self) -> AccountId {
+        fn get_registry_contract(&self) -> AccountId {
             RegistryRef::to_account_id(&self.data.registry_contract)
         }
 
         /// Calculate the value of AZERO in terms of sAZERO
         #[ink(message)]
-        pub fn get_shares_from_azero(&self, azero: Balance) -> Balance {
+        fn get_shares_from_azero(&self, azero: Balance) -> Balance {
             let total_pooled_ = self.data.total_pooled; // shadow
             if total_pooled_ == 0 {
                 // This happens upon initial stake
@@ -875,7 +838,7 @@ mod vault {
 
         /// Calculate the value of sAZERO in terms of AZERO
         #[ink(message)]
-        pub fn get_azero_from_shares(&self, shares: Balance) -> Balance {
+        fn get_azero_from_shares(&self, shares: Balance) -> Balance {
             let total_shares = self.get_total_shares();
             if total_shares == 0 {
                 // This should never happen
@@ -887,19 +850,19 @@ mod vault {
 
         /// Returns the unlock requests for a given user
         #[ink(message)]
-        pub fn get_unlock_requests(&self, user: AccountId) -> Vec<UnlockRequest> {
+        fn get_unlock_requests(&self, user: AccountId) -> Vec<UnlockRequest> {
             self.data.user_unlock_requests.get(user).unwrap_or(Vec::new())
         }
 
         /// Returns the number of unlock requests made by a given user
         #[ink(message)]
-        pub fn get_unlock_request_count(&self, user: AccountId) -> u128 {
+        fn get_unlock_request_count(&self, user: AccountId) -> u128 {
             self.data.user_unlock_requests.get(user).unwrap_or(Vec::new()).len() as u128
         }
 
         /// Returns the information of a batch unlock request for the given batch id
         #[ink(message)]
-        pub fn get_batch_unlock_requests(&self, batch_id: u64) -> (u128, Option<u128>, Option<Timestamp>) {
+        fn get_batch_unlock_requests(&self, batch_id: u64) -> (u128, Option<u128>, Option<Timestamp>) {
             let batch = self.data.batch_unlock_requests.get(batch_id).unwrap();
             (
                 batch.total_shares,
@@ -909,7 +872,7 @@ mod vault {
         }
 
         #[ink(message)]
-        pub fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>) {
+        fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>) {
             let (total_weight, agents) = self.data.registry_contract.get_agents();
             self.data.get_weight_imbalances(&agents, total_weight, total_pooled)
         }

@@ -1,10 +1,10 @@
+use crate::errors::VaultError;
 use crate::nomination_agent_utils::{
     call_compound,
     call_deposit,
     call_unbond,
     call_withdraw_unbonded,
     query_staked_value,
-    RuntimeError,
 };
 use ink::{
     env::{
@@ -12,16 +12,16 @@ use ink::{
         DefaultEnvironment,
         Environment,
     },
-    prelude::{string::String, vec::Vec},
+    prelude::vec::Vec,
     primitives::AccountId,
     storage::Mapping,
 };
 use num_bigint::BigUint;
 use num_traits::cast::ToPrimitive;
-use psp22::PSP22Error;
 use registry::{registry::Agent, RegistryRef};
-type Balance = <DefaultEnvironment as Environment>::Balance;
-type Timestamp = u64;
+
+pub type Balance = <DefaultEnvironment as Environment>::Balance;
+pub type Timestamp = u64;
 
 pub const BIPS: u16 = 10000;
 pub const DAY: u64 = 86400 * 1000;
@@ -43,39 +43,15 @@ pub struct UnlockRequestBatch {
     pub redemption_timestamp: Option<Timestamp>,
 }
 
-#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum VaultError {
-    Duplication,
-    InvalidPercent,
-    InvalidBatchUnlockRequest,
-    InvalidUserUnlockRequest,
-    CooldownPeriod,
-    InvalidPermissions,
-    NoChange,
-    ZeroDepositing,
-    ZeroUnbonding,
-    ZeroTotalWeight,
-    ZeroCompounding,
-    MinimumStake,
-    /// An interaction with ink! environment has failed
-    // NOTE: We're representing the `ink::env::Error` as `String` b/c the
-    // type does not have Encode/Decode implemented.
-    InkEnvError(String),
-    InternalError(RuntimeError),
-    TokenError(PSP22Error),
-    InternalTokenError,
-}
-
 #[ink::storage_item]
 #[derive(Debug)]
 pub struct VaultData {
-    /// account that can withdraw fees, set minimum stake, and upgrade the Vault
-    pub role_owner: AccountId,
     /// account that can adjust fees
     pub role_adjust_fee: AccountId,
-    /// account that can change the `role_adjust_fee` account
-    pub role_adjust_fee_admin: AccountId,
+    /// account that receives the fees from `withdraw_fees`
+    pub role_fee_to: AccountId,
+    /// account that can "upgrade" Vault logic via `set_code`
+    pub role_set_code: Option<AccountId>,
     /// contract creation block timestamp
     pub creation_time: Timestamp,
 
@@ -85,8 +61,6 @@ pub struct VaultData {
     pub total_shares_minted: Balance,
     /// rolling accumulator of inflation fees (sAZERO shares) that can be minted and claimed by owner
     pub total_shares_virtual: Balance,
-    /// minimum amount of AZERO a user needs to stake
-    pub minimum_stake: Balance,
 
     /// record of all batched unlock requests indexed by batch id
     pub batch_unlock_requests: Mapping<u64, UnlockRequestBatch>,
@@ -120,14 +94,13 @@ impl VaultData {
         era: u64,
     ) -> VaultData {
         VaultData {
-            role_owner: admin,
             role_adjust_fee: admin,
-            role_adjust_fee_admin: admin,
+            role_fee_to: admin,
+            role_set_code: Some(admin),
             creation_time: current_time,
             total_pooled: 0,
             total_shares_minted: 0,
             total_shares_virtual: 0,
-            minimum_stake: 0,
             batch_unlock_requests: Mapping::default(),
             user_unlock_requests: Mapping::default(),
             cooldown_period: era * 14,

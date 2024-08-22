@@ -72,7 +72,7 @@ mod tests {
             sess,
             &vault,
             &bob,
-            String::from("get_registry_contract"),
+            String::from("IVault::get_registry_contract"),
             None,
             None,
             helpers::transcoder_vault(),
@@ -86,7 +86,7 @@ mod tests {
             sess,
             &vault,
             &bob,
-            String::from("get_share_token_contract"),
+            String::from("IVault::get_share_token_contract"),
             None,
             None,
             helpers::transcoder_vault(),
@@ -108,13 +108,6 @@ mod tests {
             100e12 as u128,
             500,
         )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &registry,
-            &bob,
-            &new_agent,
-            1,
-        )?;
         let (new_agent, sess) = helpers::call_add_agent(
             sess,
             &registry,
@@ -123,13 +116,6 @@ mod tests {
             &validator2,
             100e12 as u128,
             500,
-        )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &registry,
-            &bob,
-            &new_agent,
-            2,
         )?;
 
         let (_, agents, sess) = helpers::get_agents(sess, &registry)?;
@@ -192,16 +178,7 @@ mod tests {
         assert_eq!(total_pooled, STAKE_AMOUNT * INTERVALS as u128);
 
         let (shares_before, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-        .unwrap();
+        let sess = helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
         let (shares_after, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
         assert_eq!(shares_after - shares_before, fees);
 
@@ -211,47 +188,16 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn test_minimum_stake_flow() {
+    fn test_minimum_stake_panic_because_below_threshold() {
         let ctx: TestContext = setup().unwrap();
         let sess = ctx.sess;
 
-        // Fetch default minimum_stake
-        let (minimum_stake, sess) = helpers::query_minimum_stake(sess, &ctx.vault).unwrap();
+        let minimum_stake = 1_000_000;
 
-        // Increase minimum_stake
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob, // owner
-            String::from("adjust_minimum_stake"),
-            Some(vec![(minimum_stake + 100).to_string()]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-
-        match helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, minimum_stake) {
+        match helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, minimum_stake - 100) {
             Ok(_) => panic!("Should panic because stake is insufficient"),
             Err(_) => (),
         };
-    }
-    #[test]
-    fn test_adjust_minimum_stake_panic_because_owner_restricted() {
-        let ctx: TestContext = setup().unwrap();
-
-        // Adjust minimum stake
-        match helpers::call_function(
-            ctx.sess,
-            &ctx.vault,
-            &ctx.ed, // not bob
-            String::from("adjust_minimum_stake"),
-            Some(vec![0.to_string()]),
-            None,
-            helpers::transcoder_vault(),
-        ) {
-            Ok(_) => panic!("Should panic because Ed is not the owner"),
-            Err(_) => (),
-        }
     }
     #[test]
     fn test_staking_redeem_flow_with_one_batch() -> Result<(), Box<dyn Error>> {
@@ -348,16 +294,7 @@ mod tests {
         assert_eq!(claimable_fees, 43426511146997);
 
         let (shares_before, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-        .unwrap();
+        let sess = helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
         assert_eq!(shares_after - shares_before, claimable_fees);
 
@@ -647,16 +584,7 @@ mod tests {
         assert_eq!(token_bal, 1_000_000);
 
         // Alice cancels unlock
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.alice,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("0")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.alice, 0).unwrap();
 
         let (result, _sess) = helpers::get_unlock_request_count(sess, &ctx.vault, &ctx.alice).unwrap();
         assert_eq!(result, 0);
@@ -704,80 +632,17 @@ mod tests {
         assert_eq!(token_bal, 120000);
 
         // Alice cancels one unlock
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.alice,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("0")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.alice, 0).unwrap();
 
         // Bob cancels all unlocks in order
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("0")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("0")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("0")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.bob, 0).unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.bob, 0).unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.bob, 0).unwrap();
 
         // Charlie cancels all unlocks in reverse order
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.charlie,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("2")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.charlie,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("1")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.charlie,
-            String::from("cancel_unlock_request"),
-            Some(vec![String::from("0")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.charlie, 2).unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.charlie, 1).unwrap();
+        let sess = helpers::call_cancel_unlock_request(sess, &ctx.vault, &ctx.charlie, 0).unwrap();
 
         let (result, sess) = helpers::get_unlock_request_count(sess, &ctx.vault, &ctx.alice).unwrap();
         assert_eq!(result, 2);
@@ -797,7 +662,7 @@ mod tests {
             ctx.sess,
             &ctx.vault,
             &ctx.bob,
-            String::from("adjust_fee"),
+            String::from("IVault::adjust_fee"),
             Some(vec![String::from("1000")]),
             None,
             helpers::transcoder_vault(),
@@ -807,7 +672,7 @@ mod tests {
             sess,
             &ctx.vault,
             &ctx.bob,
-            String::from("get_fee_percentage"),
+            String::from("IVault::get_fee_percentage"),
             None,
             None,
             helpers::transcoder_vault(),
@@ -817,18 +682,18 @@ mod tests {
         assert_eq!(res.unwrap(), 1000)
     }
     #[test]
-    fn test_fee_adjustment_panic_because_owner_restricted() {
+    fn test_fee_adjustment_panic_because_caller_restricted() {
         let ctx = setup().unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
             &ctx.ed, // not bob
-            String::from("adjust_fee"),
-            Some(vec![String::from("1000")]),
+            String::from("IVault::adjust_fee"),
+            Some(vec![String::from("1234")]),
             None,
             helpers::transcoder_vault(),
         ) {
-            Ok(_) => panic!("Should panic because caller is not the owner (Bob)"),
+            Ok(_) => panic!("Should panic because caller does not have adjust fees role (Bob)"),
             Err(_) => (),
         }
     }
@@ -839,7 +704,7 @@ mod tests {
             ctx.sess,
             &ctx.vault,
             &ctx.alice,
-            String::from("adjust_fee"),
+            String::from("IVault::adjust_fee"),
             Some(vec![String::from("10000")]), // equal to BIPS
             None,
             helpers::transcoder_vault(),
@@ -851,21 +716,12 @@ mod tests {
     #[test]
     fn test_incentive_adjustment_success() {
         let ctx = setup().unwrap();
-        let sess = helpers::call_function(
-            ctx.sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("adjust_incentive"),
-            Some(vec![String::from("100")]),
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
+        let sess = helpers::call_adjust_incentive(ctx.sess, &ctx.vault, &ctx.bob, 100).unwrap();
         let sess = helpers::call_function(
             sess,
             &ctx.vault,
             &ctx.bob,
-            String::from("get_incentive_percentage"),
+            String::from("IVault::get_incentive_percentage"),
             None,
             None,
             helpers::transcoder_vault(),
@@ -875,32 +731,27 @@ mod tests {
         assert_eq!(res.unwrap(), 100)
     }
     #[test]
-    fn test_incentive_adjustment_panic_because_owner_restricted() {
+    fn test_incentive_adjustment_panic_because_caller_restricted() {
         let ctx = setup().unwrap();
-        match helpers::call_function(
+
+        match helpers::call_adjust_incentive(
             ctx.sess,
             &ctx.vault,
             &ctx.ed, // not bob
-            String::from("adjust_incentive"),
-            Some(vec![String::from("100")]),
-            None,
-            helpers::transcoder_vault(),
+            100,
         ) {
-            Ok(_) => panic!("Should panic because caller is not the owner (Bob)"),
+            Ok(_) => panic!("Should panic because caller does not have the adjust fees role (Bob)"),
             Err(_) => (),
         }
     }
     #[test]
     fn test_incentive_adjustment_panic_because_overflow() {
         let ctx = setup().unwrap();
-        match helpers::call_function(
+        match helpers::call_adjust_incentive(
             ctx.sess,
             &ctx.vault,
-            &ctx.alice,
-            String::from("adjust_incentive"),
-            Some(vec![String::from("10000")]), // equal to BIPS
-            None,
-            helpers::transcoder_vault(),
+            &ctx.bob,
+            10000, // equal to BIPS
         ) {
             Ok(_) => panic!("Should panic because new incentive is too large"),
             Err(_) => (),
@@ -926,16 +777,7 @@ mod tests {
         assert_eq!(claimable_fees, EXPECTED_FEES);
 
         // Withdraw fees
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-        .unwrap();
+        let sess = helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
 
         // Verify shares
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
@@ -959,16 +801,7 @@ mod tests {
         assert_eq!(claimable_fees, EXPECTED_FEES);
 
         // Withdraw fees
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-        .unwrap();
+        let sess = helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
 
         // Verify shares
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
@@ -996,16 +829,7 @@ mod tests {
         assert_eq!(claimable_fees, EXPECTED_FEES);
 
         // Withdraw fees
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-        .unwrap();
+        let sess = helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
 
         // Verify shares
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
@@ -1035,7 +859,7 @@ mod tests {
             sess,
             &ctx.vault,
             &ctx.bob,
-            String::from("adjust_fee"),
+            String::from("IVault::adjust_fee"),
             Some(vec![String::from("400")]), // 4% in helpers::BIPS
             None,
             helpers::transcoder_vault(),
@@ -1052,16 +876,7 @@ mod tests {
         );
 
         let (shares_before, sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-        .unwrap();
+        let sess = helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
         let (shares_after, _sess) = helpers::query_token_balance(sess, &ctx.share_token, &ctx.bob).unwrap();
         assert_eq!(
             shares_after - shares_before,
@@ -1074,28 +889,24 @@ mod tests {
         let ctx = setup().unwrap();
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000).unwrap();
         let sess = helpers::update_days(sess, 365);
-        match helpers::call_function(
+        match helpers::call_withdraw_fees(
             sess,
             &ctx.vault,
             &ctx.ed, // not bob
-            String::from("withdraw_fees"),
-            None,
-            None,
-            helpers::transcoder_vault(),
         ) {
-            Ok(_) => panic!("Should panic because caller is not the owner (Bob)"),
+            Ok(_) => panic!("Should panic because caller does not have the fee to role (Bob)"),
             Err(_) => (),
         };
     }
     #[test]
-    fn test_vault_transfer_role_owner_panic_because_caller_restricted() {
+    fn test_vault_transfer_role_adjust_fee_panic_because_caller_restricted() {
         let ctx = setup().unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
-            &ctx.alice,
-            String::from("transfer_role_owner"),
-            None,
+            &ctx.alice, // not bob
+            String::from("IVault::transfer_role_adjust_fee"),
+            Some([ctx.charlie.to_string()].to_vec()),
             None,
             helpers::transcoder_vault(),
         ) {
@@ -1104,26 +915,64 @@ mod tests {
         };
     }
     #[test]
-    fn test_vault_transfer_role_owner_flow() {
+    fn test_vault_transfer_role_adjust_fee_flow() {
         let ctx = setup().unwrap();
 
-        let (owner, sess) = helpers::get_role_owner(ctx.sess, &ctx.vault).unwrap();
-        assert_eq!(owner, ctx.bob);
+        let (adjust_fee, sess) = helpers::get_role_adjust_fee(ctx.sess, &ctx.vault).unwrap();
+        assert_eq!(adjust_fee, ctx.bob);
 
-        // Transfer owner role to Charlie
+        // Transfer role to Charlie
         let sess = helpers::call_function(
             sess,
             &ctx.vault,
-            &owner,
-            String::from("transfer_role_owner"),
+            &adjust_fee,
+            String::from("IVault::transfer_role_adjust_fee"),
             Some([ctx.charlie.to_string()].to_vec()),
             None,
             helpers::transcoder_vault(),
         )
             .unwrap();
 
-        let (owner, _sess) = helpers::get_role_owner(sess, &ctx.vault).unwrap();
-        assert_eq!(owner, ctx.charlie);
+        let (adjust_fee, _sess) = helpers::get_role_adjust_fee(sess, &ctx.vault).unwrap();
+        assert_eq!(adjust_fee, ctx.charlie);
+    }
+    #[test]
+    fn test_vault_transfer_role_fee_to_panic_because_caller_restricted() {
+        let ctx = setup().unwrap();
+        match helpers::call_function(
+            ctx.sess,
+            &ctx.vault,
+            &ctx.alice, // not bob
+            String::from("IVault::transfer_role_fee_to"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        ) {
+            Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_vault_transfer_role_fee_to_flow() {
+        let ctx = setup().unwrap();
+
+        let (fee_to, sess) = helpers::get_role_fee_to(ctx.sess, &ctx.vault).unwrap();
+        assert_eq!(fee_to, ctx.bob);
+
+        // Transfer role to Charlie
+        let sess = helpers::call_function(
+            sess,
+            &ctx.vault,
+            &fee_to,
+            String::from("IVault::transfer_role_fee_to"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        )
+            .unwrap();
+
+        let (fee_to, _sess) = helpers::get_role_fee_to(sess, &ctx.vault).unwrap();
+        assert_eq!(fee_to, ctx.charlie);
     }
     #[test]
     fn test_nominator_add_agent_role_flow() {
@@ -1266,44 +1115,6 @@ mod tests {
         };
     }
     #[test]
-    fn test_nominator_initialization_panic_already_initialized() {
-        let ctx = setup().unwrap();
-
-        // Add new nominator
-        let (new_agent, sess) = helpers::call_add_agent(
-            ctx.sess,
-            &ctx.registry,
-            &ctx.bob,
-            &ctx.charlie,
-            &ctx.validators[2],
-            100e12 as u128,
-            500,
-        )
-            .unwrap();
-
-        // Initialize nominator
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
-        )
-            .unwrap();
-
-        // Attempt to initialized again
-        match helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
-        ) {
-            Ok(_) => panic!("Should panic because agent is already initialized"),
-            Err(_) => (),
-        }
-    }
-    #[test]
     fn test_nominator_update_panic_because_caller_restricted() {
         let ctx = setup().unwrap();
 
@@ -1315,33 +1126,6 @@ mod tests {
             vec![0.to_string()],
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
-            Err(_) => (),
-        };
-    }
-    #[test]
-    fn test_nominator_update_panic_because_not_initialized() {
-        let ctx = setup().unwrap();
-
-        // Add nomination agent but do not initialize
-        let (new_agent, sess) = helpers::call_add_agent(
-            ctx.sess,
-            &ctx.registry,
-            &ctx.bob,
-            &ctx.bob,
-            &ctx.validators[2],
-            100e12 as u128,
-            500,
-        )
-            .unwrap();
-
-        match helpers::call_update_agents(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            vec![new_agent.to_string()],
-            vec![500.to_string()],
-        ) {
-            Ok(_) => panic!("Should panic because agent is not initialized"),
             Err(_) => (),
         };
     }
@@ -1434,13 +1218,6 @@ mod tests {
             100e12 as u128,
             500,
         )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
-        )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
             sess,
@@ -1511,13 +1288,6 @@ mod tests {
             &ctx.validators[2],
             100e12 as u128,
             500,
-        )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
         )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
@@ -1851,7 +1621,7 @@ mod tests {
             sess,
             &ctx.vault,
             &ctx.bob,
-            String::from("compound"),
+            String::from("IVault::compound"),
             None,
             None,
             helpers::transcoder_vault(),
@@ -1874,16 +1644,7 @@ mod tests {
         let ctx = setup().unwrap();
 
         // Adjust fee from default to 1%
-        let mut sess = helpers::call_function(
-            ctx.sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("adjust_incentive"),
-            Some(vec![String::from("100")]), // 1%
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
+        let mut sess = helpers::call_adjust_incentive(ctx.sess, &ctx.vault, &ctx.bob, 100).unwrap();
 
         // Fund nominator agents to simulate AZERO being claimed
         let mock_reward = 10_000;
@@ -1896,7 +1657,7 @@ mod tests {
             sess,
             &ctx.vault,
             &ctx.bob,
-            String::from("compound"),
+            String::from("IVault::compound"),
             None,
             None,
             helpers::transcoder_vault(),
@@ -1913,4 +1674,5 @@ mod tests {
 
         Ok(())
     }
+ 
 }
