@@ -9,7 +9,11 @@ use std::{
     fmt,
     error::Error, rc::Rc
 };
-
+use hex_literal;
+use sp_core::{
+    Encode,
+    Pair,
+};
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
 pub const SECOND: u64 = 1_000;
@@ -70,6 +74,16 @@ impl fmt::Display for PropType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
+}
+fn sign(hash:[u8;32],pk:&str) -> [u8; 65] {
+    
+    // Use Dan's seed
+    // `subkey inspect //Dan --scheme Ecdsa --output-type json | jq .secretSeed`
+    
+    let pair = sp_core::ecdsa::Pair::from_legacy_string(pk,None);
+
+    let signature = pair.sign_prehashed(&hash);
+    signature.0
 }
 
 pub fn update_days(mut sess: Session<MinimalRuntime>, days: u64) -> Session<MinimalRuntime> {

@@ -489,15 +489,17 @@ mod tests {
         println!("all proposals: {:?}", proposals);
 
         let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}",proposal.prop_id.to_string());
+        
         let sess = call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
             String::from("vote"),
             Some(vec![
-                proposal.prop_id.to_string(),
+                String::from("sjfdljfd"),
                 2.to_string(),
-                true.to_string(),
+                String::from("false"),
             ]),
             None,
             transcoder_governance(),
@@ -505,14 +507,14 @@ mod tests {
         .unwrap();
 
         let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
-
+        let proposal_string:String=proposal.prop_id.to_string();
         let sess = call_function(
             sess,
             &ctx.governance,
             &ctx.charlie,
             String::from("vote"),
             Some(vec![
-                proposal.prop_id.to_string(),
+                proposal_string,
                 3.to_string(),
                 true.to_string(),
             ]),

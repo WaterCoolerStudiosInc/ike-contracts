@@ -28,6 +28,7 @@ mod multisig {
         pub threshold: u16,
         pub creation_time: u64,
         pub used_nonces: Mapping<String, bool>,
+        pub proposals: Mapping<[u8; 32], Proposal>,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -76,6 +77,15 @@ mod multisig {
         accounts: Vec<AccountId>,
         weights: Vec<u64>,
     }
+    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct Proposal {
+        action: Action,
+        proposers: Vec<AccountId>,
+    }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -87,7 +97,18 @@ mod multisig {
         RemoveValidator(AccountId, bool),
         InitValidator(AccountId, u32),
     }
-
+    #[ink(event)]
+    pub struct ProposalCreated {
+        proposal: Proposal,
+    }
+    #[ink(event)]
+    pub struct ProposalUpdated {
+        proposal: Proposal,
+    }
+    #[ink(event)]
+    pub struct ProposalExecuted {
+        proposal: Proposal,
+    }
     type Event = <MultiSig as ContractEventBase>::Type;
     // internal calls
     impl MultiSig {
@@ -174,12 +195,8 @@ mod multisig {
                     self.execute_update(weight_update.accounts, weight_update.weights)
                 }
                 Action::AddValidator(validator) => self.execute_add(validator),
-                Action::RemoveValidator(validator, slash) => {
-                    self.execute_remove(validator, slash)
-                }
-                Action::InitValidator(validator, pool_id) => {
-                    self.execute_init(validator, pool_id)
-                }
+                Action::RemoveValidator(validator, slash) => self.execute_remove(validator, slash),
+                Action::InitValidator(validator, pool_id) => self.execute_init(validator, pool_id),
             }
         }
     }
@@ -194,6 +211,7 @@ mod multisig {
                 threshold: 5,
                 creation_time: Self::env().block_timestamp(),
                 used_nonces: Mapping::new(),
+                proposals: Mapping::new(),
             }
         }
         fn recover_signer(&self, message_hash: &[u8; 32], signature: [u8; 65]) -> AccountId {
@@ -275,7 +293,68 @@ mod multisig {
             }
             Ok(())
         }
-        #[ink(message)]
+        #[ink(message, selector = 6)]
+        pub fn endorse_proposal(&mut self, action: Action) -> Result<(), MultiSigError> {
+            let hash = self
+                .hash_execution(action.clone(), String::from(""))
+                .unwrap();
+            let caller = Self::env().caller();
+            let existing = self.proposals.get(hash);
+            let mut signers = self.signers.clone();
+
+            if !signers.contains(&caller) {
+                return Err(MultiSigError::Unauthorized);
+            }
+            if let Some(mut existing) = existing {
+                let mut curr_proposers = existing.proposers.clone();
+
+                if curr_proposers.contains(&caller) {
+                    return Err(MultiSigError::Unauthorized);
+                }
+                // remove booted signers from the proposers
+                curr_proposers.retain(|&x| signers.contains(&x));
+
+                if curr_proposers.len() as u16 + 1_u16 == self.threshold {
+                    Self::emit_event(
+                        Self::env(),
+                        Event::ProposalExecuted(ProposalExecuted {
+                            proposal: existing.clone(),
+                        }),
+                    );
+                    self.proposals.remove(hash);
+                    self.execute(existing.action)?;
+                } else {
+                    curr_proposers.push(caller);
+                    existing.proposers = curr_proposers;
+                    Self::emit_event(
+                        Self::env(),
+                        Event::ProposalUpdated(ProposalUpdated {
+                            proposal: existing.clone(),
+                        }),
+                    );
+                    self.proposals.insert(hash, &existing);
+                }
+            } else {
+                self.proposals.insert(
+                    hash,
+                    &Proposal {
+                        action: action.clone(),
+                        proposers: vec![caller],
+                    },
+                );
+                Self::emit_event(
+                    Self::env(),
+                    Event::ProposalCreated(ProposalCreated {
+                        proposal: Proposal {
+                            action,
+                            proposers: vec![caller],
+                        },
+                    }),
+                );
+            }
+            Ok(())
+        }
+        #[ink(message, selector = 7)]
         pub fn execute_transaction(
             &mut self,
             action: Action,
@@ -301,7 +380,16 @@ mod multisig {
                 _signers.retain(|&x| x != _signer);
             }
             self.used_nonces.insert(nonce, &true);
-            self.execute(action)?; 
+            self.execute(action.clone())?;
+            Self::emit_event(
+                Self::env(),
+                Event::ProposalExecuted(ProposalExecuted {
+                    proposal: Proposal {
+                        action,
+                        proposers: _signers,
+                    },
+                }),
+            );
             Ok(())
         }
     }
