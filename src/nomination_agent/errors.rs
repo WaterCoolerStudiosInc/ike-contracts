@@ -4,7 +4,4 @@ pub enum RuntimeError {
     CallRuntimeFailed,
     Unauthorized,
     Active,
-    InvalidPoolState,
-    Initialized,
-    NotInitialized,
 }

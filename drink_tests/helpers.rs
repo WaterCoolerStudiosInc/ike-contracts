@@ -14,6 +14,12 @@ pub const DAY: u64 = SECOND * 86400;
 pub const YEAR: u64 = DAY * 365_25 / 100;
 pub const BIPS: u128 = 10000;
 
+#[derive(Debug, scale::Decode)]
+pub struct Agent {
+    pub address: AccountId32,
+    pub weight: u64,
+}
+
 pub fn update_days(
     mut sess: Session<MinimalRuntime>,
     days: u64,
@@ -59,27 +65,6 @@ pub fn call_add_agent(
     let (_, agents, sess) = get_agents(sess, &registry)?;
 
     Ok((agents[agents.len() - 1].address.clone(), sess))
-}
-pub fn call_initialize_agent(
-    sess: Session<MinimalRuntime>,
-    registry: &AccountId32,
-    sender: &AccountId32,
-    agent: &AccountId32,
-    pool_id: u32,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let sess: Session<MinimalRuntime> = call_function(
-        sess,
-        &registry,
-        &sender,
-        String::from("initialize_agent"),
-        Some([
-            agent.to_string(),
-            pool_id.to_string(),
-        ].to_vec()),
-        None,
-        transcoder_registry(),
-    )?;
-    Ok(sess)
 }
 pub fn call_update_agents(
     sess: Session<MinimalRuntime>,
@@ -317,13 +302,6 @@ pub fn get_role_fee_to(
 
     let fee_to: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((fee_to.unwrap(), sess))
-}
-
-#[derive(Debug, scale::Decode)]
-pub struct Agent {
-    pub address: AccountId32,
-    pub weight: u64,
-    pub initialized: bool,
 }
 pub fn get_agents(
     mut sess: Session<MinimalRuntime>,

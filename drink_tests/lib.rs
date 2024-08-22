@@ -108,13 +108,6 @@ mod tests {
             100e12 as u128,
             500,
         )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &registry,
-            &bob,
-            &new_agent,
-            1,
-        )?;
         let (new_agent, sess) = helpers::call_add_agent(
             sess,
             &registry,
@@ -123,13 +116,6 @@ mod tests {
             &validator2,
             100e12 as u128,
             500,
-        )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &registry,
-            &bob,
-            &new_agent,
-            2,
         )?;
 
         let (_, agents, sess) = helpers::get_agents(sess, &registry)?;
@@ -1129,44 +1115,6 @@ mod tests {
         };
     }
     #[test]
-    fn test_nominator_initialization_panic_already_initialized() {
-        let ctx = setup().unwrap();
-
-        // Add new nominator
-        let (new_agent, sess) = helpers::call_add_agent(
-            ctx.sess,
-            &ctx.registry,
-            &ctx.bob,
-            &ctx.charlie,
-            &ctx.validators[2],
-            100e12 as u128,
-            500,
-        )
-            .unwrap();
-
-        // Initialize nominator
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
-        )
-            .unwrap();
-
-        // Attempt to initialized again
-        match helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
-        ) {
-            Ok(_) => panic!("Should panic because agent is already initialized"),
-            Err(_) => (),
-        }
-    }
-    #[test]
     fn test_nominator_update_panic_because_caller_restricted() {
         let ctx = setup().unwrap();
 
@@ -1178,33 +1126,6 @@ mod tests {
             vec![0.to_string()],
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
-            Err(_) => (),
-        };
-    }
-    #[test]
-    fn test_nominator_update_panic_because_not_initialized() {
-        let ctx = setup().unwrap();
-
-        // Add nomination agent but do not initialize
-        let (new_agent, sess) = helpers::call_add_agent(
-            ctx.sess,
-            &ctx.registry,
-            &ctx.bob,
-            &ctx.bob,
-            &ctx.validators[2],
-            100e12 as u128,
-            500,
-        )
-            .unwrap();
-
-        match helpers::call_update_agents(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            vec![new_agent.to_string()],
-            vec![500.to_string()],
-        ) {
-            Ok(_) => panic!("Should panic because agent is not initialized"),
             Err(_) => (),
         };
     }
@@ -1297,13 +1218,6 @@ mod tests {
             100e12 as u128,
             500,
         )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
-        )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
             sess,
@@ -1374,13 +1288,6 @@ mod tests {
             &ctx.validators[2],
             100e12 as u128,
             500,
-        )?;
-        let sess = helpers::call_initialize_agent(
-            sess,
-            &ctx.registry,
-            &ctx.bob,
-            &new_agent,
-            3,
         )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
