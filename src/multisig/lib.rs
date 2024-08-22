@@ -2,6 +2,9 @@
 mod traits;
 pub use crate::multisig::MultiSigRef;
 pub use traits::MultiSig;
+
+
+
 #[ink::contract]
 mod multisig {
     use core::fmt::Error;
@@ -13,7 +16,7 @@ mod multisig {
             hash::{HashOutput, Sha2x256},
             hash_encoded,
         },
-        prelude::{string::String, vec::Vec},
+        prelude::{string::String, vec::Vec,vec},
         reflect::ContractEventBase,
         storage::Mapping,
     };

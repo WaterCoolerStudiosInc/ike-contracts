@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xa18db7759994394b28e80b26795cbf155f668f0931fab022b55ee16ea59023dc",
+    "hash": "0xbafec5920c8745387ccee975b09c71e696f03ae9b39867e313db9ce834c3f36d",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -43,7 +43,7 @@
             }
           },
           {
-            "label": "_vault",
+            "label": "_whitelist",
             "type": {
               "displayName": [
                 "AccountId"
@@ -61,7 +61,7 @@
             "ink_primitives",
             "ConstructorResult"
           ],
-          "type": 6
+          "type": 9
         },
         "selector": "0x9bae9d5e"
       }
@@ -78,25 +78,25 @@
         "displayName": [
           "Balance"
         ],
-        "type": 12
+        "type": 21
       },
       "blockNumber": {
         "displayName": [
           "BlockNumber"
         ],
-        "type": 14
+        "type": 8
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 15
+        "type": 23
       },
       "hash": {
         "displayName": [
           "Hash"
         ],
-        "type": 13
+        "type": 22
       },
       "maxEventTopics": 4,
       "timestamp": {
@@ -168,6 +168,57 @@
         ],
         "docs": [],
         "label": "SignerReplaced"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal",
+            "type": {
+              "displayName": [
+                "Proposal"
+              ],
+              "type": 20
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposalCreated"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal",
+            "type": {
+              "displayName": [
+                "Proposal"
+              ],
+              "type": 20
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposalUpdated"
+      },
+      {
+        "args": [
+          {
+            "docs": [],
+            "indexed": false,
+            "label": "proposal",
+            "type": {
+              "displayName": [
+                "Proposal"
+              ],
+              "type": 20
+            }
+          }
+        ],
+        "docs": [],
+        "label": "ProposalExecuted"
       }
     ],
     "lang_error": {
@@ -175,7 +226,7 @@
         "ink",
         "LangError"
       ],
-      "type": 8
+      "type": 11
     },
     "messages": [
       {
@@ -200,7 +251,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 12
         },
         "selector": "0x00000001"
       },
@@ -226,7 +277,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 12
         },
         "selector": "0x00000002"
       },
@@ -252,7 +303,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 12
         },
         "selector": "0x00000003"
       },
@@ -287,9 +338,79 @@
             "ink",
             "MessageResult"
           ],
-          "type": 9
+          "type": 12
         },
         "selector": "0x00000004"
+      },
+      {
+        "args": [
+          {
+            "label": "action",
+            "type": {
+              "displayName": [
+                "Action"
+              ],
+              "type": 15
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "endorse_proposal",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 12
+        },
+        "selector": "0x00000006"
+      },
+      {
+        "args": [
+          {
+            "label": "action",
+            "type": {
+              "displayName": [
+                "Action"
+              ],
+              "type": 15
+            }
+          },
+          {
+            "label": "signatures",
+            "type": {
+              "displayName": [
+                "Vec"
+              ],
+              "type": 17
+            }
+          },
+          {
+            "label": "nonce",
+            "type": {
+              "displayName": [
+                "String"
+              ],
+              "type": 19
+            }
+          }
+        ],
+        "default": false,
+        "docs": [],
+        "label": "execute_transaction",
+        "mutates": true,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 12
+        },
+        "selector": "0x00000007"
       }
     ]
   },
@@ -314,7 +435,7 @@
                   "ty": 0
                 }
               },
-              "name": "vault"
+              "name": "whitelist"
             },
             {
               "layout": {
@@ -351,6 +472,148 @@
                 }
               },
               "name": "creation_time"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "leaf": {
+                      "key": "0xcc5ba78b",
+                      "ty": 6
+                    }
+                  },
+                  "root_key": "0xcc5ba78b"
+                }
+              },
+              "name": "used_nonces"
+            },
+            {
+              "layout": {
+                "root": {
+                  "layout": {
+                    "struct": {
+                      "fields": [
+                        {
+                          "layout": {
+                            "enum": {
+                              "dispatchKey": "0x465a63e6",
+                              "name": "Action",
+                              "variants": {
+                                "0": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "struct": {
+                                          "fields": [
+                                            {
+                                              "layout": {
+                                                "leaf": {
+                                                  "key": "0x465a63e6",
+                                                  "ty": 3
+                                                }
+                                              },
+                                              "name": "accounts"
+                                            },
+                                            {
+                                              "layout": {
+                                                "leaf": {
+                                                  "key": "0x465a63e6",
+                                                  "ty": 7
+                                                }
+                                              },
+                                              "name": "weights"
+                                            }
+                                          ],
+                                          "name": "WeightUpdate"
+                                        }
+                                      },
+                                      "name": "0"
+                                    }
+                                  ],
+                                  "name": "UpdateValidators"
+                                },
+                                "1": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x465a63e6",
+                                          "ty": 0
+                                        }
+                                      },
+                                      "name": "0"
+                                    }
+                                  ],
+                                  "name": "AddValidator"
+                                },
+                                "2": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x465a63e6",
+                                          "ty": 0
+                                        }
+                                      },
+                                      "name": "0"
+                                    },
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x465a63e6",
+                                          "ty": 6
+                                        }
+                                      },
+                                      "name": "1"
+                                    }
+                                  ],
+                                  "name": "RemoveValidator"
+                                },
+                                "3": {
+                                  "fields": [
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x465a63e6",
+                                          "ty": 0
+                                        }
+                                      },
+                                      "name": "0"
+                                    },
+                                    {
+                                      "layout": {
+                                        "leaf": {
+                                          "key": "0x465a63e6",
+                                          "ty": 8
+                                        }
+                                      },
+                                      "name": "1"
+                                    }
+                                  ],
+                                  "name": "InitValidator"
+                                }
+                              }
+                            }
+                          },
+                          "name": "action"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x465a63e6",
+                              "ty": 3
+                            }
+                          },
+                          "name": "proposers"
+                        }
+                      ],
+                      "name": "Proposal"
+                    }
+                  },
+                  "root_key": "0x465a63e6"
+                }
+              },
+              "name": "proposals"
             }
           ],
           "name": "MultiSig"
@@ -429,49 +692,17 @@
       "id": 6,
       "type": {
         "def": {
-          "variant": {
-            "variants": [
-              {
-                "fields": [
-                  {
-                    "type": 7
-                  }
-                ],
-                "index": 0,
-                "name": "Ok"
-              },
-              {
-                "fields": [
-                  {
-                    "type": 8
-                  }
-                ],
-                "index": 1,
-                "name": "Err"
-              }
-            ]
-          }
-        },
-        "params": [
-          {
-            "name": "T",
-            "type": 7
-          },
-          {
-            "name": "E",
-            "type": 8
-          }
-        ],
-        "path": [
-          "Result"
-        ]
+          "primitive": "bool"
+        }
       }
     },
     {
       "id": 7,
       "type": {
         "def": {
-          "tuple": []
+          "sequence": {
+            "type": 5
+          }
         }
       }
     },
@@ -479,19 +710,8 @@
       "id": 8,
       "type": {
         "def": {
-          "variant": {
-            "variants": [
-              {
-                "index": 1,
-                "name": "CouldNotReadInput"
-              }
-            ]
-          }
-        },
-        "path": [
-          "ink_primitives",
-          "LangError"
-        ]
+          "primitive": "u32"
+        }
       }
     },
     {
@@ -512,7 +732,7 @@
               {
                 "fields": [
                   {
-                    "type": 8
+                    "type": 11
                   }
                 ],
                 "index": 1,
@@ -528,7 +748,7 @@
           },
           {
             "name": "E",
-            "type": 8
+            "type": 11
           }
         ],
         "path": [
@@ -540,12 +760,39 @@
       "id": 10,
       "type": {
         "def": {
+          "tuple": []
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "index": 1,
+                "name": "CouldNotReadInput"
+              }
+            ]
+          }
+        },
+        "path": [
+          "ink_primitives",
+          "LangError"
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "type": {
+        "def": {
           "variant": {
             "variants": [
               {
                 "fields": [
                   {
-                    "type": 7
+                    "type": 13
                   }
                 ],
                 "index": 0,
@@ -566,7 +813,7 @@
         "params": [
           {
             "name": "T",
-            "type": 7
+            "type": 13
           },
           {
             "name": "E",
@@ -579,7 +826,49 @@
       }
     },
     {
-      "id": 11,
+      "id": 13,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 10
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 10
+          },
+          {
+            "name": "E",
+            "type": 14
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 14,
       "type": {
         "def": {
           "variant": {
@@ -603,6 +892,10 @@
               {
                 "index": 4,
                 "name": "InvalidInput"
+              },
+              {
+                "index": 5,
+                "name": "UsedNonce"
               }
             ]
           }
@@ -615,7 +908,152 @@
       }
     },
     {
-      "id": 12,
+      "id": 15,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 16,
+                    "typeName": "WeightUpdate"
+                  }
+                ],
+                "index": 0,
+                "name": "UpdateValidators"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  }
+                ],
+                "index": 1,
+                "name": "AddValidator"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  },
+                  {
+                    "type": 6,
+                    "typeName": "bool"
+                  }
+                ],
+                "index": 2,
+                "name": "RemoveValidator"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 0,
+                    "typeName": "AccountId"
+                  },
+                  {
+                    "type": 8,
+                    "typeName": "u32"
+                  }
+                ],
+                "index": 3,
+                "name": "InitValidator"
+              }
+            ]
+          }
+        },
+        "path": [
+          "multisig",
+          "multisig",
+          "Action"
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "accounts",
+                "type": 3,
+                "typeName": "Vec<AccountId>"
+              },
+              {
+                "name": "weights",
+                "type": 7,
+                "typeName": "Vec<u64>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "multisig",
+          "multisig",
+          "WeightUpdate"
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "sequence": {
+            "type": 18
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "array": {
+            "len": 65,
+            "type": 2
+          }
+        }
+      }
+    },
+    {
+      "id": 19,
+      "type": {
+        "def": {
+          "primitive": "str"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": {
+        "def": {
+          "composite": {
+            "fields": [
+              {
+                "name": "action",
+                "type": 15,
+                "typeName": "Action"
+              },
+              {
+                "name": "proposers",
+                "type": 3,
+                "typeName": "Vec<AccountId>"
+              }
+            ]
+          }
+        },
+        "path": [
+          "multisig",
+          "multisig",
+          "Proposal"
+        ]
+      }
+    },
+    {
+      "id": 21,
       "type": {
         "def": {
           "primitive": "u128"
@@ -623,7 +1061,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 22,
       "type": {
         "def": {
           "composite": {
@@ -643,15 +1081,7 @@
       }
     },
     {
-      "id": 14,
-      "type": {
-        "def": {
-          "primitive": "u32"
-        }
-      }
-    },
-    {
-      "id": 15,
+      "id": 23,
       "type": {
         "def": {
           "variant": {}
