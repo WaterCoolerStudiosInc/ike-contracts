@@ -122,11 +122,23 @@ mod nomination_agent {
             self.staked -= amount;
             self.unbonding += amount;
 
-            // Trigger un-bonding process
+            let balance_before = Self::env().balance();
+
+            // Unbond AZERO
             self.env()
                 .call_runtime(&RuntimeCall::Staking(StakingCall::Unbond {
                     value: amount,
                 }))?;
+
+            let withdrawn = Self::env().balance() - balance_before;
+
+            if withdrawn > 0 {
+                // Typically this should be 0
+                // If unlocking requests equal `staking.maxUnlockingChunks`, some might be withdrawn
+                ink::env::debug_println!("Withdrawn {:?} AZERO", withdrawn);
+                self.unbonding -= withdrawn;
+                Self::env().transfer(self.vault, withdrawn)?;
+            }
 
             Ok(())
         }
