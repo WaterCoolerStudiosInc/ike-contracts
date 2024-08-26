@@ -27,9 +27,9 @@ pub const BIPS: u128 = 10000;
     derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
 )]
 pub struct TokenTransfer {
-    token: AccountId32,
-    amount: u128,
-    to: AccountId32,
+    pub token: AccountId32,
+    pub amount: u128,
+    pub to: AccountId32,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -40,13 +40,15 @@ pub struct TokenTransfer {
 pub struct Proposal {
     pub creation_timestamp: u64,
     pub creator_id: u128,
-    pub prop_id: String,
+    pub prop_id: u128,
     pub prop_type: PropType,
     pub pro_vote_count: u128,
     pub con_vote_count: u128,
     pub vote_start: u64,
     pub vote_end: u64,
 }
+
+
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
 #[cfg_attr(
     feature = "std",
@@ -69,7 +71,20 @@ pub enum PropType {
     UpdateExecThreshhold(u128),
     SetCodeHash([u8; 32]),
 }
-
+#[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
+#[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+)]
+pub enum Vote {
+    Pro,
+    Con,
+}
+impl fmt::Display for Vote {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 impl fmt::Display for PropType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)

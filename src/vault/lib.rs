@@ -130,7 +130,12 @@ mod vault {
             registry_code_hash: Hash,
             nomination_agent_hash: Hash,
         ) -> Self {
-            Self::custom_era(share_token_hash, registry_code_hash, nomination_agent_hash, DAY)
+            Self::custom_era(
+                share_token_hash,
+                registry_code_hash,
+                nomination_agent_hash,
+                DAY,
+            )
         }
 
         #[ink(constructor)]
@@ -143,20 +148,18 @@ mod vault {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let registry_ref = RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
-                .endowment(0)
-                .code_hash(registry_code_hash)
-                .salt_bytes(
-                    &[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
-                )
-                .instantiate();
-            let share_token_ref = TokenRef::new(Some(String::from("sAZERO")), Some(String::from("SAZ")))
-                .endowment(0)
-                .code_hash(share_token_hash)
-                .salt_bytes(
-                    &[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
-                )
-                .instantiate();
+            let registry_ref =
+                RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
+                    .endowment(0)
+                    .code_hash(registry_code_hash)
+                    .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                    .instantiate();
+            let share_token_ref =
+                TokenRef::new(Some(String::from("sAZERO")), Some(String::from("SAZ")))
+                    .endowment(0)
+                    .code_hash(share_token_hash)
+                    .salt_bytes(&[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                    .instantiate();
 
             Self {
                 data: VaultData::new(
@@ -310,20 +313,26 @@ mod vault {
             );
 
             // Update user's unlock requests
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or(Vec::new());
+            let mut user_unlock_requests = self
+                .data
+                .user_unlock_requests
+                .get(caller)
+                .unwrap_or(Vec::new());
             user_unlock_requests.push(UnlockRequest {
                 creation_time: now,
                 share_amount: shares,
                 batch_id: current_batch_unlock_id,
             });
-            self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
+            self.data
+                .user_unlock_requests
+                .insert(caller, &user_unlock_requests);
 
             Self::emit_event(
                 Self::env(),
                 Event::UnlockRequested(UnlockRequested {
                     staker: caller,
                     shares,
-                    unlock_id: (user_unlock_requests.len()-1) as u128,
+                    unlock_id: (user_unlock_requests.len() - 1) as u128,
                     batch_id: current_batch_unlock_id,
                 }),
             );
@@ -340,7 +349,11 @@ mod vault {
             let now = Self::env().block_timestamp();
 
             let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or(Vec::new());
+            let mut user_unlock_requests = self
+                .data
+                .user_unlock_requests
+                .get(caller)
+                .unwrap_or(Vec::new());
 
             if user_unlock_id >= user_unlock_requests.len() as u128 {
                 return Err(VaultError::InvalidUserUnlockRequest);
@@ -350,16 +363,26 @@ mod vault {
                 return Err(VaultError::InvalidBatchUnlockRequest);
             }
 
-            let share_amount = user_unlock_requests[user_unlock_id as usize].share_amount.clone();
+            let share_amount = user_unlock_requests[user_unlock_id as usize]
+                .share_amount
+                .clone();
 
             // Delete user's cancelled unlock request
             user_unlock_requests.remove(user_unlock_id as usize);
-            self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
+            self.data
+                .user_unlock_requests
+                .insert(caller, &user_unlock_requests);
 
             // Remove shares from current batch unlock request
-            let mut current_batch = self.data.batch_unlock_requests.get(current_batch_unlock_id).unwrap();
+            let mut current_batch = self
+                .data
+                .batch_unlock_requests
+                .get(current_batch_unlock_id)
+                .unwrap();
             current_batch.total_shares -= share_amount;
-            self.data.batch_unlock_requests.insert(current_batch_unlock_id, &current_batch);
+            self.data
+                .batch_unlock_requests
+                .insert(current_batch_unlock_id, &current_batch);
 
             // Return shares to caller
             self.transfer_shares_to(&caller, &share_amount)?;
@@ -398,7 +421,7 @@ mod vault {
                     return Err(VaultError::InvalidBatchUnlockRequest);
                 }
                 // Cannot send duplicate batch id (requires `batch_ids` is sorted in asc order)
-                if i > 0 && batch_id <= batch_ids[i-1] {
+                if i > 0 && batch_id <= batch_ids[i - 1] {
                     return Err(VaultError::Duplication);
                 }
             }
@@ -409,7 +432,10 @@ mod vault {
                 .collect();
 
             // Cannot re-send batch unlock request
-            if batches.iter().any(|batch| batch.redemption_timestamp.is_some()) {
+            if batches
+                .iter()
+                .any(|batch| batch.redemption_timestamp.is_some())
+            {
                 return Err(VaultError::InvalidBatchUnlockRequest);
             }
 
@@ -451,7 +477,6 @@ mod vault {
             Ok(())
         }
 
-
         /// Attempts to claim unbonded AZERO from all validators
         #[ink(message)]
         fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError> {
@@ -483,7 +508,9 @@ mod vault {
 
             // Ensure batch unlock has been redeemed
             let batch_unlock_request = self.data.batch_unlock_requests.get(batch_id).unwrap();
-            if batch_unlock_request.redemption_timestamp.is_none() || batch_unlock_request.value_at_redemption.is_none() {
+            if batch_unlock_request.redemption_timestamp.is_none()
+                || batch_unlock_request.value_at_redemption.is_none()
+            {
                 return Err(VaultError::InvalidBatchUnlockRequest);
             }
 
@@ -495,7 +522,9 @@ mod vault {
 
             // Delete completed user unlock request
             user_unlock_requests.remove(unlock_id as usize);
-            self.data.user_unlock_requests.insert(user, &user_unlock_requests);
+            self.data
+                .user_unlock_requests
+                .insert(user, &user_unlock_requests);
 
             // Send AZERO to user
             let azero = self.data.pro_rata(
@@ -523,7 +552,11 @@ mod vault {
         /// This should be called instead of `redeem()` when insufficient AZERO exists in the Vault and
         /// validator(s) have unbonded AZERO which can be claimed
         #[ink(message)]
-        fn redeem_with_withdraw(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
+        fn redeem_with_withdraw(
+            &mut self,
+            user: AccountId,
+            unlock_id: u64,
+        ) -> Result<(), VaultError> {
             // Claim all unbonded AZERO into Vault
             self.data.delegate_withdraw_unbonded()?;
 
@@ -583,12 +616,7 @@ mod vault {
             self.mint_shares(shares, role_fee_to)?;
             self.data.total_shares_virtual = 0;
 
-            Self::emit_event(
-                Self::env(),
-                Event::FeesWithdrawn(FeesWithdrawn {
-                    shares,
-                }),
-            );
+            Self::emit_event(Self::env(), Event::FeesWithdrawn(FeesWithdrawn { shares }));
 
             Ok(())
         }
@@ -609,12 +637,7 @@ mod vault {
 
             ink::env::set_code_hash(&code_hash)?;
 
-            Self::emit_event(
-                Self::env(),
-                Event::NewHash(NewHash {
-                    code_hash,
-                }),
-            );
+            Self::emit_event(Self::env(), Event::NewHash(NewHash { code_hash }));
 
             Ok(())
         }
@@ -633,10 +656,7 @@ mod vault {
 
             self.data.role_set_code = None;
 
-            Self::emit_event(
-                Self::env(),
-                Event::SetHashDisabled(SetHashDisabled {}),
-            );
+            Self::emit_event(Self::env(), Event::SetHashDisabled(SetHashDisabled {}));
 
             Ok(())
         }
@@ -645,7 +665,7 @@ mod vault {
         ///
         /// Caller must have the adjust fee role (`role_adjust_fee`)
         /// Updates the total_shares_virtual accumulator at the old fee level first
-        #[ink(message)]
+        #[ink(message, selector = 13)]
         fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
@@ -695,9 +715,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::IncentiveAdjusted(IncentiveAdjusted {
-                    new_incentive,
-                }),
+                Event::IncentiveAdjusted(IncentiveAdjusted { new_incentive }),
             );
 
             Ok(())
@@ -727,9 +745,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleAdjustFeeTransferred(RoleAdjustFeeTransferred {
-                    new_account,
-                }),
+                Event::RoleAdjustFeeTransferred(RoleAdjustFeeTransferred { new_account }),
             );
 
             Ok(())
@@ -759,9 +775,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleFeeToTransferred(RoleFeeToTransferred {
-                    new_account,
-                }),
+                Event::RoleFeeToTransferred(RoleFeeToTransferred { new_account }),
             );
 
             Ok(())
@@ -812,7 +826,7 @@ mod vault {
         fn get_incentive_percentage(&self) -> u16 {
             self.data.incentive_percentage
         }
-        
+
         #[ink(message)]
         fn get_share_token_contract(&self) -> AccountId {
             self.data.shares_contract
@@ -832,7 +846,8 @@ mod vault {
                 // Also known as 1:1 redemption ratio
                 azero
             } else {
-                self.data.pro_rata(azero, self.get_total_shares(), total_pooled_)
+                self.data
+                    .pro_rata(azero, self.get_total_shares(), total_pooled_)
             }
         }
 
@@ -844,25 +859,36 @@ mod vault {
                 // This should never happen
                 0
             } else {
-                self.data.pro_rata(shares, self.data.total_pooled, total_shares)
+                self.data
+                    .pro_rata(shares, self.data.total_pooled, total_shares)
             }
         }
 
         /// Returns the unlock requests for a given user
         #[ink(message)]
         fn get_unlock_requests(&self, user: AccountId) -> Vec<UnlockRequest> {
-            self.data.user_unlock_requests.get(user).unwrap_or(Vec::new())
+            self.data
+                .user_unlock_requests
+                .get(user)
+                .unwrap_or(Vec::new())
         }
 
         /// Returns the number of unlock requests made by a given user
         #[ink(message)]
         fn get_unlock_request_count(&self, user: AccountId) -> u128 {
-            self.data.user_unlock_requests.get(user).unwrap_or(Vec::new()).len() as u128
+            self.data
+                .user_unlock_requests
+                .get(user)
+                .unwrap_or(Vec::new())
+                .len() as u128
         }
 
         /// Returns the information of a batch unlock request for the given batch id
         #[ink(message)]
-        fn get_batch_unlock_requests(&self, batch_id: u64) -> (u128, Option<u128>, Option<Timestamp>) {
+        fn get_batch_unlock_requests(
+            &self,
+            batch_id: u64,
+        ) -> (u128, Option<u128>, Option<Timestamp>) {
             let batch = self.data.batch_unlock_requests.get(batch_id).unwrap();
             (
                 batch.total_shares,
@@ -874,7 +900,8 @@ mod vault {
         #[ink(message)]
         fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>) {
             let (total_weight, agents) = self.data.registry_contract.get_agents();
-            self.data.get_weight_imbalances(&agents, total_weight, total_pooled)
+            self.data
+                .get_weight_imbalances(&agents, total_weight, total_pooled)
         }
     }
 }

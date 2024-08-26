@@ -168,7 +168,7 @@ mod staking{
         pub fn get_governance_nft(&self) -> AccountId {
             GovernanceNFTRef::to_account_id(&self.nft)
         }
-        #[ink(message)]
+        #[ink(message, selector = 17)]
         pub fn update_rewards_rate(&mut self,new_rate:u128) ->   Result<(), StakingError> {
             let caller = Self::env().caller();
             if caller != self.governor{

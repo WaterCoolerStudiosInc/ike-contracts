@@ -8,8 +8,8 @@ mod helpers;
 mod tests {
     use crate::helpers;
     use crate::helpers::{
-        call_function, gov_token_transfer, query_allowance, query_owner,
-        query_token_balance, update_days, DAY,
+        call_function, gov_token_transfer, query_allowance, query_owner, query_token_balance,
+        update_days, Vote, DAY,
     };
     use crate::sources::*;
     use drink::{
@@ -25,6 +25,7 @@ mod tests {
         pub block_created: u64,
         pub vote_weight: u128,
     }
+
     const TOTAL_SUPPLY: u128 = 100_000_000_000_000_000_u128;
     const ACC_THRESHOLD: u128 = TOTAL_SUPPLY / 20;
     const REJECT_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
@@ -121,7 +122,18 @@ mod tests {
         let registry = rr.unwrap();
         sess.set_transcoder(registry.clone(), &transcoder_registry().unwrap());
         println!("registry: {:?}", registry.to_string());
-
+        /**
+        *    vault: AccountId,
+           registry: AccountId,
+           governance_token: AccountId,
+           multisig_hash: Hash,
+           gov_nft_hash: Hash,
+           staking_hash: Hash,
+           exec_threshold: u128,
+           reject_threshold: u128,
+           acc_threshold: u128,
+           interest_rate: u128,
+        */
         let governance = sess.deploy(
             bytes_governance(),
             "new",
@@ -143,7 +155,16 @@ mod tests {
         )?;
         sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
         println!("governance: {:?}", governance.to_string());
-
+        let sess = call_function(
+            sess,
+            &vault,
+            &bob,
+            String::from("IVault::transfer_role_adjust_fee"),
+            Some([governance.clone().to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        )
+        .unwrap();
         let mut sess = call_function(
             sess,
             &governance,
@@ -189,7 +210,8 @@ mod tests {
         sess.set_transcoder(gov_nft.clone(), &transcoder_governance_nft().unwrap());
         println!("gov_nft: {:?}", gov_nft.to_string());
 
-        let sess = gov_token_transfer(sess, &gov_token, &bob, &stake_contract, TOTAL_SUPPLY / 10)?;
+        let sess = gov_token_transfer(sess, &gov_token, &bob, &stake_contract, TOTAL_SUPPLY / 50)?;
+        let sess = gov_token_transfer(sess, &gov_token, &bob, &governance, TOTAL_SUPPLY / 50)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &alice, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &charlie, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &dave, USER_SUPPLY)?;
@@ -479,7 +501,10 @@ mod tests {
             &ctx.governance,
             &ctx.alice,
             String::from("create_proposal"),
-            Some(vec![helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(), 1.to_string()]),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
             None,
             transcoder_governance(),
         )
@@ -488,35 +513,19 @@ mod tests {
         let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
         println!("all proposals: {:?}", proposals);
 
-        let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
-        println!("{:?}",proposal.prop_id.to_string());
-        
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = update_days(sess, 3_u64);
         let sess = call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
             String::from("vote"),
             Some(vec![
-                String::from("sjfdljfd"),
+                proposal.prop_id.to_string(),
                 2.to_string(),
-                String::from("false"),
-            ]),
-            None,
-            transcoder_governance(),
-        )
-        .unwrap();
-
-        let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
-        let proposal_string:String=proposal.prop_id.to_string();
-        let sess = call_function(
-            sess,
-            &ctx.governance,
-            &ctx.charlie,
-            String::from("vote"),
-            Some(vec![
-                proposal_string,
-                3.to_string(),
-                true.to_string(),
+                Vote::Pro.to_string(),
             ]),
             None,
             transcoder_governance(),
@@ -526,9 +535,161 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn make_and_vote_proposal() -> Result<(), Box<dyn Error>> {
+    fn vault_fee_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup().unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::FeeChange(2000_u16).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let sess = call_function(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            String::from("IVault::get_fee_percentage"),
+            None,
+            None,
+            helpers::transcoder_vault(),
+        )
+        .unwrap();
+        let res: Result<u16, drink::errors::LangError> = sess.last_call_return().unwrap();
+        assert_eq!(res.unwrap(), 2000);
+        Ok(())
+    }
+    #[test]
+    fn transfer_funds_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        /**
+        pub struct TokenTransfer {
+            token: AccountId,
+            amount: u128,
+            to: AccountId,
+        } */
+        let transfer = helpers::TokenTransfer {
+            token: ctx.gov_token,
+            amount: (TOTAL_SUPPLY / 50),
+            to: ctx.dave,
+        };
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::TransferFunds(transfer).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn transfer_native_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup().unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        /**
+        pub struct TokenTransfer {
+            token: AccountId,
+            amount: u128,
+            to: AccountId,
+        } */
+        let transfer = helpers::TokenTransfer {
+            token: ctx.gov_token,
+            amount: (TOTAL_SUPPLY / 50),
+            to: ctx.dave,
+        };
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::TransferFunds(transfer).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
 
         Ok(())
     }

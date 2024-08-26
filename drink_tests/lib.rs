@@ -939,7 +939,7 @@ mod tests {
         let sess = helpers::call_function(
             sess,
             &ctx.vault,
-            &adjust_fee,
+            &ctx.alice,
             String::from("IVault::transfer_role_adjust_fee"),
             Some([ctx.charlie.to_string()].to_vec()),
             None,

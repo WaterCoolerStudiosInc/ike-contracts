@@ -101,6 +101,15 @@ pub mod governance {
         Active,
         Expired,
     }
+    #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum Vote {
+        Pro,
+        Con,
+    }
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -119,7 +128,7 @@ pub mod governance {
     pub struct Proposal {
         pub creation_timestamp: u64,
         pub creator_id: u128,
-        pub prop_id: String,
+        pub prop_id: u128,
         pub prop_type: PropType,
         pub pro_vote_count: u128,
         pub con_vote_count: u128,
@@ -140,7 +149,8 @@ pub mod governance {
         pub voting_period: u64,
         pub proposals: Vec<Proposal>,
         pub last_proposal: Mapping<u128, u64>,
-        pub voted: Mapping<(String, u128), bool>,
+        pub voted: Mapping<(u128, u128), bool>,
+        pub prop_nonce: u128,
     }
     pub const DAY: u64 = 86400 * 1000;
     pub const MIN_VOTING_DELAY: u64 = 1 * DAY;
@@ -156,9 +166,9 @@ pub mod governance {
     }
     #[ink(event)]
     pub struct VoteSubmitted {
-        proposal_id: String,
+        proposal_id: u128,
         nft_id: u128,
-        pro_vote: bool,
+        pro_vote: Vote,
     }
     #[ink(event)]
     pub struct ProposlRejected {
@@ -196,9 +206,12 @@ pub mod governance {
             data.vote_weight
         }
         fn get_proposal_state(&self, prop: Proposal, current_time: u64) -> ProposalState {
+            debug_println!("{}{}", prop.vote_end, "vote end");
+            debug_println!("{}{}", prop.vote_start, "vote start");
+            debug_println!("{}{}", current_time, "current time");
             match current_time {
                 current_time if current_time < prop.vote_start => ProposalState::Created,
-                current_time if current_time > prop.vote_start && current_time < prop.vote_end => {
+                current_time if current_time >= prop.vote_start && current_time < prop.vote_end => {
                     ProposalState::Active
                 }
                 _ => ProposalState::Expired,
@@ -370,10 +383,14 @@ pub mod governance {
                         self.change_multisig_threshold(*update)?
                     }
 
-                    PropType::FeeChange(new_fee) => self.update_vault_fee(new_fee)?,
+                    PropType::FeeChange(new_fee) => {
+                        debug_println!("{}{}", "executing vault update ", new_fee);
+                        self.update_vault_fee(new_fee)?
+                    }
                     PropType::CompoundIncentiveChange(update) => self.update_incentive(update)?,
 
                     PropType::ChangeStakingRewardRate(new_rate) => {
+                        debug_println!("{}{}", "executing update ", new_rate);
                         self.update_staking_rewards(*new_rate)?
                     }
                     PropType::SetCodeHash(code_hash) => self.set_code_internal(*code_hash)?,
@@ -387,7 +404,13 @@ pub mod governance {
                 );
                 self.proposals.swap_remove(index);
             } else {
+                debug_println!("{}{}", "updateing with weight ", weight);
                 self.proposals[index].pro_vote_count += weight;
+                debug_println!(
+                    "{}{}",
+                    "new vote count ",
+                    self.proposals[index].pro_vote_count
+                );
             }
             Ok(())
         }
@@ -478,6 +501,7 @@ pub mod governance {
                 proposals: Vec::new(),
                 last_proposal: Mapping::new(),
                 voted: Mapping::new(),
+                prop_nonce: 1_u128,
             }
         }
         #[ink(message)]
@@ -489,7 +513,7 @@ pub mod governance {
             self.staking
         }
         #[ink(message)]
-        pub fn get_proposal_by_id(&self, id: String) -> Proposal {
+        pub fn get_proposal_by_id(&self, id: u128) -> Proposal {
             self.proposals
                 .clone()
                 .into_iter()
@@ -498,7 +522,7 @@ pub mod governance {
                     creation_timestamp: 0,
                     creator_id: 0,
                     prop_type: PropType::FeeChange(0),
-                    prop_id: String::from("EMPTY"),
+                    prop_id: 0_u128,
                     pro_vote_count: 0u128,
                     con_vote_count: 0u128,
                     vote_start: 0,
@@ -519,7 +543,7 @@ pub mod governance {
                     creation_timestamp: 0,
                     creator_id: 0,
                     prop_type: PropType::FeeChange(0),
-                    prop_id: String::from("EMPTY"),
+                    prop_id: 0_u128,
                     pro_vote_count: 0u128,
                     con_vote_count: 0u128,
                     vote_start: 0,
@@ -569,18 +593,15 @@ pub mod governance {
             }
 
             // Generate Unique ID for proposals
-            let encodable = (Self::env().block_timestamp(), nft_id);
-            let mut output = <Sha2x256 as HashOutput>::Type::default();
-            hash_encoded::<Sha2x256, _>(&encodable, &mut output);
-            debug_println!("{:?}{}", output.to_vec(), "Hash VALUE");
+           
             // encode as hex string
-            let key_string = encode(output);
-
+            let key = self.prop_nonce;
+            self.prop_nonce += 1;
             let new_prop = Proposal {
                 creation_timestamp: Self::env().block_timestamp(),
                 creator_id: nft_id,
                 prop_type: prop,
-                prop_id: key_string,
+                prop_id: key,
                 pro_vote_count: 0u128,
                 con_vote_count: 0u128,
                 vote_start: Self::env().block_timestamp() + self.voting_delay,
@@ -592,21 +613,22 @@ pub mod governance {
                 Self::env(),
                 Event::ProposlCreated(ProposlCreated { proposal: new_prop }),
             );
-
+            
             Ok(())
         }
 
         #[ink(message)]
         pub fn vote(
             &mut self,
-            prop_id: String,
+            prop_id: u128,
             nft_id: u128,
-            pro: bool,
+            pro: Vote,
         ) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
             if self.check_ownership(nft_id, Self::env().caller()) != true {
                 return Err(GovernanceError::Unauthorized);
             }
+
             let weight = self.query_weight(nft_id);
             let index = self
                 .proposals
@@ -616,17 +638,24 @@ pub mod governance {
                 .unwrap();
             let proposal = self.proposals[index].clone();
 
-            if self.get_proposal_state(proposal, current_time) != ProposalState::Active {
+            if self.get_proposal_state(proposal.clone(), current_time) != ProposalState::Active {
+                debug_println!(
+                    "{:?}{}",
+                    self.get_proposal_state(proposal, current_time),
+                    "ProposalState"
+                );
                 return Err(GovernanceError::ProposalInactive);
             }
-            if self.voted.get((prop_id.clone(), nft_id)).unwrap() {
+
+            if self.voted.get((prop_id.clone(), nft_id)).unwrap_or(false) {
                 return Err(GovernanceError::DoubleVote);
             }
             self.voted.insert((prop_id.clone(), nft_id), &true);
             match pro {
-                true => self.handle_pro_vote(index, weight)?,
-                false => self.handle_con_vote(index, weight)?,
+                Vote::Pro => self.handle_pro_vote(index, weight)?,
+                Vote::Con => self.handle_con_vote(index, weight)?,
             };
+
             Self::emit_event(
                 Self::env(),
                 Event::VoteSubmitted(VoteSubmitted {
@@ -635,6 +664,7 @@ pub mod governance {
                     pro_vote: pro,
                 }),
             );
+
             Ok(())
         }
     }

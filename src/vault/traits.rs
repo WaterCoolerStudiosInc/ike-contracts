@@ -60,7 +60,7 @@ pub trait IVault {
     #[ink(message)]
     fn disable_set_code(&mut self) -> Result<(), VaultError>;
 
-    #[ink(message)]
+    #[ink(message, selector = 13)]
     fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError>;
 
     #[ink(message)]

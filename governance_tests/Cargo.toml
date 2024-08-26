@@ -18,4 +18,3 @@ psp34 = { git = "https://github.com/Cardinal-Cryptography/PSP34.git", default-fe
 name = "governance_tests"
 path = "lib.rs"
 std = ["ink/std", "scale/std", "scale-info", "scale-info/std","psp34/std","sp-core/std"]
-
