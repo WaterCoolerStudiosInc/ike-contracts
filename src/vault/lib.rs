@@ -271,7 +271,7 @@ mod vault {
             let azero = self.get_azero_from_shares(shares);
 
             // Update user's unlock requests
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or(Vec::new());
+            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or_default();
             user_unlock_requests.push(UnlockRequest {
                 creation_time: now,
                 azero,
@@ -315,7 +315,7 @@ mod vault {
         fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(user).unwrap();
+            let mut user_unlock_requests = self.data.user_unlock_requests.get(user).unwrap_or_default();
 
             // Ensure user specified a valid unlock request index
             if unlock_id >= user_unlock_requests.len() as u64 {
@@ -672,7 +672,7 @@ mod vault {
         /// Returns the unlock requests for a given user
         #[ink(message)]
         fn get_unlock_requests(&self, user: AccountId) -> Vec<UnlockRequest> {
-            self.data.user_unlock_requests.get(user).unwrap_or(Vec::new())
+            self.data.user_unlock_requests.get(user).unwrap_or_default()
         }
 
         #[ink(message)]
