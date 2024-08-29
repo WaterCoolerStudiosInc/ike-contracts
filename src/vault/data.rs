@@ -86,7 +86,7 @@ impl VaultData {
             total_shares_minted: 0,
             total_shares_virtual: 0,
             user_unlock_requests: Mapping::default(),
-            cooldown_period: era * 15,
+            cooldown_period: era * 14,
             last_fee_update: current_time,
             fee_percentage: 2_00, // 2.00%
             incentive_percentage: 0_05, // 0.05%
