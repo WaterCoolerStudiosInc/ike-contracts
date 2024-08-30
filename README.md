@@ -1,4 +1,4 @@
-# Kintsu Contracts
+# Ike Contracts
 
 
 ### Installing Environment Pre-reqs
@@ -30,7 +30,6 @@ pnpm test
 
 
 ### Deploying
-At least 2 nomination pools must exist on the target network prior to deployment.
 Contract deployment is configured with the following environment variables.
 * `CHAIN` - target chain name
 * `ACCOUNT_URI` - deployer account

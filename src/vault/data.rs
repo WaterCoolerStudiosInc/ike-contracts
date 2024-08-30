@@ -46,9 +46,9 @@ pub struct VaultData {
 
     /// total AZERO staked excluding AZERO being unbonded
     pub total_pooled: Balance,
-    /// total sAZERO minted
+    /// total sA0 minted
     pub total_shares_minted: u128,
-    /// rolling accumulator of inflation fees (sAZERO shares) that can be minted and claimed by owner
+    /// rolling accumulator of inflation fees (sA0) that can be minted and claimed by owner
     pub total_shares_virtual: u128,
 
     /// record of each user's unlock requests indexed by user AccountId
