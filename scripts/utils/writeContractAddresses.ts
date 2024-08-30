@@ -15,7 +15,7 @@ export const writeContractAddresses = async (
 
   console.log()
   for (const [contractName, deployment] of Object.entries(contractDeployments)) {
-    const contractNamePath = path.join(contractName, `${networkId}.ts`)
+    const contractNamePath = path.join(networkId, contractName, `deployment.ts`)
     const relativePath = path.join(baseDir, contractNamePath)
     const absolutePath = path.join(path.resolve(), relativePath)
 
