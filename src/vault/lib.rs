@@ -37,8 +37,8 @@ mod vault {
         #[ink(topic)]
         staker: AccountId,
         azero: Balance,
-        new_shares: Balance,
-        virtual_shares: Balance,
+        new_shares: u128,
+        virtual_shares: u128,
     }
     #[ink(event)]
     pub struct Referral {
@@ -52,56 +52,36 @@ mod vault {
         caller: AccountId,
         azero: Balance,
         incentive: Balance,
-        virtual_shares: Balance,
+        virtual_shares: u128,
     }
     #[ink(event)]
     pub struct UnlockRequested {
         #[ink(topic)]
         staker: AccountId,
-        shares: Balance,
         unlock_id: u128,
-        batch_id: u64,
-    }
-    #[ink(event)]
-    pub struct UnlockCanceled {
-        #[ink(topic)]
-        staker: AccountId,
-        shares: Balance,
-        batch_id: u64,
-        unlock_id: u128,
-    }
-    #[ink(event)]
-    pub struct BatchUnlockSent {
-        #[ink(topic)]
-        batch_id: u64,
-        shares: Balance,
-        virtual_shares: Balance,
-        spot_value: Balance,
+        shares: u128,
+        azero: u128,
+        virtual_shares: u128,
     }
     #[ink(event)]
     pub struct UnlockRedeemed {
         #[ink(topic)]
         staker: AccountId,
-        azero: Balance,
-        batch_id: u64,
+        azero: u128,
         unlock_id: u64,
     }
     #[ink(event)]
     pub struct FeesWithdrawn {
-        shares: Balance,
+        shares: u128,
     }
     #[ink(event)]
     pub struct FeesAdjusted {
         new_fee: u16,
-        virtual_shares: Balance,
+        virtual_shares: u128,
     }
     #[ink(event)]
     pub struct IncentiveAdjusted {
         new_incentive: u16,
-    }
-    #[ink(event)]
-    pub struct MinimumStakeAdjusted {
-        new_minimum_stake: Balance,
     }
     #[ink(event)]
     pub struct RoleAdjustFeeTransferred {
@@ -180,7 +160,7 @@ mod vault {
             &self,
             from: &AccountId,
             to: &AccountId,
-            amount: Balance,
+            amount: u128,
         ) -> Result<(), VaultError> {
             let mut token: contract_ref!(PSP22) = self.data.shares_contract.into();
             if let Err(e) = token.transfer_from(*from, *to, amount, Vec::new()) {
@@ -189,15 +169,7 @@ mod vault {
             Ok(())
         }
 
-        fn transfer_shares_to(&self, to: &AccountId, amount: &Balance) -> Result<(), VaultError> {
-            let mut token: contract_ref!(PSP22) = self.data.shares_contract.into();
-            if let Err(e) = token.transfer(*to, *amount, Vec::new()) {
-                return Err(VaultError::TokenError(e));
-            }
-            Ok(())
-        }
-
-        fn mint_shares(&mut self, amount: Balance, to: AccountId) -> Result<(), VaultError> {
+        fn mint_shares(&mut self, amount: u128, to: AccountId) -> Result<(), VaultError> {
             let mut token: contract_ref!(ShareToken) = self.data.shares_contract.into();
             self.data.total_shares_minted += amount;
             if let Err(e) = token.mint(to, amount) {
@@ -206,7 +178,7 @@ mod vault {
             Ok(())
         }
 
-        fn burn_shares(&mut self, amount: Balance) -> Result<(), VaultError> {
+        fn burn_shares(&mut self, amount: u128) -> Result<(), VaultError> {
             let mut token: contract_ref!(PSP22Burnable) = self.data.shares_contract.into();
             self.data.total_shares_minted -= amount;
             if let Err(e) = token.burn(amount) {
@@ -279,178 +251,51 @@ mod vault {
             Ok(new_shares)
         }
 
-        /// Allow user to begin the unlock process
-        /// Transfers sAZERO specified in `shares` argument to the vault contract
-        /// Unlock is batched into current two era batch request
+        /// Allow user to begin the unlock process converting shares into AZERO
         ///
-        /// Caller must approve the psp22 token contract beforehand
+        /// Transfers `shares` to the vault contract
+        /// Calculates AZERO value of shares
+        /// Creates `UnlockRequest` for the user
+        /// Delegates unbonding of the associated AZERO
+        /// Burns the associated shares tokens
         #[ink(message)]
-        fn request_unlock(&mut self, shares: Balance) -> Result<(), VaultError> {
+        fn request_unlock(&mut self, shares: u128) -> Result<(), VaultError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
             self.transfer_shares_from(&caller, &Self::env().account_id(), shares)?;
 
-            let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
-            let current_batch_unlock_shares = self
-                .data
-                .batch_unlock_requests
-                .get(current_batch_unlock_id)
-                .map(|b| b.total_shares)
-                .unwrap_or(0);
+            // Update fees before calculating redemption ratio and burning shares
+            self.data.update_fees(now);
 
-            // Update current batch unlock request
-            self.data.batch_unlock_requests.insert(
-                current_batch_unlock_id,
-                &UnlockRequestBatch {
-                    total_shares: current_batch_unlock_shares + shares,
-                    value_at_redemption: None,
-                    redemption_timestamp: None,
-                },
-            );
+            let azero = self.get_azero_from_shares(shares);
 
             // Update user's unlock requests
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or(Vec::new());
+            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or_default();
             user_unlock_requests.push(UnlockRequest {
                 creation_time: now,
-                share_amount: shares,
-                batch_id: current_batch_unlock_id,
+                azero,
             });
             self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
+
+            // Allocate unlock quantity across nomination pools
+            self.data.delegate_unbonding(azero)?;
+
+            self.burn_shares(shares)?;
 
             Self::emit_event(
                 Self::env(),
                 Event::UnlockRequested(UnlockRequested {
                     staker: caller,
-                    shares,
                     unlock_id: (user_unlock_requests.len()-1) as u128,
-                    batch_id: current_batch_unlock_id,
+                    shares,
+                    azero,
+                    virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
                 }),
             );
 
             Ok(())
         }
-
-        /// Allow user to cancel their unlock request
-        ///
-        /// Must be done in the same batch interval in which the request was originally sent
-        #[ink(message)]
-        fn cancel_unlock_request(&mut self, user_unlock_id: u128) -> Result<(), VaultError> {
-            let caller = Self::env().caller();
-            let now = Self::env().block_timestamp();
-
-            let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or(Vec::new());
-
-            if user_unlock_id >= user_unlock_requests.len() as u128 {
-                return Err(VaultError::InvalidUserUnlockRequest);
-            }
-
-            if current_batch_unlock_id != user_unlock_requests[user_unlock_id as usize].batch_id {
-                return Err(VaultError::InvalidBatchUnlockRequest);
-            }
-
-            let share_amount = user_unlock_requests[user_unlock_id as usize].share_amount.clone();
-
-            // Delete user's cancelled unlock request
-            user_unlock_requests.remove(user_unlock_id as usize);
-            self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
-
-            // Remove shares from current batch unlock request
-            let mut current_batch = self.data.batch_unlock_requests.get(current_batch_unlock_id).unwrap();
-            current_batch.total_shares -= share_amount;
-            self.data.batch_unlock_requests.insert(current_batch_unlock_id, &current_batch);
-
-            // Return shares to caller
-            self.transfer_shares_to(&caller, &share_amount)?;
-
-            Self::emit_event(
-                Self::env(),
-                Event::UnlockCanceled(UnlockCanceled {
-                    staker: caller,
-                    shares: share_amount,
-                    unlock_id: user_unlock_id,
-                    batch_id: current_batch_unlock_id,
-                }),
-            );
-
-            Ok(())
-        }
-
-        /// Trigger unlock requests of previous batched requests
-        /// Distributes unlock requests to nominators according to current stake imbalances
-        /// Calculates a batch spot values for sAZERO in the batches
-        /// Burns associated sAZERO
-        ///
-        /// Cannot be called for a batch that has not concluded
-        /// Cannot be called for a batch that has already been redeemed
-        /// Batch IDs must be specified in ascending order (for gas efficient duplicate check)
-        #[ink(message)]
-        fn send_batch_unlock_requests(&mut self, batch_ids: Vec<u64>) -> Result<(), VaultError> {
-            let now = Self::env().block_timestamp();
-
-            let current_batch_unlock_id = self.data.get_batch_unlock_id(now);
-
-            // Validate batch_ids
-            for (i, &batch_id) in batch_ids.iter().enumerate() {
-                // Cannot send current batch unlock request
-                if batch_id >= current_batch_unlock_id {
-                    return Err(VaultError::InvalidBatchUnlockRequest);
-                }
-                // Cannot send duplicate batch id (requires `batch_ids` is sorted in asc order)
-                if i > 0 && batch_id <= batch_ids[i-1] {
-                    return Err(VaultError::Duplication);
-                }
-            }
-
-            let batches: Vec<UnlockRequestBatch> = batch_ids
-                .iter()
-                .map(|batch_id| self.data.batch_unlock_requests.get(batch_id).unwrap())
-                .collect();
-
-            // Cannot re-send batch unlock request
-            if batches.iter().any(|batch| batch.redemption_timestamp.is_some()) {
-                return Err(VaultError::InvalidBatchUnlockRequest);
-            }
-
-            // Update fees before calculating redemption ratio and burning shares
-            self.data.update_fees(now);
-
-            let total_shares_virtual_ = self.data.total_shares_virtual; // shadow
-            let mut aggregate_batch_spot_value: Balance = 0;
-            let mut aggregate_total_shares: Balance = 0;
-
-            for (batch_id, mut batch) in batch_ids.into_iter().zip(batches.into_iter()) {
-                let batch_spot_value = self.get_azero_from_shares(batch.total_shares);
-
-                aggregate_batch_spot_value += batch_spot_value;
-                aggregate_total_shares += batch.total_shares;
-
-                // Update batch request
-                batch.value_at_redemption = Some(batch_spot_value);
-                batch.redemption_timestamp = Some(now);
-                self.data.batch_unlock_requests.insert(batch_id, &batch);
-
-                // Optimistically emit events
-                Self::emit_event(
-                    Self::env(),
-                    Event::BatchUnlockSent(BatchUnlockSent {
-                        shares: batch.total_shares,
-                        virtual_shares: total_shares_virtual_,
-                        spot_value: batch_spot_value,
-                        batch_id,
-                    }),
-                );
-            }
-
-            // Allocate unlock quantity across nomination pools
-            self.data.delegate_unbonding(aggregate_batch_spot_value)?;
-
-            self.burn_shares(aggregate_total_shares)?;
-
-            Ok(())
-        }
-
 
         /// Attempts to claim unbonded AZERO from all validators
         #[ink(message)]
@@ -464,32 +309,24 @@ mod vault {
         ///
         /// Returns original deposit amount plus interest to depositor address
         /// Queries the redeemable amount by user AccountId and Claim Vector index
-        /// Associated batch unlock request must have been completed
+        /// Associated unlock request must have been completed
         /// Deletes the user's unlock request
-        /// Burns the associated sAZERO tokens
         #[ink(message)]
         fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(user).unwrap();
+            let mut user_unlock_requests = self.data.user_unlock_requests.get(user).unwrap_or_default();
 
             // Ensure user specified a valid unlock request index
             if unlock_id >= user_unlock_requests.len() as u64 {
                 return Err(VaultError::InvalidUserUnlockRequest);
             }
 
-            let batch_id = user_unlock_requests[unlock_id as usize].batch_id;
-            let share_amount = user_unlock_requests[unlock_id as usize].share_amount;
+            let creation_time = user_unlock_requests[unlock_id as usize].creation_time;
+            let azero = user_unlock_requests[unlock_id as usize].azero;
 
-            // Ensure batch unlock has been redeemed
-            let batch_unlock_request = self.data.batch_unlock_requests.get(batch_id).unwrap();
-            if batch_unlock_request.redemption_timestamp.is_none() || batch_unlock_request.value_at_redemption.is_none() {
-                return Err(VaultError::InvalidBatchUnlockRequest);
-            }
-
-            // Ensure batch unlock has completed
-            let time_since_redemption = now - batch_unlock_request.redemption_timestamp.unwrap();
-            if time_since_redemption < self.data.cooldown_period {
+            // Ensure unbond has completed
+            if now < creation_time + self.data.cooldown_period {
                 return Err(VaultError::CooldownPeriod);
             }
 
@@ -498,11 +335,6 @@ mod vault {
             self.data.user_unlock_requests.insert(user, &user_unlock_requests);
 
             // Send AZERO to user
-            let azero = self.data.pro_rata(
-                share_amount,
-                batch_unlock_request.value_at_redemption.unwrap(),
-                batch_unlock_request.total_shares,
-            );
             Self::env().transfer(user, azero)?;
 
             Self::emit_event(
@@ -511,7 +343,6 @@ mod vault {
                     staker: user,
                     azero,
                     unlock_id,
-                    batch_id,
                 }),
             );
 
@@ -540,7 +371,7 @@ mod vault {
         fn compound(&mut self) -> Result<Balance, VaultError> {
             let caller = Self::env().caller();
 
-            // Delegate compounding to all nominator pools
+            // Delegate compounding to all agents
             let (compounded, incentive) = self.data.delegate_compound()?;
 
             // Send AZERO incentive to caller
@@ -772,16 +603,6 @@ mod vault {
             self.data.role_set_code
         }
 
-        #[ink(message)]
-        fn get_batch_id(&self) -> u64 {
-            self.data.get_batch_unlock_id(Self::env().block_timestamp())
-        }
-
-        #[ink(message)]
-        fn get_creation_time(&self) -> u64 {
-            self.data.creation_time
-        }
-
         /// Returns the total amount of bonded AZERO
         #[ink(message)]
         fn get_total_pooled(&self) -> Balance {
@@ -792,13 +613,13 @@ mod vault {
         ///     1) sAZERO that has already been minted
         ///     2) sAZERO that could be minted (virtual) representing accumulating protocol fees
         #[ink(message)]
-        fn get_total_shares(&self) -> Balance {
+        fn get_total_shares(&self) -> u128 {
             self.data.total_shares_minted + self.get_current_virtual_shares()
         }
 
         /// Returns the protocol fees (sAZERO) which can be minted and withdrawn at the current block timestamp
         #[ink(message)]
-        fn get_current_virtual_shares(&self) -> Balance {
+        fn get_current_virtual_shares(&self) -> u128 {
             let now = Self::env().block_timestamp();
             self.data.get_virtual_shares_at_time(now)
         }
@@ -825,7 +646,7 @@ mod vault {
 
         /// Calculate the value of AZERO in terms of sAZERO
         #[ink(message)]
-        fn get_shares_from_azero(&self, azero: Balance) -> Balance {
+        fn get_shares_from_azero(&self, azero: Balance) -> u128 {
             let total_pooled_ = self.data.total_pooled; // shadow
             if total_pooled_ == 0 {
                 // This happens upon initial stake
@@ -838,7 +659,7 @@ mod vault {
 
         /// Calculate the value of sAZERO in terms of AZERO
         #[ink(message)]
-        fn get_azero_from_shares(&self, shares: Balance) -> Balance {
+        fn get_azero_from_shares(&self, shares: u128) -> Balance {
             let total_shares = self.get_total_shares();
             if total_shares == 0 {
                 // This should never happen
@@ -851,24 +672,7 @@ mod vault {
         /// Returns the unlock requests for a given user
         #[ink(message)]
         fn get_unlock_requests(&self, user: AccountId) -> Vec<UnlockRequest> {
-            self.data.user_unlock_requests.get(user).unwrap_or(Vec::new())
-        }
-
-        /// Returns the number of unlock requests made by a given user
-        #[ink(message)]
-        fn get_unlock_request_count(&self, user: AccountId) -> u128 {
-            self.data.user_unlock_requests.get(user).unwrap_or(Vec::new()).len() as u128
-        }
-
-        /// Returns the information of a batch unlock request for the given batch id
-        #[ink(message)]
-        fn get_batch_unlock_requests(&self, batch_id: u64) -> (u128, Option<u128>, Option<Timestamp>) {
-            let batch = self.data.batch_unlock_requests.get(batch_id).unwrap();
-            (
-                batch.total_shares,
-                batch.value_at_redemption,
-                batch.redemption_timestamp,
-            )
+            self.data.user_unlock_requests.get(user).unwrap_or_default()
         }
 
         #[ink(message)]

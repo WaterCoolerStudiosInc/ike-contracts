@@ -31,16 +31,7 @@ pub const YEAR: u64 = DAY * 365_25 / 100; // https://docs.alephzero.org/aleph-ze
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 pub struct UnlockRequest {
     pub creation_time: Timestamp,
-    pub share_amount: Balance,
-    pub batch_id: u64,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-pub struct UnlockRequestBatch {
-    pub total_shares: Balance,
-    pub value_at_redemption: Option<Balance>,
-    pub redemption_timestamp: Option<Timestamp>,
+    pub azero: u128,
 }
 
 #[ink::storage_item]
@@ -52,25 +43,19 @@ pub struct VaultData {
     pub role_fee_to: AccountId,
     /// account that can "upgrade" Vault logic via `set_code`
     pub role_set_code: Option<AccountId>,
-    /// contract creation block timestamp
-    pub creation_time: Timestamp,
 
     /// total AZERO staked excluding AZERO being unbonded
     pub total_pooled: Balance,
     /// total sAZERO minted
-    pub total_shares_minted: Balance,
+    pub total_shares_minted: u128,
     /// rolling accumulator of inflation fees (sAZERO shares) that can be minted and claimed by owner
-    pub total_shares_virtual: Balance,
+    pub total_shares_virtual: u128,
 
-    /// record of all batched unlock requests indexed by batch id
-    pub batch_unlock_requests: Mapping<u64, UnlockRequestBatch>,
     /// record of each user's unlock requests indexed by user AccountId
     pub user_unlock_requests: Mapping<AccountId, Vec<UnlockRequest>>,
 
-    /// time required after submitting a batch unlock request until AZERO is withdraw-able
+    /// time required to unbond staked funds
     pub cooldown_period: u64,
-    /// minimum time between creating batch unlock requests to prevent excess request errors
-    pub batch_interval_delay: u64,
 
     /// last update time of claimable fees variable only modified by stake, redeem, withdraw_fees, and adjust_fee
     pub last_fee_update: Timestamp,
@@ -97,24 +82,17 @@ impl VaultData {
             role_adjust_fee: admin,
             role_fee_to: admin,
             role_set_code: Some(admin),
-            creation_time: current_time,
             total_pooled: 0,
             total_shares_minted: 0,
             total_shares_virtual: 0,
-            batch_unlock_requests: Mapping::default(),
             user_unlock_requests: Mapping::default(),
             cooldown_period: era * 14,
-            batch_interval_delay: era * 2,
             last_fee_update: current_time,
             fee_percentage: 2_00, // 2.00%
             incentive_percentage: 0_05, // 0.05%
             shares_contract: shares_contract_,
             registry_contract: registry_ref,
         }
-    }
-
-    pub fn get_batch_unlock_id(&self, time: Timestamp) -> u64 {
-        (time - self.creation_time) / self.batch_interval_delay
     }
 
     /// Calculates differences between current staked amounts and optimal staked amounts
@@ -182,8 +160,8 @@ impl VaultData {
         let phase2 = azero - phase1;
 
         let n = agents.len();
-        let mut deposit_amounts: Vec<Balance> = Vec::with_capacity(n);
-        let mut deposit_summation: Balance = 0;
+        let mut deposit_amounts: Vec<u128> = Vec::with_capacity(n);
+        let mut deposit_summation = 0;
 
         for i in 0..n {
             // Distribute to under-allocated agents
@@ -267,8 +245,8 @@ impl VaultData {
         let total_staked_after_phase1 = total_pooled_ - phase1;
 
         let n = agents.len();
-        let mut unbond_amounts: Vec<Balance> = Vec::with_capacity(n);
-        let mut unbond_summation: Balance = 0;
+        let mut unbond_amounts: Vec<u128> = Vec::with_capacity(n);
+        let mut unbond_summation = 0;
 
         for i in 0..n {
             // Unbond from over-allocated agents
