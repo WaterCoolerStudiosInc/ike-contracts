@@ -5,8 +5,9 @@ import path from 'path'
  * Reads the contract deployment files (wasm & abi).
  * NOTE: Base directory can be configured via the `DIR` environment variable
  */
-export const getDeploymentData = async (contractName: string, chainId?: string) => {
-  const baseDir = process.env.DIR || './deployments'
+export const getDeploymentData = async (contractName: string) => {
+  const chainId = process.env.CHAIN || 'development'
+  const baseDir = process.env.DIR || `./deployments/${chainId}`
   const contractPath = path.join(path.resolve(), baseDir, contractName)
 
   let abi, wasm
@@ -21,14 +22,14 @@ export const getDeploymentData = async (contractName: string, chainId?: string) 
   let address: string
   let blockNumber: number
 
-  if (!!chainId) {
-    try {
-      ({address, blockNumber} = await import(path.join(contractPath, `${chainId}.ts`)))
-    } catch (e) {
-      console.error(e)
-      throw new Error("Couldn't find deployed contract file. Did you deploy it via `pnpm deploy`?")
-    }
-  }
+  // if (!!chainId) {
+  //   try {
+  //     ({ address, blockNumber } = await import(path.join(contractPath, `deployment.ts`)))
+  //   } catch (e) {
+  //     console.error(e)
+  //     throw new Error("Couldn't find deployed contract file. Did you deploy it via `pnpm deploy`?")
+  //   }
+  // }
 
   return {
     contractPath,

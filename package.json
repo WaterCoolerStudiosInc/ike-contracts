@@ -20,10 +20,10 @@
     "typescript": "5.4.5"
   },
   "files": [
-    "deployments/nomination_agent/*",
-    "deployments/registry/*",
-    "deployments/share_token/*",
-    "deployments/vault/*",
-    "!deployments/*/development.*"
+    "deployments/**/nomination_agent/**/*",
+    "deployments/**/registry/**/*",
+    "deployments/**/share_token/**/*",
+    "deployments/**/vault/**/*",
+    "!deployments/development/**/*"
   ]
 }
