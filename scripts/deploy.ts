@@ -36,6 +36,11 @@ const main = async (validators: string[]) => {
   const existentialDeposit = BigInt(existentialDepositCodec.toString())
   console.log(`Existential deposit: ${existentialDeposit}`)
 
+  const sessionPeriod = api.consts.committeeManagement.sessionPeriod.toString().replace(/,/g, '')
+  const sessionsPerEra = api.consts.staking.sessionsPerEra.toString().replace(/,/g, '')
+  const eraDurationMs = 1000n * BigInt(sessionPeriod) * BigInt(sessionsPerEra)
+  console.log(`Era duration: ${eraDurationMs.toLocaleString()} ms`)
+
   console.log('===== Code Hash Deployment =====')
 
   console.log(`Deploying code hash: 'registry' ...`)
@@ -82,7 +87,7 @@ const main = async (validators: string[]) => {
       vault_data.abi,
       vault_data.wasm,
       'custom_era',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, 5 * 3 * 1_000],
+      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, eraDurationMs],
     ) : await deployContract(
       api,
       account,
