@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn test_mint_update() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
-        // Bob approves Ed to transfer 1k sAZERO
+        // Bob approves Ed to transfer 1k sA0
         let mut sess = call_function(
             ctx.sess,
             &ctx.gov_token,

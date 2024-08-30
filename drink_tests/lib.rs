@@ -978,7 +978,7 @@ mod tests {
         )
             .unwrap();
 
-        // Request unlocks of all 5 million sAZERO
+        // Request unlocks of all 5 million sA0
         let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1000000).unwrap();
         let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1000000).unwrap();
         let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.charlie, 1000000).unwrap();
@@ -1069,7 +1069,7 @@ mod tests {
         // Bob stakes 1m AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000).unwrap();
 
-        // Ed attempts to transfer 1k of Bob's sAZERO
+        // Ed attempts to transfer 1k of Bob's sA0
         match helpers::call_function(
             sess,
             &ctx.share_token,
@@ -1079,7 +1079,7 @@ mod tests {
             None,
             helpers::transcoder_share_token(),
         )  {
-            Ok(_) => panic!("Should panic because Bob has not approved Ed to transfer sAZERO"),
+            Ok(_) => panic!("Should panic because Bob has not approved Ed to transfer sA0"),
             Err(res) => println!("{:?}", res.to_string()),
         };
     }
@@ -1090,7 +1090,7 @@ mod tests {
         // Bob stakes 1m AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000).unwrap();
 
-        // Bob approves Ed to transfer 1k sAZERO
+        // Bob approves Ed to transfer 1k sA0
         let sess = helpers::call_function(
             sess,
             &ctx.share_token,
@@ -1101,7 +1101,7 @@ mod tests {
             helpers::transcoder_share_token(),
         ).unwrap();
 
-        // Ed transfers 1k of Bob's sAZERO
+        // Ed transfers 1k of Bob's sA0
         helpers::call_function(
             sess,
             &ctx.share_token,

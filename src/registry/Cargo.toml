@@ -1,7 +1,7 @@
 [package]
 name = "registry"
 version = "0.1.0"
-authors = ["Brandon <brandon@kintsu.xyz>", "John <john@kintsu.xyz"]
+authors = ["Brandon <brandon@watercoolerstudios.io>", "John <john@watercoolerstudios.io"]
 edition = "2021"
 
 [dependencies]

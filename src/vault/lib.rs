@@ -130,7 +130,7 @@ mod vault {
                     &[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
                 )
                 .instantiate();
-            let share_token_ref = TokenRef::new(Some(String::from("sAZERO")), Some(String::from("SAZ")))
+            let share_token_ref = TokenRef::new(Some(String::from("Ike Liquid Staked AZERO")), Some(String::from("sA0")))
                 .endowment(0)
                 .code_hash(share_token_hash)
                 .salt_bytes(
@@ -189,18 +189,18 @@ mod vault {
     }
 
     impl RateProvider for Vault {
-        /// Calculate the value of sAZERO in terms of AZERO with TARGET_DECIMALS precision
+        /// Calculate the value of sA0 shares in terms of AZERO with TARGET_DECIMALS precision
         #[ink(message)]
         fn get_rate(&mut self) -> u128 {
-            // Because both RATE_DECIMALS and sAZERO.decimals() are 12,
+            // Because both RATE_DECIMALS and sA0.decimals() are 12,
             // no further adjustment is necessary
             self.get_azero_from_shares(1e12 as u128)
         }
     }
 
     impl IVault for Vault {
-        /// Allow users to convert AZERO into sAZERO
-        /// Mints the caller sAZERO based on the redemption ratio
+        /// Allow users to convert AZERO into sA0
+        /// Mints the caller sA0 based on the redemption ratio
         ///
         /// Minimum AZERO amount is required to stake
         /// AZERO must be transferred via transferred_value
@@ -217,11 +217,9 @@ mod vault {
             // Update fees before calculating redemption ratio and minting shares
             self.data.update_fees(Self::env().block_timestamp());
 
-            // Handle sAZERO
             let new_shares = self.get_shares_from_azero(azero);
             self.mint_shares(new_shares, caller)?;
 
-            // Handle AZERO
             self.data.delegate_bonding(azero)?;
 
             Self::emit_event(
@@ -392,10 +390,10 @@ mod vault {
             Ok(incentive)
         }
 
-        /// Claim fees by inflating sAZERO supply
+        /// Claim fees by inflating sA0 supply
         ///
         /// Caller must have the fee to role (`role_fee_to`)
-        /// Mints virtual shares as sAZERO to the caller
+        /// Mints virtual shares as sA0 to the caller
         /// Effectively serves as a compounding for protocol fee
         /// sets total_shares_virtual to 0
         #[ink(message)]
@@ -609,15 +607,15 @@ mod vault {
             self.data.total_pooled
         }
 
-        /// Returns the shares effectively in circulation by the protocol including:
-        ///     1) sAZERO that has already been minted
-        ///     2) sAZERO that could be minted (virtual) representing accumulating protocol fees
+        /// Shares effectively in circulation by the protocol including:
+        ///     1) sA0 that has already been minted
+        ///     2) sA0 that could be minted (virtual) representing accumulating protocol fees
         #[ink(message)]
         fn get_total_shares(&self) -> u128 {
             self.data.total_shares_minted + self.get_current_virtual_shares()
         }
 
-        /// Returns the protocol fees (sAZERO) which can be minted and withdrawn at the current block timestamp
+        /// Protocol fees (sA0) which can be minted and withdrawn at the current block timestamp
         #[ink(message)]
         fn get_current_virtual_shares(&self) -> u128 {
             let now = Self::env().block_timestamp();
@@ -644,7 +642,7 @@ mod vault {
             RegistryRef::to_account_id(&self.data.registry_contract)
         }
 
-        /// Calculate the value of AZERO in terms of sAZERO
+        /// Calculate the value of AZERO in terms of sA0 shares
         #[ink(message)]
         fn get_shares_from_azero(&self, azero: Balance) -> u128 {
             let total_pooled_ = self.data.total_pooled; // shadow
@@ -657,7 +655,7 @@ mod vault {
             }
         }
 
-        /// Calculate the value of sAZERO in terms of AZERO
+        /// Calculate the value of sA0 shares in terms of AZERO
         #[ink(message)]
         fn get_azero_from_shares(&self, shares: u128) -> Balance {
             let total_shares = self.get_total_shares();
