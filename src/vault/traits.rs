@@ -63,7 +63,7 @@ pub trait IVault {
     #[ink(message, selector = 13)]
     fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError>;
 
-    #[ink(message)]
+    #[ink(message,selector=17)]
     fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError>;
 
     #[ink(message)]

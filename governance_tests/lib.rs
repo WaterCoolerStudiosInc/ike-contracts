@@ -32,7 +32,6 @@ mod tests {
     const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const USER_SUPPLY: u128 = TOTAL_SUPPLY / 10;
     const REWARDS_PER_SECOND: u128 = 100_000u128;
-
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token: AccountId32,
@@ -48,7 +47,11 @@ mod tests {
         ed: AccountId32,
     }
 
-    fn setup() -> Result<TestContext, Box<dyn Error>> {
+    fn setup(
+        acc_threshold: u128,
+        reject_threshold: u128,
+        exec_threshold: u128,
+    ) -> Result<TestContext, Box<dyn Error>> {
         let bob = AccountId32::new([1u8; 32]);
         let alice = AccountId32::new([2u8; 32]);
         let charlie = AccountId32::new([3u8; 32]);
@@ -134,6 +137,7 @@ mod tests {
            acc_threshold: u128,
            interest_rate: u128,
         */
+        //acc_threshold:u128,reject_threshold:u128,exec_threshold
         let governance = sess.deploy(
             bytes_governance(),
             "new",
@@ -144,9 +148,9 @@ mod tests {
                 hash_multisig(),
                 hash_governance_nft(),
                 hash_governance_staking(),
-                EXEC_THRESHOLD.to_string(),
-                REJECT_THRESHOLD.to_string(),
-                ACC_THRESHOLD.to_string(),
+                exec_threshold.to_string(),
+                reject_threshold.to_string(),
+                acc_threshold.to_string(),
                 REWARDS_PER_SECOND.to_string(),
             ],
             vec![1],
@@ -238,6 +242,7 @@ mod tests {
     //Charlie idi 3
     //dave id 4
     //ed id 5
+    //(ACC_THRESHOLD,REJECT_THRESHOLD,EXEC_THRESHOLD)
     fn wrap_tokens(mut ctx: TestContext, amount: u128) -> Result<TestContext, Box<dyn Error>> {
         let mut sess = call_function(
             ctx.sess,
@@ -345,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_mint_update() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         // Bob approves Ed to transfer 1k sAZERO
         let mut sess = call_function(
             ctx.sess,
@@ -415,7 +420,7 @@ mod tests {
     }
     #[test]
     fn test_burn_remint() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
         let sess = call_function(
             ctx.sess,
@@ -486,14 +491,14 @@ mod tests {
     }
     #[test]
     fn earn_interest() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
     }
     #[test]
     fn change_interest_rate_proposal() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let sess = call_function(
@@ -535,8 +540,123 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn double_proposal_creation_fails() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+        match call_function(
+            sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        ) {
+            Ok(_) => panic!("Should panic because of a proposal resuse"),
+            Err(_) => (),
+        }
+        Ok(())
+    }
+    #[test]
+    fn double_proposal_creation_after_expiry() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let sess = update_days(sess, 10_u64);
+
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    #[test]
+    fn proposal_creation_fails_with_invalid_nft_weight() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 40).unwrap();
+        match call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        ) {
+            Ok(_) => panic!("Should panic because of a proposal resuse"),
+            Err(_) => (),
+        }
+        Ok(())
+    }
+    #[test]
+    fn proposal_creation_fails_with_invalid_nft() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        match call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                3.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        ) {
+            Ok(_) => panic!("Should panic because of a proposal resuse"),
+            Err(_) => (),
+        }
+        Ok(())
+    }
+    #[test]
     fn vault_fee_proposal() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
         let sess = call_function(
             ctx.sess,
@@ -544,7 +664,7 @@ mod tests {
             &ctx.alice,
             String::from("create_proposal"),
             Some(vec![
-                helpers::PropType::FeeChange(2000_u16).to_string(),
+                helpers::PropType::FeeChange(2333_u16).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -584,12 +704,289 @@ mod tests {
         )
         .unwrap();
         let res: Result<u16, drink::errors::LangError> = sess.last_call_return().unwrap();
-        assert_eq!(res.unwrap(), 2000);
+        assert_eq!(res.unwrap(), 2333);
+        Ok(())
+    }
+    #[test]
+    fn test_vote_delay_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::VoteDelayUpdate(3 * DAY).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    #[test]
+    fn test_invalid_delay_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        match call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::VoteDelayUpdate(9 * DAY).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        ) {
+            Ok(_) => panic!("Should panic because of invalid delay input"),
+            Err(_) => (),
+        }
+        Ok(())
+    }
+    #[test]
+    fn test_vote_period_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::VotePeriodUpdate(12 * DAY).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    #[test]
+    fn test_vote_invalid_period_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        match call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::VotePeriodUpdate(33 * DAY).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        ) {
+            Ok(_) => panic!("Should panic because of invalid vote period input"),
+            Err(_) => (),
+        }
+
+        Ok(())
+    }
+    //CompoundIncentiveChange(
+    #[test]
+    fn update_incentive_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::CompoundIncentiveChange(1000_u16).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    /**
+    *   PropType::AcceptanceWeightUpdate(update) => {
+                       self.update_acceptance_threshold(*update)
+                   }
+                   PropType::UpdateRejectThreshhold(update) => {
+                       self.update_reject_threshold(*update)
+                   }
+                   PropType::UpdateExecThreshhold(update) => {
+                       self.update_execution_threshold(*update)
+                   }
+    */
+    #[test]
+    fn acceptance_weight_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::AcceptanceWeightUpdate(100_000_000_999_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    #[test]
+    fn rejection_threshold_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::UpdateRejectThreshhold(100_000_000_999_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    #[test]
+    fn execution_threshold_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
         Ok(())
     }
     #[test]
     fn transfer_funds_proposal() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
         /**
         pub struct TokenTransfer {
@@ -642,26 +1039,61 @@ mod tests {
     }
     #[test]
     fn transfer_native_proposal() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
-        /**
-        pub struct TokenTransfer {
-            token: AccountId,
-            amount: u128,
-            to: AccountId,
-        } */
-        let transfer = helpers::TokenTransfer {
-            token: ctx.gov_token,
-            amount: (TOTAL_SUPPLY / 50),
-            to: ctx.dave,
-        };
+
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
             String::from("create_proposal"),
             Some(vec![
-                helpers::PropType::TransferFunds(transfer).to_string(),
+                helpers::PropType::NativeTokenTransfer(ctx.dave, 100000000000_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, mut sess) =
+            helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+        sess.chain_api()
+            .add_tokens(ctx.governance.clone(), 100_000_000e10 as u128);
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        Ok(())
+    }
+    #[test]
+    fn add_multisigner_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::AddCouncilMember(ctx.dave).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -693,23 +1125,126 @@ mod tests {
 
         Ok(())
     }
+
     #[test]
-    fn double_proposals_fail() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+    fn double_votes_fail() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD / 2, REJECT_THRESHOLD, EXEC_THRESHOLD / 2).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 40).unwrap();
+        //ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("proposal: {:?}", proposal);
+        match call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        ) {
+            Ok(_) => panic!("Should panic because of invalid vote period input"),
+            Err(_) => (),
+        }
 
         Ok(())
     }
     #[test]
-    fn double_votes_fail() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
-        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
-
+    fn proposals_can_be_rejected() -> Result<(), Box<dyn Error>> {
+        println!("{}{}", "the rejection threshold", REJECT_THRESHOLD / 2);
+        let mut ctx = setup(ACC_THRESHOLD / 2, REJECT_THRESHOLD / 2, EXEC_THRESHOLD / 2).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 40).unwrap();
+        //ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("proposal: {:?}", proposal);
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Con.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("proposal: {:?}", proposal);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.charlie,
+            String::from("vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                3.to_string(),
+                Vote::Con.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        assert_eq!(proposals.len() as u128,0_u128);
+        
         Ok(())
     }
     #[test]
     fn proposal_creation() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         Ok(())
@@ -717,7 +1252,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_can_transfer() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         // Bob is admin
@@ -744,7 +1279,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_can_relinquish() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let sess = helpers::vesting_activate(ctx.sess, &ctx.vesting, &ctx.bob)?;
@@ -767,7 +1302,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_can_abort_contract() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let cliff = 100e12 as u128;
@@ -815,7 +1350,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_can_add_recipient() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let (schedule, sess) =
@@ -846,7 +1381,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_cannot_add_recipient_once_active() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let charlie_schedule = helpers::Schedule {
@@ -872,7 +1407,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_cannot_add_duplicate_recipient() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let charlie_schedule = helpers::Schedule {
@@ -904,7 +1439,7 @@ mod tests {
 
     #[test]
     fn vesting_non_admin_cannot_add_recipient() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let charlie_schedule = helpers::Schedule {
@@ -928,7 +1463,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_can_remove_recipient() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let charlie_schedule = helpers::Schedule {
@@ -962,7 +1497,7 @@ mod tests {
 
     #[test]
     fn vesting_admin_cannot_remove_recipient_once_active() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let charlie_schedule = helpers::Schedule {
@@ -990,7 +1525,7 @@ mod tests {
 
     #[test]
     fn vesting_non_admin_cannot_remove_recipient() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let charlie_schedule = helpers::Schedule {
@@ -1021,7 +1556,7 @@ mod tests {
 
     #[test]
     fn vesting_can_not_claim_before_active() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let cliff = 100e12 as u128;
@@ -1056,7 +1591,7 @@ mod tests {
 
     #[test]
     fn vesting_claim_cliff_only() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let cliff = 100e12 as u128;
@@ -1100,7 +1635,7 @@ mod tests {
 
     #[test]
     fn vesting_claim_amount_only_with_no_duration() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let amount = 100e12 as u128;
@@ -1144,7 +1679,7 @@ mod tests {
 
     #[test]
     fn vesting_claim_flow() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup().unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
         let amount = 100e12 as u128;

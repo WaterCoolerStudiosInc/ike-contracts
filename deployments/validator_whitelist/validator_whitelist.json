@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xb33deb7b49dac63f4408231c1d0b4db9a7b0405a43078839fd135742daccb64d",
+    "hash": "0x04db99a1bba8f395f73758133d182abb8b625252ebce01e9183d060240003e00",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -218,7 +218,7 @@
           ],
           "type": 11
         },
-        "selector": "0x529c214d"
+        "selector": "0x00000001"
       },
       {
         "args": [
@@ -288,7 +288,7 @@
           ],
           "type": 11
         },
-        "selector": "0x14d034dc"
+        "selector": "0x00000002"
       }
     ]
   },
@@ -374,6 +374,15 @@
                             }
                           },
                           "name": "stake"
+                        },
+                        {
+                          "layout": {
+                            "leaf": {
+                              "key": "0x043fc6e6",
+                              "ty": 5
+                            }
+                          },
+                          "name": "deposit"
                         }
                       ],
                       "name": "Validator"
@@ -495,6 +504,11 @@
               },
               {
                 "name": "stake",
+                "type": 5,
+                "typeName": "u128"
+              },
+              {
+                "name": "deposit",
                 "type": 5,
                 "typeName": "u128"
               }
@@ -718,7 +732,7 @@
             "variants": [
               {
                 "index": 0,
-                "name": "Invalid"
+                "name": "InvalidCreateDeposit"
               },
               {
                 "index": 1,

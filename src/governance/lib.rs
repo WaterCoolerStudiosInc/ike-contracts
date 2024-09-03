@@ -141,11 +141,16 @@ pub mod governance {
         pub vault: AccountId,
         pub staking: AccountId,
         pub multisig: AccountId,
+        // add getter
         pub execution_threshold: u128,
-        pub rejection_threshold: u128,  // threshold of votes to pass
+        // add getter
+        pub rejection_threshold: u128,
+        // add getter
         pub acceptance_threshold: u128, //
         pub creation_time: u64,
+        // add getter
         pub voting_delay: u64,
+        // add getter
         pub voting_period: u64,
         pub proposals: Vec<Proposal>,
         pub last_proposal: Mapping<u128, u64>,
@@ -238,11 +243,14 @@ pub mod governance {
             Ok(())
         }
         fn remove_expired_proposals(&mut self, current_time: u64) -> Vec<Proposal> {
+            debug_println!("{}", current_time);
             let (active, expired) = self
                 .proposals
                 .clone()
                 .into_iter()
-                .partition(|p| p.vote_end <= current_time);
+                .partition(|p| p.vote_end > current_time);
+            debug_println!("{}{:?}", "removed proposal", expired);
+            debug_println!("{}{:?}", "active proposal", active);
             self.proposals = active;
 
             expired
@@ -371,7 +379,10 @@ pub mod governance {
                     PropType::UpdateExecThreshhold(update) => {
                         self.update_execution_threshold(*update)
                     }
-                    PropType::VoteDelayUpdate(update) => self.voting_delay = *update,
+                    PropType::VoteDelayUpdate(update) => {
+                        debug_println!("{}{}", "executing delay update ", update);
+                        self.voting_delay = *update
+                    }
                     PropType::VotePeriodUpdate(update) => self.voting_period = *update,
 
                     PropType::AddCouncilMember(member) => self.add_council_member(member)?,
@@ -383,18 +394,15 @@ pub mod governance {
                         self.change_multisig_threshold(*update)?
                     }
 
-                    PropType::FeeChange(new_fee) => {
-                        debug_println!("{}{}", "executing vault update ", new_fee);
-                        self.update_vault_fee(new_fee)?
-                    }
                     PropType::CompoundIncentiveChange(update) => self.update_incentive(update)?,
+                    PropType::FeeChange(new_fee) => self.update_vault_fee(new_fee)?,
 
                     PropType::ChangeStakingRewardRate(new_rate) => {
-                        debug_println!("{}{}", "executing update ", new_rate);
+                        debug_println!("{}{}", "executing stakign update ", new_rate);
                         self.update_staking_rewards(*new_rate)?
                     }
                     PropType::SetCodeHash(code_hash) => self.set_code_internal(*code_hash)?,
-                    _ => (),
+                    _ => return Err(GovernanceError::InvalidInput),
                 };
                 Self::emit_event(
                     Self::env(),
@@ -415,15 +423,23 @@ pub mod governance {
             Ok(())
         }
         fn handle_con_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
-            if self.proposals[index].pro_vote_count + weight > self.rejection_threshold {
+            if self.proposals[index].con_vote_count + weight >= self.rejection_threshold {
                 Self::emit_event(
                     Self::env(),
                     Event::ProposlRejected(ProposlRejected {
                         proposal: self.proposals[index].clone(),
                     }),
                 );
+                debug_println!("{}{}", "removing at index", index);
                 self.proposals.swap_remove(index);
             } else {
+                debug_println!(
+                    "{}{}{}{}",
+                    "increment con vote count at ",
+                    index,
+                    " by ",
+                    weight
+                );
                 self.proposals[index].con_vote_count += weight;
             }
             Ok(())
@@ -513,6 +529,28 @@ pub mod governance {
             self.staking
         }
         #[ink(message)]
+        pub fn get_voting_delay(&self)->u64{
+            self.voting_delay
+        }
+        #[ink(message)]
+        pub fn get_voting_period(&self)->u64{
+            self.voting_delay
+        }
+        #[ink(message)]
+        pub fn get_execution_threshold(&self)->u128{
+            self.execution_threshold
+        }
+
+        #[ink(message)]
+        pub fn get_rejection_threshold(&self)->u128{
+            self.rejection_threshold
+        }
+
+        #[ink(message)]
+        pub fn get_acceptance_threshold(&self)->u128{
+            self.acceptance_threshold
+        }
+        #[ink(message)]
         pub fn get_proposal_by_id(&self, id: u128) -> Proposal {
             self.proposals
                 .clone()
@@ -589,11 +627,12 @@ pub mod governance {
                 .find(|p| p.creator_id == nft_id)
                 .is_some()
             {
+                debug_println!("found a duplicate");
                 return Err(GovernanceError::ExistingProposal);
             }
 
             // Generate Unique ID for proposals
-           
+
             // encode as hex string
             let key = self.prop_nonce;
             self.prop_nonce += 1;
@@ -613,7 +652,7 @@ pub mod governance {
                 Self::env(),
                 Event::ProposlCreated(ProposlCreated { proposal: new_prop }),
             );
-            
+
             Ok(())
         }
 
