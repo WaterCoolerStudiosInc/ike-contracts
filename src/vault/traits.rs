@@ -53,9 +53,6 @@ pub trait IVault {
     fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError>;
 
     #[ink(message)]
-    fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError>;
-
-    #[ink(message)]
     fn get_role_adjust_fee(&self) -> AccountId;
 
     #[ink(message)]
@@ -81,9 +78,6 @@ pub trait IVault {
 
     #[ink(message)]
     fn get_fee_percentage(&self) -> u16;
-
-    #[ink(message)]
-    fn get_incentive_percentage(&self) -> u16;
 
     #[ink(message)]
     fn get_share_token_contract(&self) -> AccountId;

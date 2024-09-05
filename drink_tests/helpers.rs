@@ -443,24 +443,6 @@ pub fn call_withdraw_fees(
     Ok(sess)
 }
 
-pub fn call_adjust_incentive(
-    sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-    sender: &AccountId32,
-    new_incentive: u16,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let sess = call_function(
-        sess,
-        &vault,
-        &sender,
-        String::from("IVault::adjust_incentive"),
-        Some(vec![new_incentive.to_string()]),
-        None,
-        transcoder_vault(),
-    )?;
-    Ok(sess)
-}
-
 pub fn call_function(
     mut sess: Session<MinimalRuntime>,
     contract: &AccountId32,

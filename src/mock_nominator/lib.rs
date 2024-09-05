@@ -105,29 +105,25 @@ mod mock_nominator {
         }
 
         #[ink(message, selector = 4)]
-        fn compound(&mut self, incentive_percentage: u16) -> Result<(Balance, Balance), RuntimeError> {
+        fn compound(&mut self) -> Result<Balance, RuntimeError> {
             let vault = self.vault; // shadow
 
             if Self::env().caller() != vault {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            let balance = Self::env().balance();
+            let compound_amount = Self::env().balance();
 
             // Gracefully return when nomination agent has no rewards
-            if balance == 0 {
-                return Ok((0, 0));
+            if compound_amount == 0 {
+                return Ok(0);
             }
 
-            let incentive = balance * incentive_percentage as u128 / BIPS;
-            let compound_amount = balance - incentive;
-            self.staked += compound_amount;
-
-            if incentive > 0 {
-                Self::env().transfer(vault, incentive)?;
+            if compound_amount > 0 {
+                self.staked += compound_amount;
             }
 
-            Ok((compound_amount, incentive))
+            Ok(compound_amount)
         }
 
         #[ink(message, selector = 12)]

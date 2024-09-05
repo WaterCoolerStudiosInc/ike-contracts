@@ -61,8 +61,6 @@ pub struct VaultData {
     pub last_fee_update: Timestamp,
     /// annualized fee percentage expressed in basis points
     pub fee_percentage: u16,
-    /// compounding incentive percentage expressed in basis points
-    pub incentive_percentage: u16,
 
     /// token contract used for representing protocol staked AZERO ownership
     pub shares_contract: AccountId,
@@ -89,7 +87,6 @@ impl VaultData {
             cooldown_period: era * 14,
             last_fee_update: current_time,
             fee_percentage: 2_00, // 2.00%
-            incentive_percentage: 0_05, // 0.05%
             shares_contract: shares_contract_,
             registry_contract: registry_ref,
         }
@@ -327,26 +324,22 @@ impl VaultData {
         Ok(())
     }
 
-    /// Claim payouts and re-bond AZERO from the agents looping over each nominator pool
+    /// Reinvest AZERO across all agents without issuing new shares
+    /// Rewards must have already been paid via `PayoutStakers`
     ///
     /// # Returns
     ///
     /// `total_compounded` - Total AZERO compounded across all agents
-    /// `total_incentive` - Total AZERO incentive from all agents
-    pub fn delegate_compound(&mut self) -> Result<(Balance, Balance), VaultError> {
+    pub fn delegate_compound(&mut self) -> Result<Balance, VaultError> {
         let (_total_weight, agents) = self.registry_contract.get_agents();
 
         let mut total_compounded = 0;
-        let mut total_incentive = 0;
-
-        let incentive_percentage_ = self.incentive_percentage; // shadow
 
         for (i, a) in agents.into_iter().enumerate() {
-            match call_compound(a.address, incentive_percentage_) {
-                Ok((compound_amount, incentive_amount)) => {
+            match call_compound(a.address) {
+                Ok(compound_amount) => {
                     debug_println!("Compounded {} to agent #{}", compound_amount, i);
                     total_compounded += compound_amount;
-                    total_incentive += incentive_amount;
                 },
                 Err(e) => return Err(VaultError::InternalError(e)),
             }
@@ -358,7 +351,7 @@ impl VaultData {
 
         self.total_pooled += total_compounded;
 
-        Ok((total_compounded, total_incentive))
+        Ok(total_compounded)
     }
 
     /// Calculates summation of fees from last update until now
