@@ -53,12 +53,8 @@ mod nomination_agent {
             vault: AccountId,
             admin: AccountId,
             validator: AccountId,
-            creation_bond: u128,
-            existential_deposit: u128,
         ) -> Self {
-            if Self::env().transferred_value() != creation_bond + existential_deposit {
-                panic!("Insufficient transferred value");
-            }
+            let creation_bond = Self::env().transferred_value();
 
             let nomination_agent = NominationAgent {
                 vault,

@@ -3,13 +3,11 @@ use ink::{prelude::vec::Vec, primitives::AccountId};
 
 #[ink::trait_definition]
 pub trait Registry {
-    #[ink(message, selector = 1)]
+    #[ink(message, payable, selector = 1)]
     fn add_agent(
         &mut self,
         admin: AccountId,
         validator: AccountId,
-        pool_create_amount: u128,
-        existential_deposit: u128,
     ) -> Result<(), RegistryError>;
     #[ink(message, selector = 2)]
     fn update_agents(

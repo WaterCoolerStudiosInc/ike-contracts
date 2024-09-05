@@ -184,10 +184,9 @@ pub mod registry {
             &mut self,
             admin: AccountId,
             validator: AccountId,
-            nominator_bond: Balance,
-            existential_deposit: Balance,
         ) -> Result<AccountId, RegistryError> {
             let caller = Self::env().caller();
+            let nominator_bond = Self::env().transferred_value();
 
             if caller != self.roles.get(RoleType::AddAgent).unwrap().account {
                 return Err(RegistryError::InvalidPermissions);
@@ -199,10 +198,8 @@ pub mod registry {
                 self.vault,
                 admin,
                 validator,
-                nominator_bond,
-                existential_deposit,
             )
-            .endowment(nominator_bond + existential_deposit)
+            .endowment(nominator_bond)
             .code_hash(self.nomination_agent_hash)
             .salt_bytes(nomination_agent_counter.to_le_bytes())
             .instantiate();
