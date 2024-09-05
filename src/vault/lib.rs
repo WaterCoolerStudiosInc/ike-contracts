@@ -51,7 +51,6 @@ mod vault {
     pub struct Compounded {
         caller: AccountId,
         azero: Balance,
-        incentive: Balance,
         virtual_shares: u128,
     }
     #[ink(event)]
@@ -78,10 +77,6 @@ mod vault {
     pub struct FeesAdjusted {
         new_fee: u16,
         virtual_shares: u128,
-    }
-    #[ink(event)]
-    pub struct IncentiveAdjusted {
-        new_incentive: u16,
     }
     #[ink(event)]
     pub struct RoleAdjustFeeTransferred {
@@ -364,30 +359,23 @@ mod vault {
         /// Compound earned interest for all validators
         ///
         /// Can be called by anyone
-        /// Caller receives an AZERO incentive based on the total AZERO amount compounded
         #[ink(message)]
         fn compound(&mut self) -> Result<Balance, VaultError> {
             let caller = Self::env().caller();
 
             // Delegate compounding to all agents
-            let (compounded, incentive) = self.data.delegate_compound()?;
-
-            // Send AZERO incentive to caller
-            if incentive > 0 {
-                Self::env().transfer(caller, incentive)?;
-            }
+            let compounded = self.data.delegate_compound()?;
 
             Self::emit_event(
                 Self::env(),
                 Event::Compounded(Compounded {
                     caller,
                     azero: compounded,
-                    incentive,
                     virtual_shares: self.get_current_virtual_shares(),
                 }),
             );
 
-            Ok(incentive)
+            Ok(compounded)
         }
 
         /// Claim fees by inflating sA0 supply
@@ -503,35 +491,6 @@ mod vault {
             Ok(())
         }
 
-        /// Update the compound incentive
-        ///
-        /// Caller must have the adjust fee role (`role_adjust_fee`)
-        #[ink(message)]
-        fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError> {
-            let caller = Self::env().caller();
-
-            if caller != self.data.role_adjust_fee {
-                return Err(VaultError::InvalidPermissions);
-            }
-            if self.data.incentive_percentage == new_incentive {
-                return Err(VaultError::NoChange);
-            }
-            if new_incentive >= BIPS {
-                return Err(VaultError::InvalidPercent);
-            }
-
-            self.data.incentive_percentage = new_incentive;
-
-            Self::emit_event(
-                Self::env(),
-                Event::IncentiveAdjusted(IncentiveAdjusted {
-                    new_incentive,
-                }),
-            );
-
-            Ok(())
-        }
-
         #[ink(message)]
         fn get_role_adjust_fee(&self) -> AccountId {
             self.data.role_adjust_fee
@@ -625,11 +584,6 @@ mod vault {
         #[ink(message)]
         fn get_fee_percentage(&self) -> u16 {
             self.data.fee_percentage
-        }
-
-        #[ink(message)]
-        fn get_incentive_percentage(&self) -> u16 {
-            self.data.incentive_percentage
         }
         
         #[ink(message)]

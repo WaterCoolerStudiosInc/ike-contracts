@@ -54,15 +54,12 @@ pub fn call_withdraw_unbonded(nomination_agent_instance: AccountId) -> Result<()
     make_call(nomination_agent_instance, WITHDRAW_SELECTOR, 0_u128)
 }
 
-pub fn call_compound(
-    nomination_agent_instance: AccountId,
-    incentive_percentage: u16,
-) -> Result<(Balance, Balance), RuntimeError> {
-    let call_result: Result<(Balance, Balance), RuntimeError> = build_call::<DefaultEnvironment>()
+pub fn call_compound(nomination_agent_instance: AccountId) -> Result<Balance, RuntimeError> {
+    let call_result: Result<Balance, RuntimeError> = build_call::<DefaultEnvironment>()
         .call(nomination_agent_instance)
-        .exec_input(ExecutionInput::new(COMPOUND_SELECTOR).push_arg(incentive_percentage))
+        .exec_input(ExecutionInput::new(COMPOUND_SELECTOR))
         .transferred_value(0)
-        .returns::<Result<(Balance, Balance), RuntimeError>>()
+        .returns::<Result<Balance, RuntimeError>>()
         .invoke();
     call_result
 }
