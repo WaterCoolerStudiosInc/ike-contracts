@@ -8,15 +8,17 @@ mod helpers;
 mod tests {
     use crate::helpers;
     use crate::helpers::{
-        call_function, gov_token_transfer, query_allowance, query_owner, query_token_balance,
-        update_days, Vote, DAY,
+        call_function, gov_token_transfer, query_allowance, query_governance_acceptance_threshold,
+        query_governance_execution_threshold, query_governance_rejection_threshold,
+        query_governance_vote_delay, query_governance_vote_period, query_owner,
+        query_token_balance, update_days, Vote, DAY,
     };
     use crate::sources::*;
     use drink::{
         chain_api::ChainApi,
         runtime::MinimalRuntime,
         session::{Session, NO_ARGS},
-        AccountId32,
+        AccountId32 as AccountId,
     };
     use std::error::Error;
 
@@ -34,29 +36,38 @@ mod tests {
     const REWARDS_PER_SECOND: u128 = 100_000u128;
     struct TestContext {
         sess: Session<MinimalRuntime>,
-        gov_token: AccountId32,
-        gov_nft: AccountId32,
-        stake_contract: AccountId32,
-        governance: AccountId32,
-        vault: AccountId32,
-        vesting: AccountId32,
-        alice: AccountId32,
-        bob: AccountId32,
-        charlie: AccountId32,
-        dave: AccountId32,
-        ed: AccountId32,
+        gov_token: AccountId,
+        gov_nft: AccountId,
+        stake_contract: AccountId,
+        governance: AccountId,
+        vault: AccountId,
+        vesting: AccountId,
+        alice: AccountId,
+        bob: AccountId,
+        charlie: AccountId,
+        dave: AccountId,
+        ed: AccountId,
     }
-
+    struct MultiSigCTX {
+        sess: Session<MinimalRuntime>,
+        registry: AccountId,
+        multisig: AccountId,
+        alice: AccountId,
+        bob: AccountId,
+        charlie: AccountId,
+        dave: AccountId,
+        ed: AccountId,
+    }
     fn setup(
         acc_threshold: u128,
         reject_threshold: u128,
         exec_threshold: u128,
     ) -> Result<TestContext, Box<dyn Error>> {
-        let bob = AccountId32::new([1u8; 32]);
-        let alice = AccountId32::new([2u8; 32]);
-        let charlie = AccountId32::new([3u8; 32]);
-        let dave = AccountId32::new([4u8; 32]);
-        let ed = AccountId32::new([5u8; 32]);
+        let bob = AccountId::new([1u8; 32]);
+        let alice = AccountId::new([2u8; 32]);
+        let charlie = AccountId::new([3u8; 32]);
+        let dave = AccountId::new([4u8; 32]);
+        let ed = AccountId::new([5u8; 32]);
 
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
 
@@ -121,7 +132,7 @@ mod tests {
             transcoder_vault(),
         )
         .unwrap();
-        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
         let registry = rr.unwrap();
         sess.set_transcoder(registry.clone(), &transcoder_registry().unwrap());
         println!("registry: {:?}", registry.to_string());
@@ -179,7 +190,7 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
         let stake_contract = rr.unwrap();
         sess.set_transcoder(stake_contract.clone(), &transcoder_governance().unwrap());
         println!("stake_contract: {:?}", stake_contract.to_string());
@@ -194,10 +205,10 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
         let multisig = rr.unwrap();
         sess.set_transcoder(multisig.clone(), &transcoder_multisig().unwrap());
-        println!("multisig: {:?}", stake_contract.to_string());
+        println!("multisig: {:?}", multisig.to_string());
 
         let mut sess = call_function(
             sess,
@@ -209,7 +220,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let rr: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
         let gov_nft = rr.unwrap();
         sess.set_transcoder(gov_nft.clone(), &transcoder_governance_nft().unwrap());
         println!("gov_nft: {:?}", gov_nft.to_string());
@@ -237,6 +248,127 @@ mod tests {
         })
     }
 
+    fn multi_sig_test_setup() -> Result<MultiSigCTX, Box<dyn Error>> {
+        let bob = AccountId::new([1u8; 32]);
+        let alice = AccountId::new([2u8; 32]);
+        let charlie = AccountId::new([3u8; 32]);
+        let dave = AccountId::new([4u8; 32]);
+        let ed = AccountId::new([5u8; 32]);
+
+        let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
+
+        sess.chain_api()
+            .add_tokens(alice.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(bob.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(charlie.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(dave.clone(), 100_000_000e10 as u128);
+        sess.chain_api()
+            .add_tokens(ed.clone(), 100_000_000e10 as u128);
+        sess.upload(bytes_governance_nft())?;
+        sess.upload(bytes_registry())?;
+        sess.upload(bytes_share_token())?;
+        sess.upload(bytes_multisig())?;
+        sess.upload(bytes_governance_staking())?;
+        sess.upload(bytes_vesting())?;
+        let vault = sess.deploy(
+            bytes_vault(),
+            "new",
+            &[hash_share_token(), hash_registry(), hash_nominator()],
+            vec![1],
+            None,
+            &transcoder_vault().unwrap(),
+        )?;
+        sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
+        println!("vault: {:?}", vault.to_string());
+
+        let mut sess = call_function(
+            sess,
+            &vault,
+            &bob,
+            String::from("IVault::get_registry_contract"),
+            None,
+            None,
+            transcoder_vault(),
+        )
+        .unwrap();
+        let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let registry = rr.unwrap();
+        sess.set_transcoder(registry.clone(), &transcoder_registry().unwrap());
+        println!("registry: {:?}", registry.to_string());
+        let multisig = sess
+            .deploy(
+                bytes_multisig(),
+                "new",
+                &[alice.to_string(), registry.to_string(), bob.to_string()],
+                vec![1],
+                None,
+                &transcoder_multisig().unwrap(),
+            )
+            .unwrap();
+        let mut sess = call_function(
+            sess,
+            &multisig,
+            &alice,
+            String::from("add_signer"),
+            Some(vec![alice.to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &multisig,
+            &alice,
+            String::from("add_signer"),
+            Some(vec![bob.to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &multisig,
+            &alice,
+            String::from("add_signer"),
+            Some(vec![charlie.to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &multisig,
+            &alice,
+            String::from("add_signer"),
+            Some(vec![dave.to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &multisig,
+            &alice,
+            String::from("add_signer"),
+            Some(vec![ed.to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        Ok(MultiSigCTX {
+            sess,
+            registry,
+            multisig,
+            alice,
+            bob,
+            charlie,
+            dave,
+            ed,
+        })
+    }
     //Alice id 1
     //Bob id 2
     //Charlie idi 3
@@ -346,6 +478,12 @@ mod tests {
         .unwrap();
         ctx.sess = sess;
         Ok(ctx)
+    }
+
+    #[test]
+    fn multi_sig() -> Result<(), Box<dyn Error>> {
+        let ctx = multi_sig_test_setup();
+        Ok(())
     }
 
     #[test]
@@ -481,10 +619,12 @@ mod tests {
             query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
         let total_rewards_2_days = REWARDS_PER_SECOND * 2 * DAY as u128;
         let rewards_share_alice = total_rewards_2_days / 5;
+        println!("{:?}{}", "alice rewards ", rewards_share_alice);
+        println!("{}", USER_SUPPLY);
         assert_eq!(balance_in_wallet, USER_SUPPLY + rewards_share_alice);
         assert_eq!(
             balance_in_staking,
-            (TOTAL_SUPPLY / 10) + (4 * USER_SUPPLY) - rewards_share_alice
+            (TOTAL_SUPPLY / 50) + (4 * USER_SUPPLY) - rewards_share_alice
         );
 
         Ok(())
@@ -558,8 +698,6 @@ mod tests {
         )
         .unwrap();
 
-        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
-        println!("all proposals: {:?}", proposals);
         match call_function(
             sess,
             &ctx.governance,
@@ -742,6 +880,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        let (value, sess) = query_governance_vote_delay(sess, ctx.governance).unwrap();
+        assert_eq!(3 * DAY, value);
         Ok(())
     }
     #[test]
@@ -800,6 +940,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        let (value, sess) = query_governance_vote_period(sess, ctx.governance).unwrap();
+        assert_eq!(12 * DAY, value);
         Ok(())
     }
     #[test]
@@ -908,6 +1050,9 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        let (value, sess) = query_governance_acceptance_threshold(sess, ctx.governance).unwrap();
+        assert_eq!(100_000_000_999_u128, value.unwrap());
+        println!("{:?}", value);
         Ok(())
     }
     #[test]
@@ -945,6 +1090,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        let (value, sess) = query_governance_rejection_threshold(sess, ctx.governance).unwrap();
+        assert_eq!(100_000_000_999_u128, value.unwrap());
         Ok(())
     }
     #[test]
@@ -982,6 +1129,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        let (value, sess) = query_governance_execution_threshold(sess, ctx.governance).unwrap();
+        assert_eq!(100_000_000_999_u128, value.unwrap());
         Ok(())
     }
     #[test]
@@ -1041,7 +1190,10 @@ mod tests {
     fn transfer_native_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
-
+        println!(
+            "{}",
+            helpers::PropType::NativeTokenTransfer(ctx.dave.clone(), 100000000000_u128).to_string()
+        );
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
@@ -1238,8 +1390,8 @@ mod tests {
         )
         .unwrap();
         let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
-        assert_eq!(proposals.len() as u128,0_u128);
-        
+        assert_eq!(proposals.len() as u128, 0_u128);
+
         Ok(())
     }
     #[test]

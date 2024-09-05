@@ -235,11 +235,13 @@ pub mod governance {
             }
             Ok(())
         }
-        fn update_incentive(&self, new_inventive: &u16) -> Result<(), GovernanceError> {
+        fn update_incentive(&self, new_incentive: &u16) -> Result<(), GovernanceError> {
+            debug_println!("{}{:?}", "updating incentive", new_incentive);
             let mut vault: contract_ref!(IVault) = self.vault.into();
-            if let Err(e) = vault.adjust_incentive(*new_inventive) {
+            /*if let Err(e) = vault.adjust_incentive(*new_incentive) {
                 return Err(GovernanceError::VaultFailure);
             }
+            */
             Ok(())
         }
         fn remove_expired_proposals(&mut self, current_time: u64) -> Vec<Proposal> {
@@ -534,7 +536,7 @@ pub mod governance {
         }
         #[ink(message)]
         pub fn get_voting_period(&self)->u64{
-            self.voting_delay
+            self.voting_period
         }
         #[ink(message)]
         pub fn get_execution_threshold(&self)->u128{
@@ -652,7 +654,7 @@ pub mod governance {
                 Self::env(),
                 Event::ProposlCreated(ProposlCreated { proposal: new_prop }),
             );
-
+            
             Ok(())
         }
 

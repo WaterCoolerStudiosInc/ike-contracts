@@ -2,18 +2,12 @@ use drink::{
     chain_api::ChainApi,
     runtime::MinimalRuntime,
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
-    AccountId32,
-};
-use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    error::Error, rc::Rc
+    AccountId32 as AccountId,
 };
 use hex_literal;
-use sp_core::{
-    Encode,
-    Pair,
-};
+use serde::{Deserialize, Serialize};
+use sp_core::{Encode, Pair};
+use std::{error::Error, fmt, rc::Rc};
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
 pub const SECOND: u64 = 1_000;
@@ -27,9 +21,9 @@ pub const BIPS: u128 = 10000;
     derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
 )]
 pub struct TokenTransfer {
-    pub token: AccountId32,
+    pub token: AccountId,
     pub amount: u128,
-    pub to: AccountId32,
+    pub to: AccountId,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -48,7 +42,6 @@ pub struct Proposal {
     pub vote_end: u64,
 }
 
-
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
 #[cfg_attr(
     feature = "std",
@@ -56,11 +49,11 @@ pub struct Proposal {
 )]
 pub enum PropType {
     TransferFunds(TokenTransfer),
-    NativeTokenTransfer(AccountId32, u128),
+    NativeTokenTransfer(AccountId, u128),
     ChangeStakingRewardRate(u128),
-    AddCouncilMember(AccountId32),
-    ReplaceCouncilMember(AccountId32, AccountId32),
-    RemoveCouncilMember(AccountId32),
+    AddCouncilMember(AccountId),
+    ReplaceCouncilMember(AccountId, AccountId),
+    RemoveCouncilMember(AccountId),
     ChangeMultiSigThreshold(u16),
     FeeChange(u16),
     CompoundIncentiveChange(u16),
@@ -90,12 +83,11 @@ impl fmt::Display for PropType {
         write!(f, "{:?}", self)
     }
 }
-fn sign(hash:[u8;32],pk:&str) -> [u8; 65] {
-    
+fn sign(hash: [u8; 32], pk: &str) -> [u8; 65] {
     // Use Dan's seed
     // `subkey inspect //Dan --scheme Ecdsa --output-type json | jq .secretSeed`
-    
-    let pair = sp_core::ecdsa::Pair::from_legacy_string(pk,None);
+
+    let pair = sp_core::ecdsa::Pair::from_legacy_string(pk, None);
 
     let signature = pair.sign_prehashed(&hash);
     signature.0
@@ -117,8 +109,8 @@ pub fn update_in_milliseconds(
 }
 pub fn call_function(
     mut sess: Session<MinimalRuntime>,
-    contract: &AccountId32,
-    sender: &AccountId32,
+    contract: &AccountId,
+    sender: &AccountId,
     func_name: String,
     args: Option<Vec<String>>,
     value: Option<u128>,
@@ -150,7 +142,7 @@ pub fn call_function(
 
 pub fn query_governance_get_proposal_by_nft(
     mut sess: Session<MinimalRuntime>,
-    governance: &AccountId32,
+    governance: &AccountId,
     nft_id: u128,
 ) -> Result<(Proposal, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
@@ -166,24 +158,20 @@ pub fn query_governance_get_proposal_by_nft(
 }
 pub fn query_governance_get_all_proposals(
     mut sess: Session<MinimalRuntime>,
-    governance: &AccountId32,
+    governance: &AccountId,
 ) -> Result<(Vec<Proposal>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(
-        governance.clone(),
-        "get_all_proposals",
-        NO_ARGS,
-        None,
-    )?;
+    sess.call_with_address(governance.clone(), "get_all_proposals", NO_ARGS, None)?;
 
-    let proposals: Result<Vec<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let proposals: Result<Vec<Proposal>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     Ok((proposals.unwrap(), sess))
 }
 pub fn query_owner(
     mut sess: Session<MinimalRuntime>,
-    governance_nft: AccountId32,
+    governance_nft: AccountId,
     nft_id: u128,
-) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
+) -> Result<(Option<AccountId>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(
         governance_nft.clone(),
         &transcoder_governance_nft().unwrap(),
@@ -195,15 +183,104 @@ pub fn query_owner(
         None,
     )?;
 
-    let owner: Result<Option<AccountId32>, drink::errors::LangError> =
+    let owner: Result<Option<AccountId>, drink::errors::LangError> =
         sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((owner.unwrap(), sess))
 }
+pub fn query_governance_vote_period(
+    mut sess: Session<MinimalRuntime>,
+    governance:AccountId,
+   
+) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(
+        governance.clone(),
+        &transcoder_governance().unwrap(),
+    );
+    sess.call_with_address(governance.clone(), "get_voting_period", NO_ARGS, None)?;
+
+    let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((value.unwrap(), sess))
+}
+pub fn query_governance_vote_delay(
+    mut sess: Session<MinimalRuntime>,
+    governance: AccountId,
+  
+) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(
+        governance.clone(),
+        &transcoder_governance().unwrap(),
+    );
+    sess.call_with_address(governance.clone(), "get_voting_delay", NO_ARGS, None)?;
+
+    let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((value.unwrap(), sess))
+}
+pub fn query_governance_acceptance_threshold(
+    mut sess: Session<MinimalRuntime>,
+    governance: AccountId,
+) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(
+        governance.clone(),
+        &transcoder_governance().unwrap(),
+    );
+    sess.call_with_address(
+        governance.clone(),
+        "get_acceptance_threshold",
+        NO_ARGS,
+        None,
+    )?;
+
+    let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((Some(value.unwrap()), sess))
+}
+
+pub fn query_governance_rejection_threshold(
+    mut sess: Session<MinimalRuntime>,
+    governance: AccountId,
+) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(
+        governance.clone(),
+        &transcoder_governance().unwrap(),
+    );
+    sess.call_with_address(
+        governance.clone(),
+        "get_rejection_threshold",
+        NO_ARGS,
+        None,
+    )?;
+
+    let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((Some(value.unwrap()), sess))
+}
+
+pub fn query_governance_execution_threshold(
+    mut sess: Session<MinimalRuntime>,
+    governance: AccountId,
+) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.set_transcoder(
+        governance.clone(),
+        &transcoder_governance().unwrap(),
+    );
+    sess.call_with_address(
+        governance.clone(),
+        "get_execution_threshold",
+        NO_ARGS,
+        None,
+    )?;
+
+    let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
+    //println!("{:?}",&prop.clone().unwrap());
+    Ok((Some(value.unwrap()), sess))
+}
 pub fn query_token_balance(
     mut sess: Session<MinimalRuntime>,
-    token: &AccountId32,
-    user: &AccountId32,
+    token: &AccountId,
+    user: &AccountId,
 ) -> Result<(u128, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(token.clone(), &transcoder_governance_token().unwrap());
     sess.call_with_address(
@@ -218,9 +295,9 @@ pub fn query_token_balance(
 }
 pub fn query_allowance(
     mut sess: Session<MinimalRuntime>,
-    governance_nft: &AccountId32,
-    owner: &AccountId32,
-    operator: &AccountId32,
+    governance_nft: &AccountId,
+    owner: &AccountId,
+    operator: &AccountId,
 ) -> Result<(bool, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(
         governance_nft.clone(),
@@ -244,9 +321,9 @@ pub fn query_allowance(
 
 pub fn gov_token_transfer(
     mut sess: Session<MinimalRuntime>,
-    gov_token: &AccountId32,
-    sender: &AccountId32,
-    to: &AccountId32,
+    gov_token: &AccountId,
+    sender: &AccountId,
+    to: &AccountId,
     amount: u128,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
@@ -271,19 +348,19 @@ pub struct Schedule {
 
 pub fn query_vesting_get_admin(
     mut sess: Session<MinimalRuntime>,
-    vesting: &AccountId32,
-) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
+    vesting: &AccountId,
+) -> Result<(Option<AccountId>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.call_with_address(vesting.clone(), "get_admin", NO_ARGS, None)?;
 
-    let admin: Result<Option<AccountId32>, drink::errors::LangError> =
+    let admin: Result<Option<AccountId>, drink::errors::LangError> =
         sess.last_call_return().unwrap();
     Ok((admin.unwrap(), sess))
 }
 
 pub fn query_vesting_get_schedule(
     mut sess: Session<MinimalRuntime>,
-    vesting: &AccountId32,
-    recipient: &AccountId32,
+    vesting: &AccountId,
+    recipient: &AccountId,
 ) -> Result<(Option<Schedule>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.call_with_address(
         vesting.clone(),
@@ -299,9 +376,9 @@ pub fn query_vesting_get_schedule(
 
 pub fn vesting_add_recipients(
     sess: Session<MinimalRuntime>,
-    vesting: &AccountId32,
-    sender: &AccountId32,
-    recipients: Vec<&AccountId32>,
+    vesting: &AccountId,
+    sender: &AccountId,
+    recipients: Vec<&AccountId>,
     schedules: Vec<&Schedule>,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
@@ -321,9 +398,9 @@ pub fn vesting_add_recipients(
 
 pub fn vesting_remove_recipients(
     sess: Session<MinimalRuntime>,
-    vesting: &AccountId32,
-    sender: &AccountId32,
-    recipients: Vec<&AccountId32>,
+    vesting: &AccountId,
+    sender: &AccountId,
+    recipients: Vec<&AccountId>,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
@@ -339,8 +416,8 @@ pub fn vesting_remove_recipients(
 
 pub fn vesting_activate(
     sess: Session<MinimalRuntime>,
-    vesting: &AccountId32,
-    sender: &AccountId32,
+    vesting: &AccountId,
+    sender: &AccountId,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
@@ -356,8 +433,8 @@ pub fn vesting_activate(
 
 pub fn vesting_claim(
     sess: Session<MinimalRuntime>,
-    vesting: &AccountId32,
-    sender: &AccountId32,
+    vesting: &AccountId,
+    sender: &AccountId,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,

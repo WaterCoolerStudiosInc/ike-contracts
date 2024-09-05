@@ -1,6 +1,6 @@
 {
   "source": {
-    "hash": "0xf10e400c89af814de26b006e20e8b73432d3c0b4dd5fbfa243c70a964edc5596",
+    "hash": "0xcbf5cf64edc0525d82392e5c51b2700923472c065760165b592d1c117eaa7065",
     "language": "ink! 4.3.0",
     "compiler": "rustc 1.75.0",
     "build_info": {
@@ -147,13 +147,13 @@
         "displayName": [
           "BlockNumber"
         ],
-        "type": 24
+        "type": 26
       },
       "chainExtension": {
         "displayName": [
           "ChainExtension"
         ],
-        "type": 25
+        "type": 27
       },
       "hash": {
         "displayName": [
@@ -219,7 +219,7 @@
               "displayName": [
                 "Vote"
               ],
-              "type": 23
+              "type": 25
             }
           }
         ],
@@ -319,6 +319,86 @@
         "selector": "0xa36fda12"
       },
       {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_voting_delay",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x6997bc7e"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_voting_period",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 16
+        },
+        "selector": "0x058275d9"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_execution_threshold",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x0afeb816"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_rejection_threshold",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0x14ae58b3"
+      },
+      {
+        "args": [],
+        "default": false,
+        "docs": [],
+        "label": "get_acceptance_threshold",
+        "mutates": false,
+        "payable": false,
+        "returnType": {
+          "displayName": [
+            "ink",
+            "MessageResult"
+          ],
+          "type": 17
+        },
+        "selector": "0xe6c01da1"
+      },
+      {
         "args": [
           {
             "label": "id",
@@ -340,7 +420,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 16
+          "type": 18
         },
         "selector": "0x9d880359"
       },
@@ -356,7 +436,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 17
+          "type": 19
         },
         "selector": "0xc1c80143"
       },
@@ -382,7 +462,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 16
+          "type": 18
         },
         "selector": "0xa80380cc"
       },
@@ -417,7 +497,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 18
+          "type": 20
         },
         "selector": "0xf9fb13d3"
       },
@@ -447,7 +527,7 @@
               "displayName": [
                 "Vote"
               ],
-              "type": 23
+              "type": 25
             }
           }
         ],
@@ -461,7 +541,7 @@
             "ink",
             "MessageResult"
           ],
-          "type": 18
+          "type": 20
         },
         "selector": "0x083be260"
       }
@@ -1098,6 +1178,90 @@
               {
                 "fields": [
                   {
+                    "type": 4
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 4
+          },
+          {
+            "name": "E",
+            "type": 14
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
+                    "type": 3
+                  }
+                ],
+                "index": 0,
+                "name": "Ok"
+              },
+              {
+                "fields": [
+                  {
+                    "type": 14
+                  }
+                ],
+                "index": 1,
+                "name": "Err"
+              }
+            ]
+          }
+        },
+        "params": [
+          {
+            "name": "T",
+            "type": 3
+          },
+          {
+            "name": "E",
+            "type": 14
+          }
+        ],
+        "path": [
+          "Result"
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "type": {
+        "def": {
+          "variant": {
+            "variants": [
+              {
+                "fields": [
+                  {
                     "type": 6
                   }
                 ],
@@ -1132,7 +1296,7 @@
       }
     },
     {
-      "id": 17,
+      "id": 19,
       "type": {
         "def": {
           "variant": {
@@ -1174,7 +1338,7 @@
       }
     },
     {
-      "id": 18,
+      "id": 20,
       "type": {
         "def": {
           "variant": {
@@ -1182,7 +1346,7 @@
               {
                 "fields": [
                   {
-                    "type": 19
+                    "type": 21
                   }
                 ],
                 "index": 0,
@@ -1203,7 +1367,7 @@
         "params": [
           {
             "name": "T",
-            "type": 19
+            "type": 21
           },
           {
             "name": "E",
@@ -1216,7 +1380,7 @@
       }
     },
     {
-      "id": 19,
+      "id": 21,
       "type": {
         "def": {
           "variant": {
@@ -1233,7 +1397,7 @@
               {
                 "fields": [
                   {
-                    "type": 20
+                    "type": 22
                   }
                 ],
                 "index": 1,
@@ -1249,7 +1413,7 @@
           },
           {
             "name": "E",
-            "type": 20
+            "type": 22
           }
         ],
         "path": [
@@ -1258,7 +1422,7 @@
       }
     },
     {
-      "id": 20,
+      "id": 22,
       "type": {
         "def": {
           "variant": {
@@ -1326,7 +1490,7 @@
               {
                 "fields": [
                   {
-                    "type": 21,
+                    "type": 23,
                     "typeName": "PSP22Error"
                   }
                 ],
@@ -1336,7 +1500,7 @@
               {
                 "fields": [
                   {
-                    "type": 22,
+                    "type": 24,
                     "typeName": "String"
                   }
                 ],
@@ -1354,7 +1518,7 @@
       }
     },
     {
-      "id": 21,
+      "id": 23,
       "type": {
         "def": {
           "variant": {
@@ -1362,7 +1526,7 @@
               {
                 "fields": [
                   {
-                    "type": 22,
+                    "type": 24,
                     "typeName": "String"
                   }
                 ],
@@ -1388,7 +1552,7 @@
               {
                 "fields": [
                   {
-                    "type": 22,
+                    "type": 24,
                     "typeName": "String"
                   }
                 ],
@@ -1406,7 +1570,7 @@
       }
     },
     {
-      "id": 22,
+      "id": 24,
       "type": {
         "def": {
           "primitive": "str"
@@ -1414,7 +1578,7 @@
       }
     },
     {
-      "id": 23,
+      "id": 25,
       "type": {
         "def": {
           "variant": {
@@ -1438,7 +1602,7 @@
       }
     },
     {
-      "id": 24,
+      "id": 26,
       "type": {
         "def": {
           "primitive": "u32"
@@ -1446,7 +1610,7 @@
       }
     },
     {
-      "id": 25,
+      "id": 27,
       "type": {
         "def": {
           "variant": {}

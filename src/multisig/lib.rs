@@ -211,7 +211,7 @@ mod multisig {
                 registry: _registry,
                 whitelist: _whitelist,
                 signers: Vec::new(),
-                threshold: 5,
+                threshold: 3,
                 creation_time: Self::env().block_timestamp(),
                 used_nonces: Mapping::new(),
                 proposals: Mapping::new(),
