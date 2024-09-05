@@ -13,7 +13,7 @@ pub trait INominationAgent {
     fn withdraw_unbonded(&mut self) -> Result<(), RuntimeError>;
 
     #[ink(message, selector = 4)]
-    fn compound(&mut self, incentive_percentage: u16) -> Result<(u128, u128), RuntimeError>;
+    fn compound(&mut self) -> Result<u128, RuntimeError>;
 
     #[ink(message, selector = 12)]
     fn get_staked_value(&self) -> u128;

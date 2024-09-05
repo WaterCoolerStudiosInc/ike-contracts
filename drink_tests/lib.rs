@@ -336,50 +336,6 @@ mod tests {
         };
     }
     #[test]
-    fn test_incentive_adjustment_success() {
-        let ctx = setup().unwrap();
-        let sess = helpers::call_adjust_incentive(ctx.sess, &ctx.vault, &ctx.bob, 100).unwrap();
-        let sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("IVault::get_incentive_percentage"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-        let res: Result<u16, drink::errors::LangError> = sess.last_call_return().unwrap();
-        assert_eq!(res.unwrap(), 100)
-    }
-    #[test]
-    fn test_incentive_adjustment_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
-
-        match helpers::call_adjust_incentive(
-            ctx.sess,
-            &ctx.vault,
-            &ctx.ed, // not bob
-            100,
-        ) {
-            Ok(_) => panic!("Should panic because caller does not have the adjust fees role (Bob)"),
-            Err(_) => (),
-        }
-    }
-    #[test]
-    fn test_incentive_adjustment_panic_because_overflow() {
-        let ctx = setup().unwrap();
-        match helpers::call_adjust_incentive(
-            ctx.sess,
-            &ctx.vault,
-            &ctx.bob,
-            10000, // equal to BIPS
-        ) {
-            Ok(_) => panic!("Should panic because new incentive is too large"),
-            Err(_) => (),
-        };
-    }
-    #[test]
     fn test_withdraw_fees_after_one_second_success() {
         let ctx = setup().unwrap();
 
@@ -1113,7 +1069,7 @@ mod tests {
         ).unwrap();
     }
     #[test]
-    fn test_compound_call_default_incentive() -> Result<(), Box<dyn Error>> {
+    fn test_compound_call() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
         let mut sess = ctx.sess;
 
@@ -1123,8 +1079,7 @@ mod tests {
         sess.chain_api().add_tokens(ctx.nominators[1].clone(), mock_reward);
 
         // Compound
-        let caller_balance_before_compound = sess.chain_api().balance(&ctx.bob);
-        let mut sess = helpers::call_function(
+        let sess = helpers::call_function(
             sess,
             &ctx.vault,
             &ctx.bob,
@@ -1135,51 +1090,9 @@ mod tests {
         )
             .unwrap();
 
-        // compounding with 2 nominator pools yields a perceived increase of 20,000 * (100% - 0.05%) = 19,990
-
-        let caller_balance_after_compound = sess.chain_api().balance(&ctx.bob);
-        assert_eq!(caller_balance_after_compound - caller_balance_before_compound, 10);
-
         let (total_pooled, _sess) = helpers::get_total_pooled(sess, &ctx.vault).unwrap();
-        assert_eq!(total_pooled, 19_990);
+        assert_eq!(total_pooled, mock_reward * 2);
 
         Ok(())
     }
-
-    #[test]
-    fn test_compound_call_adjusted_incentive() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
-
-        // Adjust fee from default to 1%
-        let mut sess = helpers::call_adjust_incentive(ctx.sess, &ctx.vault, &ctx.bob, 100).unwrap();
-
-        // Fund nominator agents to simulate AZERO being claimed
-        let mock_reward = 10_000;
-        sess.chain_api().add_tokens(ctx.nominators[0].clone(), mock_reward);
-        sess.chain_api().add_tokens(ctx.nominators[1].clone(), mock_reward);
-
-        // Compound
-        let caller_balance_before_compound = sess.chain_api().balance(&ctx.bob);
-        let mut sess = helpers::call_function(
-            sess,
-            &ctx.vault,
-            &ctx.bob,
-            String::from("IVault::compound"),
-            None,
-            None,
-            helpers::transcoder_vault(),
-        )
-            .unwrap();
-
-        // compounding with 2 nominator pools yields a perceived increase of 20,000 * (100% - 1.00%) = 19,800
-
-        let caller_balance_after_compound = sess.chain_api().balance(&ctx.bob);
-        assert_eq!(caller_balance_after_compound - caller_balance_before_compound, 200);
-
-        let (total_pooled, _sess) = helpers::get_total_pooled(sess, &ctx.vault).unwrap();
-        assert_eq!(total_pooled, 19_800);
-
-        Ok(())
-    }
- 
 }
