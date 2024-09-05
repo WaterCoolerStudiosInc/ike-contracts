@@ -106,7 +106,6 @@ mod tests {
             &bob,
             &validator1,
             100e12 as u128,
-            500,
         )?;
         let (_new_agent, sess) = helpers::call_add_agent(
             sess,
@@ -115,7 +114,6 @@ mod tests {
             &bob,
             &validator2,
             100e12 as u128,
-            500,
         )?;
 
         let (_, agents, sess) = helpers::get_agents(sess, &registry)?;
@@ -686,7 +684,6 @@ mod tests {
             &ctx.charlie,
             &ctx.validators[2],
             100e12 as u128,
-            500,
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
             Err(_) => (),
@@ -794,7 +791,6 @@ mod tests {
             &ctx.bob,
             &ctx.validators[2],
             100e12 as u128,
-            500,
         )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
@@ -865,7 +861,6 @@ mod tests {
             &ctx.bob,
             &ctx.validators[2],
             100e12 as u128,
-            500,
         )?;
 
         let (total_weight_after, agents_after, sess) = helpers::get_agents(
