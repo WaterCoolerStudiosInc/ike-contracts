@@ -1,14 +1,9 @@
+use crate::data::{Balance, UnlockRequest};
+use crate::errors::VaultError;
 use ink::{
     primitives::AccountId,
     prelude::vec::Vec,
 };
-
-use crate::data::{
-    Balance,
-    Timestamp,
-    UnlockRequest,
-};
-use crate::errors::VaultError;
 
 #[ink::trait_definition]
 pub trait RateProvider {
@@ -25,19 +20,13 @@ pub trait RateProvider {
 #[ink::trait_definition]
 pub trait IVault {
     #[ink(message, payable)]
-    fn stake(&mut self) -> Result<Balance, VaultError>;
+    fn stake(&mut self) -> Result<u128, VaultError>;
 
     #[ink(message, payable)]
-    fn stake_with_referral(&mut self, referral_id: AccountId) -> Result<Balance, VaultError>;
+    fn stake_with_referral(&mut self, referral_id: AccountId) -> Result<u128, VaultError>;
 
     #[ink(message)]
-    fn request_unlock(&mut self, shares: Balance) -> Result<(), VaultError>;
-
-    #[ink(message)]
-    fn cancel_unlock_request(&mut self, user_unlock_id: u128) -> Result<(), VaultError>;
-
-    #[ink(message)]
-    fn send_batch_unlock_requests(&mut self, batch_ids: Vec<u64>) -> Result<(), VaultError>;
+    fn request_unlock(&mut self, shares: u128) -> Result<(), VaultError>;
 
     #[ink(message)]
     fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError>;
@@ -82,19 +71,13 @@ pub trait IVault {
     fn get_role_set_code(&self) -> Option<AccountId>;
 
     #[ink(message)]
-    fn get_batch_id(&self) -> u64;
-
-    #[ink(message)]
-    fn get_creation_time(&self) -> u64;
-
-    #[ink(message)]
     fn get_total_pooled(&self) -> Balance;
 
     #[ink(message)]
-    fn get_total_shares(&self) -> Balance;
+    fn get_total_shares(&self) -> u128;
 
     #[ink(message)]
-    fn get_current_virtual_shares(&self) -> Balance;
+    fn get_current_virtual_shares(&self) -> u128;
 
     #[ink(message)]
     fn get_fee_percentage(&self) -> u16;
@@ -109,19 +92,13 @@ pub trait IVault {
     fn get_registry_contract(&self) -> AccountId;
 
     #[ink(message)]
-    fn get_shares_from_azero(&self, azero: Balance) -> Balance;
+    fn get_shares_from_azero(&self, azero: Balance) -> u128;
 
     #[ink(message)]
-    fn get_azero_from_shares(&self, shares: Balance) -> Balance;
+    fn get_azero_from_shares(&self, shares: u128) -> Balance;
 
     #[ink(message)]
     fn get_unlock_requests(&self, user: AccountId) -> Vec<UnlockRequest>;
-
-    #[ink(message)]
-    fn get_unlock_request_count(&self, user: AccountId) -> u128;
-
-    #[ink(message)]
-    fn get_batch_unlock_requests(&self, batch_id: u64) -> (u128, Option<u128>, Option<Timestamp>);
 
     #[ink(message)]
     fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>);

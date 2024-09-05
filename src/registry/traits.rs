@@ -21,6 +21,4 @@ pub trait Registry {
     fn remove_agent(&mut self, account: AccountId) -> Result<(), RegistryError>;
     #[ink(message, selector = 4)]
     fn get_agents(&self) -> Result<(u64, Vec<Agent>), RegistryError>;
-    #[ink(message, selector = 5)]
-    fn initialize_agent(&mut self, agent: AccountId, pool_id: u32) -> Result<(), RegistryError>;
 }

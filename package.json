@@ -1,7 +1,7 @@
 {
-  "name": "@water-cooler-studios/kintsu-contracts",
+  "name": "@water-cooler-studios/ike-contracts",
   "type": "module",
-  "version": "0.1.1",
+  "version": "0.0.1",
   "scripts": {
     "test": "cargo test --manifest-path drink_tests/Cargo.toml",
     "build": "bash build-all.sh",
@@ -20,10 +20,10 @@
     "typescript": "5.4.5"
   },
   "files": [
-    "deployments/nomination_agent/*",
-    "deployments/registry/*",
-    "deployments/share_token/*",
-    "deployments/vault/*",
-    "!deployments/*/development.*"
+    "deployments/**/nomination_agent/**/*",
+    "deployments/**/registry/**/*",
+    "deployments/**/share_token/**/*",
+    "deployments/**/vault/**/*",
+    "!deployments/development/**/*"
   ]
 }

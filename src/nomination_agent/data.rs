@@ -2,7 +2,7 @@ use ink::prelude::vec::Vec;
 use ink::primitives::AccountId;
 
 #[allow(dead_code)]
-#[derive(scale::Encode)]
+#[derive(Clone, scale::Encode)]
 pub enum MultiAddress<AccountId, AccountIndex> {
     // It's an account ID (pubkey).
     Id(AccountId),
@@ -15,14 +15,16 @@ pub enum MultiAddress<AccountId, AccountIndex> {
     // Its a 20 byte representation.
     Address20([u8; 20]),
 }
+
 #[allow(dead_code)]
 #[derive(scale::Encode)]
-pub enum ConfigOp<_0> {
+pub enum RewardDestination<_0> {
     #[codec(index = 0)]
-    Noop,
+    Staked,
     #[codec(index = 1)]
-    Set(_0),
+    Stash,
     #[codec(index = 2)]
+<<<<<<< HEAD
     Remove,
 }
 #[derive(Clone, PartialEq, scale::Encode, scale::Decode,Debug)]
@@ -45,49 +47,47 @@ pub enum NominationCall {
     BondExtra { extra: BondExtra },
     #[codec(index = 2)]
     ClaimPayout {},
+=======
+    Controller,
+>>>>>>> main
     #[codec(index = 3)]
-    Unbond {
-        member_account: MultiAddress<AccountId, ()>,
+    Account(_0),
+    #[codec(index = 4)]
+    None,
+}
+
+#[derive(scale::Encode)]
+pub enum StakingCall {
+    #[codec(index = 0)]
+    Bond {
         #[codec(compact)]
-        unbonding_points: u128,
+        value: u128,
+        payee: RewardDestination<AccountId>,
     },
-    #[codec(index = 5)]
+    #[codec(index = 1)]
+    BondExtra {
+        #[codec(compact)]
+        max_additional: u128,
+    },
+    #[codec(index = 2)]
+    Unbond {
+        #[codec(compact)]
+        value: u128,
+    },
+    #[codec(index = 3)]
     WithdrawUnbonded {
-        member_account: MultiAddress<AccountId, ()>,
         num_slashing_spans: u32,
     },
-    #[codec(index = 6)]
-    Create {
-        #[codec(compact)]
-        amount: u128,
-        root: MultiAddress<AccountId, ()>,
-        nominator: MultiAddress<AccountId, ()>,
-        bouncer: MultiAddress<AccountId, ()>,
-    },
-    #[codec(index = 8)]
+    #[codec(index = 5)]
     Nominate {
-        pool_id: u32,
-        validators: Vec<AccountId>,
+        targets: Vec<MultiAddress<AccountId, ()>>
     },
-    #[codec(index = 9)]
-    SetState {
-        pool_id: u32,
-        state: PoolState,
-    },
-    #[codec(index = 12)]
-    UpdateRoles {
-        pool_id: u32,
-        new_root: ConfigOp<AccountId>,
-        new_nominator: ConfigOp<AccountId>,
-        new_bouncer: ConfigOp<AccountId>,
-    },
-    #[codec(index = 13)]
-    Chill {
-        pool_id: u32,
-    },
+    #[codec(index = 6)]
+    Chill,
 }
+
 #[derive(scale::Encode)]
 pub enum RuntimeCall {
-    #[codec(index = 19)]
-    NominationPools(NominationCall),
+    #[codec(index = 8)]
+    Staking(StakingCall),
 }

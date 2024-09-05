@@ -9,11 +9,6 @@ deployments/*
 .DS_Store
 *.pem
 
-# local deployments
-deployments/**/development.json
-deployments/**/development.ts
-
-
 # tsc files
 */**/*.js
 */**/*.js.map

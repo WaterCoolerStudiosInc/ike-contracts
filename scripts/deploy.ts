@@ -36,6 +36,11 @@ const main = async (validators: string[]) => {
   const existentialDeposit = BigInt(existentialDepositCodec.toString())
   console.log(`Existential deposit: ${existentialDeposit}`)
 
+  const sessionPeriod = api.consts.committeeManagement.sessionPeriod.toString().replace(/,/g, '')
+  const sessionsPerEra = api.consts.staking.sessionsPerEra.toString().replace(/,/g, '')
+  const eraDurationMs = 1000n * BigInt(sessionPeriod) * BigInt(sessionsPerEra)
+  console.log(`Era duration: ${eraDurationMs.toLocaleString()} ms`)
+
   console.log('===== Code Hash Deployment =====')
 
   console.log(`Deploying code hash: 'registry' ...`)
@@ -82,7 +87,7 @@ const main = async (validators: string[]) => {
       vault_data.abi,
       vault_data.wasm,
       'custom_era',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, 5 * 3 * 1_000],
+      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, eraDurationMs],
     ) : await deployContract(
       api,
       account,
@@ -119,13 +124,8 @@ const main = async (validators: string[]) => {
 
   console.log('===== Agent Configuration =====')
 
-  const poolIds = []
-
   for (const validator of validators) {
-    const lastPoolIdCodec = await api.query.nominationPools.lastPoolId()
-    const nextPoolId = BigInt(lastPoolIdCodec.toString()) + 1n
-
-    console.log(`Adding nomination agent (validator: ${validator} & PID #${nextPoolId}) ...`)
+    console.log(`Adding nomination agent (validator: ${validator} ...`)
     await contractTx(
       api,
       account,
@@ -136,8 +136,6 @@ const main = async (validators: string[]) => {
       },
       [account.address, validator, minNominatorBond, existentialDeposit],
     )
-
-    poolIds.push(nextPoolId)
   }
 
   console.log('Fetching agents ...')
@@ -148,21 +146,6 @@ const main = async (validators: string[]) => {
     'get_agents',
   )
   const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'get_agents').output
-
-  for (let i=0; i<agents.length; i++) {
-    const agent = agents[i];
-    const poolId = poolIds[i];
-
-    console.log(`Initializing nomination agent ${agent.address} with pool id #${poolId}...`)
-    await contractTx(
-      api,
-      account,
-      registry_instance,
-      'initialize_agent',
-      {},
-      [agent.address, poolId],
-    )
-  }
 
   console.log('Equally weighting agents ...')
   await contractTx(

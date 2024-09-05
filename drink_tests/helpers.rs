@@ -14,6 +14,12 @@ pub const DAY: u64 = SECOND * 86400;
 pub const YEAR: u64 = DAY * 365_25 / 100;
 pub const BIPS: u128 = 10000;
 
+#[derive(Debug, scale::Decode)]
+pub struct Agent {
+    pub address: AccountId32,
+    pub weight: u64,
+}
+
 pub fn update_days(
     mut sess: Session<MinimalRuntime>,
     days: u64,
@@ -59,27 +65,6 @@ pub fn call_add_agent(
     let (_, agents, sess) = get_agents(sess, &registry)?;
 
     Ok((agents[agents.len() - 1].address.clone(), sess))
-}
-pub fn call_initialize_agent(
-    sess: Session<MinimalRuntime>,
-    registry: &AccountId32,
-    sender: &AccountId32,
-    agent: &AccountId32,
-    pool_id: u32,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let sess: Session<MinimalRuntime> = call_function(
-        sess,
-        &registry,
-        &sender,
-        String::from("initialize_agent"),
-        Some([
-            agent.to_string(),
-            pool_id.to_string(),
-        ].to_vec()),
-        None,
-        transcoder_registry(),
-    )?;
-    Ok(sess)
 }
 pub fn call_update_agents(
     sess: Session<MinimalRuntime>,
@@ -178,42 +163,7 @@ pub fn call_request_unlock(
     Ok((balance.unwrap(), sess))
 }
 
-pub fn call_cancel_unlock_request(
-    sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-    sender: &AccountId32,
-    user_unlock_id: u128,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let sess: Session<MinimalRuntime> = call_function(
-        sess,
-        &vault,
-        &sender,
-        String::from("IVault::cancel_unlock_request"),
-        Some(vec![user_unlock_id.to_string()]),
-        None,
-        transcoder_vault(),
-    )?;
-    Ok(sess)
-}
-
-pub fn call_send_batch_unlock_requests(
-    sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-    sender: &AccountId32,
-    batch_ids: Vec<u64>,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let sess: Session<MinimalRuntime> = call_function(
-        sess,
-        &vault,
-        &sender,
-        String::from("IVault::send_batch_unlock_requests"),
-        Some(vec![serde_json::to_string(&batch_ids).unwrap()]),
-        None,
-        transcoder_vault(),
-    )?;
-    Ok(sess)
-}
-
+#[allow(dead_code)]
 pub enum RoleType {
     AddAgent,
     UpdateAgents,
@@ -318,13 +268,6 @@ pub fn get_role_fee_to(
     let fee_to: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((fee_to.unwrap(), sess))
 }
-
-#[derive(Debug, scale::Decode)]
-pub struct Agent {
-    pub address: AccountId32,
-    pub weight: u64,
-    pub initialized: bool,
-}
 pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId32,
@@ -388,16 +331,6 @@ pub fn get_total_pooled(
     let total_pooled: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((total_pooled.unwrap(), sess))
 }
-pub fn query_batch_id(
-    mut sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
-    sess.call_with_address(vault.clone(), "IVault::get_batch_id", NO_ARGS, None)?;
-
-    let batch_id: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
-    Ok((batch_id.unwrap(), sess))
-}
 pub fn query_nominator_balance(
     sess: Session<MinimalRuntime>,
     nominator: &AccountId32,
@@ -428,44 +361,6 @@ pub fn query_nominator_balance(
     let stake = staked.unwrap();
 
     Ok((stake, unbond, sess))
-}
-pub fn get_unlock_request_count(
-    mut sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-    user: &AccountId32,
-) -> Result<(u128, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
-    sess.call_with_address(
-        vault.clone(),
-        "IVault::get_unlock_request_count",
-        &[user.to_string()],
-        None,
-    )?;
-
-    let count: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
-    Ok((count.unwrap(), sess))
-}
-pub fn get_batch_unlock_requests(
-    mut sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-    batch: &u64,
-) -> Result<(u128, Option<u128>, Option<u64>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(vault.clone(), &transcoder_vault().unwrap());
-    sess.call_with_address(
-        vault.clone(),
-        "IVault::get_batch_unlock_requests",
-        &[batch.to_string()],
-        None,
-    )?;
-    let res: Result<(u128, Option<u128>, Option<u64>), drink::errors::LangError> =
-        sess.last_call_return().unwrap();
-    let (total_shares, value_at_redemption, redemption_timestamp) = res.unwrap();
-    Ok((
-        total_shares,
-        value_at_redemption,
-        redemption_timestamp,
-        sess,
-    ))
 }
 pub fn query_token_balance(
     mut sess: Session<MinimalRuntime>,

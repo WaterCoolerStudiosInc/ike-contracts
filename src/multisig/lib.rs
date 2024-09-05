@@ -98,7 +98,6 @@ mod multisig {
         UpdateValidators(WeightUpdate),
         AddValidator(AccountId),
         RemoveValidator(AccountId, bool),
-        InitValidator(AccountId, u32),
     }
     #[ink(event)]
     pub struct ProposalCreated {
@@ -128,12 +127,6 @@ mod multisig {
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
             output
         }
-        fn hash_initiate(&self, validator: AccountId, pool_id: u32, nonce: String) -> [u8; 32] {
-            let encodable = (validator, pool_id, nonce);
-            let mut output = <Sha2x256 as HashOutput>::Type::default();
-            hash_encoded::<Sha2x256, _>(&encodable, &mut output);
-            output
-        }
         fn hash_addition(&self, validator: AccountId, nonce: String) -> [u8; 32] {
             let encodable = (validator, nonce);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
@@ -155,9 +148,6 @@ mod multisig {
                 Action::RemoveValidator(validator, slash) => {
                     Ok(self.hash_remove(validator, slash, nonce))
                 }
-                Action::InitValidator(validator, pool_id) => {
-                    Ok(self.hash_initiate(validator, pool_id, nonce))
-                }
             }
         }
         fn execute_add(&self, validator: AccountId) -> Result<(), MultiSigError> {
@@ -171,13 +161,6 @@ mod multisig {
             let mut whitelist: contract_ref!(ValidatorWhitelist) = self.whitelist.into();
             if let Err(e) = whitelist.remove_validator_by_agent(validator, slash) {
                 return Err(MultiSigError::VaultFailure);
-            }
-            Ok(())
-        }
-        fn execute_init(&self, validator: AccountId, pool_id: u32) -> Result<(), MultiSigError> {
-            let mut registry: contract_ref!(Registry) = self.registry.into();
-            if let Err(e) = registry.initialize_agent(validator, pool_id) {
-                return Err(MultiSigError::RegistryFailure);
             }
             Ok(())
         }
@@ -198,8 +181,9 @@ mod multisig {
                     self.execute_update(weight_update.accounts, weight_update.weights)
                 }
                 Action::AddValidator(validator) => self.execute_add(validator),
-                Action::RemoveValidator(validator, slash) => self.execute_remove(validator, slash),
-                Action::InitValidator(validator, pool_id) => self.execute_init(validator, pool_id),
+                Action::RemoveValidator(validator, slash) => {
+                    self.execute_remove(validator, slash)
+                }
             }
         }
     }
