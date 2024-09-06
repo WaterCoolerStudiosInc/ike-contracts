@@ -599,13 +599,14 @@ mod vault {
         /// Calculate the value of AZERO in terms of sA0 shares
         #[ink(message)]
         fn get_shares_from_azero(&self, azero: Balance) -> u128 {
-            let total_pooled_ = self.data.total_pooled; // shadow
-            if total_pooled_ == 0 {
+            let total_pooled = self.data.total_pooled; // shadow
+            let total_shares = self.get_total_shares(); // shadow
+            if total_pooled == 0 || total_shares == 0 {
                 // This happens upon initial stake
                 // Also known as 1:1 redemption ratio
                 azero
             } else {
-                self.data.pro_rata(azero, self.get_total_shares(), total_pooled_)
+                self.data.pro_rata(azero, total_shares, total_pooled)
             }
         }
 

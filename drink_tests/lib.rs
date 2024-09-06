@@ -1071,7 +1071,11 @@ mod tests {
     #[test]
     fn test_compound_call() -> Result<(), Box<dyn Error>> {
         let ctx = setup().unwrap();
-        let mut sess = ctx.sess;
+
+        // Stake 1 AZERO
+        let deposit_amount = 1e12 as u128;
+        let (shares, mut sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, deposit_amount).unwrap();
+        assert_eq!(shares, deposit_amount); // 1:1 ratio
 
         // Fund nominator agents to simulate AZERO being claimed
         let mock_reward = 10_000;
@@ -1091,7 +1095,37 @@ mod tests {
             .unwrap();
 
         let (total_pooled, _sess) = helpers::get_total_pooled(sess, &ctx.vault).unwrap();
-        assert_eq!(total_pooled, mock_reward * 2);
+        assert_eq!(total_pooled, deposit_amount + mock_reward * 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_compound_before_initial_stake() -> Result<(), Box<dyn Error>> {
+        let ctx = setup().unwrap();
+        let mut sess = ctx.sess;
+
+        // Send funds to an agent
+        sess.chain_api().add_tokens(ctx.nominators[0].clone(), 1000);
+
+        // Compound
+        let sess = helpers::call_function(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            String::from("IVault::compound"),
+            None,
+            None,
+            helpers::transcoder_vault(),
+        )
+            .unwrap();
+
+        let (total_pooled, sess) = helpers::get_total_pooled(sess, &ctx.vault).unwrap();
+        assert_eq!(total_pooled, 1000);
+
+        let deposit_amount = 1e12 as u128;
+        let (shares, _sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.bob, deposit_amount).unwrap();
+        assert_eq!(shares, deposit_amount); // 1:1 ratio
 
         Ok(())
     }

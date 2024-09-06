@@ -9,8 +9,6 @@ mod mock_nominator {
     use crate::traits::INominationAgent;
     use ink::env::Error as EnvError;
 
-    const BIPS: u128 = 10000;
-
     #[ink(storage)]
     pub struct NominationAgent {
         vault: AccountId,
@@ -112,7 +110,7 @@ mod mock_nominator {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            let compound_amount = Self::env().balance();
+            let compound_amount = Self::env().balance() - self.staked - self.unbonding;
 
             // Gracefully return when nomination agent has no rewards
             if compound_amount == 0 {
