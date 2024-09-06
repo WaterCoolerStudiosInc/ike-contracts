@@ -49,13 +49,13 @@ mod mock_nominator {
             vault: AccountId,
             admin: AccountId,
             validator: AccountId,
-            creation_bond: u128,
-            existential_deposit: u128,
         ) -> Self {
+            let creation_bond = Self::env().transferred_value();
+
             // Mock spending AZERO to create agent
             Self::env().transfer(
                 AccountId::from([0u8; 32]),
-                creation_bond + existential_deposit,
+                creation_bond,
             ).unwrap();
 
             Self {

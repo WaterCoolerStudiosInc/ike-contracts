@@ -32,10 +32,6 @@ const main = async (validators: string[]) => {
   const minNominatorBond = BigInt(minNominatorBondCodec.toString())
   console.log(`Minimum nomination bond: ${minNominatorBond}`)
 
-  const existentialDepositCodec = api.consts.balances.existentialDeposit
-  const existentialDeposit = BigInt(existentialDepositCodec.toString())
-  console.log(`Existential deposit: ${existentialDeposit}`)
-
   const sessionPeriod = api.consts.committeeManagement.sessionPeriod.toString().replace(/,/g, '')
   const sessionsPerEra = api.consts.staking.sessionsPerEra.toString().replace(/,/g, '')
   const eraDurationMs = 1000n * BigInt(sessionPeriod) * BigInt(sessionsPerEra)
@@ -132,9 +128,9 @@ const main = async (validators: string[]) => {
       registry_instance,
       'add_agent',
       {
-        value: minNominatorBond + existentialDeposit,
+        value: minNominatorBond,
       },
-      [account.address, validator, minNominatorBond, existentialDeposit],
+      [account.address, validator],
     )
   }
 

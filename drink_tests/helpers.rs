@@ -45,7 +45,6 @@ pub fn call_add_agent(
     admin: &AccountId32,
     validator: &AccountId32,
     pool_create_amount: u128,
-    existential_deposit: u128,
 ) -> Result<(AccountId32, Session<MinimalRuntime>), Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
@@ -55,10 +54,8 @@ pub fn call_add_agent(
         Some([
             admin.to_string(),
             validator.to_string(),
-            pool_create_amount.to_string(),
-            existential_deposit.to_string(),
         ].to_vec()),
-        Some(pool_create_amount + existential_deposit),
+        Some(pool_create_amount),
         transcoder_registry(),
     )?;
 
