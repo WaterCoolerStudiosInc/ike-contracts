@@ -126,7 +126,7 @@ const main = async (validators: string[]) => {
       api,
       account,
       registry_instance,
-      'add_agent',
+      'iRegistry::add_agent',
       {
         value: minNominatorBond,
       },
@@ -139,16 +139,16 @@ const main = async (validators: string[]) => {
     api,
     '',
     registry_instance,
-    'get_agents',
+    'iRegistry::get_agents',
   )
-  const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'get_agents').output
+  const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'iRegistry::get_agents').output
 
   console.log('Equally weighting agents ...')
   await contractTx(
     api,
     account,
     registry_instance,
-    'update_agents',
+    'iRegistry::update_agents',
     {},
     [agents.map((a) => a.address), [1000, 1000]],
   )
