@@ -20,7 +20,7 @@ mod multisig {
         reflect::ContractEventBase,
         storage::Mapping,
     };
-    use registry::Registry;
+    use registry::traits::IRegistry;
     use validator_whitelist::ValidatorWhitelist;
     #[ink(storage)]
     pub struct MultiSig {
@@ -169,7 +169,7 @@ mod multisig {
             agents: Vec<AccountId>,
             weights: Vec<u64>,
         ) -> Result<(), MultiSigError> {
-            let mut registry: contract_ref!(Registry) = self.registry.into();
+            let mut registry: contract_ref!(IRegistry) = self.registry.into();
             if let Err(e) = registry.update_agents(agents, weights) {
                 return Err(MultiSigError::RegistryFailure);
             }

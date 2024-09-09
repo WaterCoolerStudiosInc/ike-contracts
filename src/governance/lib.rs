@@ -76,8 +76,6 @@ pub mod governance {
         ChangeMultiSigThreshold(u16),
         // change vault fee
         FeeChange(u16),
-        // change vault compound acceptance
-        CompoundIncentiveChange(u16),
         // change  governance proposal acceptance weight requirement
         AcceptanceWeightUpdate(u128),
         // change vote periodi delay
@@ -213,13 +211,6 @@ pub mod governance {
         fn update_vault_fee(&self, new_fee: &u16) -> Result<(), GovernanceError> {
             let mut vault: contract_ref!(IVault) = self.vault.into();
             if let Err(e) = vault.adjust_fee(*new_fee) {
-                return Err(GovernanceError::VaultFailure);
-            }
-            Ok(())
-        }
-        fn update_incentive(&self, new_inventive: &u16) -> Result<(), GovernanceError> {
-            let mut vault: contract_ref!(IVault) = self.vault.into();
-            if let Err(e) = vault.adjust_incentive(*new_inventive) {
                 return Err(GovernanceError::VaultFailure);
             }
             Ok(())
@@ -371,7 +362,6 @@ pub mod governance {
                     }
 
                     PropType::FeeChange(new_fee) => self.update_vault_fee(new_fee)?,
-                    PropType::CompoundIncentiveChange(update) => self.update_incentive(update)?,
 
                     PropType::ChangeStakingRewardRate(new_rate) => {
                         self.update_staking_rewards(*new_rate)?
