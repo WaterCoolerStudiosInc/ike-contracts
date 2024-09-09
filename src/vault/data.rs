@@ -18,7 +18,10 @@ use ink::{
 };
 use num_bigint::BigUint;
 use num_traits::cast::ToPrimitive;
-use registry::{registry::Agent, RegistryRef};
+use registry::{
+    registry::{Agent, RegistryRef},
+    traits::IRegistry,
+};
 
 pub type Balance = <DefaultEnvironment as Environment>::Balance;
 pub type Timestamp = u64;

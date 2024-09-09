@@ -19,7 +19,7 @@ mod vault {
         ToAccountId,
     };
     use psp22::{PSP22Burnable, PSP22};
-    use registry::RegistryRef;
+    use registry::{registry::RegistryRef, traits::IRegistry};
     use share_token::{ShareToken, TokenRef};
 
     /// Errors returned by the contract's methods.
