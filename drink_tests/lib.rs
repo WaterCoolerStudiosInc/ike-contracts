@@ -61,6 +61,7 @@ mod tests {
                 helpers::hash_share_token(),
                 helpers::hash_registry(),
                 helpers::hash_nominator(),
+                helpers::DAY.to_string(),
             ],
             vec![1],
             None,

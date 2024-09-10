@@ -104,15 +104,6 @@ mod vault {
             share_token_hash: Hash,
             registry_code_hash: Hash,
             nomination_agent_hash: Hash,
-        ) -> Self {
-            Self::custom_era(share_token_hash, registry_code_hash, nomination_agent_hash, DAY)
-        }
-
-        #[ink(constructor)]
-        pub fn custom_era(
-            share_token_hash: Hash,
-            registry_code_hash: Hash,
-            nomination_agent_hash: Hash,
             era: u64,
         ) -> Self {
             let caller = Self::env().caller();
@@ -121,16 +112,12 @@ mod vault {
             let registry_ref = RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
                 .endowment(0)
                 .code_hash(registry_code_hash)
-                .salt_bytes(
-                    &[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
-                )
+                .salt_bytes(now.to_le_bytes())
                 .instantiate();
             let share_token_ref = TokenRef::new(Some(String::from("Ike Liquid Staked AZERO")), Some(String::from("sA0")))
                 .endowment(0)
                 .code_hash(share_token_hash)
-                .salt_bytes(
-                    &[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4],
-                )
+                .salt_bytes(now.to_le_bytes())
                 .instantiate();
 
             Self {

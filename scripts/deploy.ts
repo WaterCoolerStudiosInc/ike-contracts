@@ -56,8 +56,7 @@ const main = async (validators: string[]) => {
     account,
     token_data.abi,
     token_data.wasm,
-    'new',
-    ['TEST', 'TS'],
+    'deploy_hash',
   )
 
   console.log(`Deploying code hash: 'nomination_agent' ...`)
@@ -76,22 +75,14 @@ const main = async (validators: string[]) => {
 
   console.log(`Deploying contract: 'vault' ...`)
   const vault_data = await getDeploymentData('vault')
-  const vault = chainId === 'development'
-    ? await deployContract(
-      api,
-      account,
-      vault_data.abi,
-      vault_data.wasm,
-      'custom_era',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, eraDurationMs],
-    ) : await deployContract(
-      api,
-      account,
-      vault_data.abi,
-      vault_data.wasm,
-      'new',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash],
-    )
+  const vault = await deployContract(
+    api,
+    account,
+    vault_data.abi,
+    vault_data.wasm,
+    'new',
+    [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, eraDurationMs],
+  )
 
   const vault_instance = new ContractPromise(api, vault_data.abi, vault.address)
 

@@ -99,7 +99,7 @@ mod tests {
         let vault = sess.deploy(
             bytes_vault(),
             "new",
-            &[hash_share_token(), hash_registry(), hash_nominator()],
+            &[hash_share_token(), hash_registry(), hash_nominator(), helpers::DAY.to_string()],
             vec![1],
             None,
             &transcoder_vault().unwrap(),
