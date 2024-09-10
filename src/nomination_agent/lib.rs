@@ -4,10 +4,8 @@ mod data;
 pub mod errors;
 pub mod traits;
 
-pub use crate::nomination_agent::NominationAgentRef;
-
 #[ink::contract]
-mod nomination_agent {
+pub mod nomination_agent {
     use crate::data::{MultiAddress, RewardDestination, RuntimeCall, StakingCall};
     use crate::errors::RuntimeError;
     use crate::traits::INominationAgent;

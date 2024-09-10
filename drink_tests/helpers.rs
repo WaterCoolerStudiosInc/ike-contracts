@@ -50,7 +50,7 @@ pub fn call_add_agent(
         sess,
         &registry,
         &sender,
-        String::from("add_agent"),
+        String::from("IRegistry::add_agent"),
         Some([
             admin.to_string(),
             validator.to_string(),
@@ -74,7 +74,7 @@ pub fn call_update_agents(
         sess,
         &registry,
         &sender,
-        String::from("update_agents"),
+        String::from("IRegistry::update_agents"),
         Some(vec![
             serde_json::to_string(&agents).unwrap(),
             serde_json::to_string(&weights).unwrap(),
@@ -94,7 +94,7 @@ pub fn call_remove_agent(
         sess,
         &registry,
         &sender,
-        String::from("remove_agent"),
+        String::from("IRegistry::remove_agent"),
         Some([agent.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -178,7 +178,7 @@ pub fn get_role(
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
-    sess.call_with_address(registry.clone(), "get_role", &[role_string], None)?;
+    sess.call_with_address(registry.clone(), "IRegistry::get_role", &[role_string], None)?;
 
     let role: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((role.unwrap(), sess))
@@ -194,7 +194,7 @@ pub fn get_role_admin(
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
-    sess.call_with_address(registry.clone(), "get_role_admin", &[role_string], None)?;
+    sess.call_with_address(registry.clone(), "IRegistry::get_role_admin", &[role_string], None)?;
 
     let admin: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((admin.unwrap(), sess))
@@ -216,7 +216,7 @@ pub fn transfer_role(
         sess,
         &registry,
         &sender,
-        String::from("transfer_role"),
+        String::from("IRegistry::transfer_role"),
         Some([role_string.to_string(), new_account.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -240,7 +240,7 @@ pub fn transfer_role_admin(
         sess,
         &registry,
         &sender,
-        String::from("transfer_role_admin"),
+        String::from("IRegistry::transfer_role_admin"),
         Some([role_string.to_string(), new_account.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -269,7 +269,7 @@ pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId32,
 ) -> Result<(u64, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.call_with_address(registry.clone(), "get_agents", NO_ARGS, None)?;
+    sess.call_with_address(registry.clone(), "IRegistry::get_agents", NO_ARGS, None)?;
 
     let result: Result<(u64, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
     let (total_weight, agents) = result.unwrap();

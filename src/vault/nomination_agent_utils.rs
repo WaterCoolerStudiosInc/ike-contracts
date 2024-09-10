@@ -7,12 +7,13 @@ use ink::{
     primitives::AccountId,
 };
 
-// TODO: Import these from ../nomination_agent/lib.rs::RuntimeError
+// TODO: Import these from ../nomination_agent/errors.rs::RuntimeError
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum RuntimeError {
     CallRuntimeFailed,
     Unauthorized,
+    Active,
 }
 
 type Balance = <DefaultEnvironment as Environment>::Balance;

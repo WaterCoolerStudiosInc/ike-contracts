@@ -9,6 +9,7 @@ export const getDeploymentData = async (contractName: string) => {
   const chainId = process.env.CHAIN || 'development'
   const baseDir = process.env.DIR || `./deployments/${chainId}`
   const contractPath = path.join(path.resolve(), baseDir, contractName)
+  console.log(contractPath)
 
   let abi, wasm
   try {
@@ -22,14 +23,9 @@ export const getDeploymentData = async (contractName: string) => {
   let address: string
   let blockNumber: number
 
-  // if (!!chainId) {
-  //   try {
-  //     ({ address, blockNumber } = await import(path.join(contractPath, `deployment.ts`)))
-  //   } catch (e) {
-  //     console.error(e)
-  //     throw new Error("Couldn't find deployed contract file. Did you deploy it via `pnpm deploy`?")
-  //   }
-  // }
+  try {
+    ({ address, blockNumber } = await import(path.join(contractPath, `deployment.ts`)))
+  } catch (e) {}
 
   return {
     contractPath,

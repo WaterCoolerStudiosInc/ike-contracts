@@ -1,34 +1,21 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-mod traits;
-pub use crate::registry::RegistryRef;
-pub use traits::Registry;
+
+pub mod errors;
+pub mod traits;
+
 #[ink::contract]
 pub mod registry {
 
+    use crate::errors::RegistryError;
+    use crate::traits::IRegistry;
     use ink::{
         contract_ref,
         env::Error as InkEnvError,
-        prelude::{format, string::String, vec::Vec},
+        prelude::{format, vec::Vec},
         storage::Mapping,
         ToAccountId,
     };
-    use nomination_agent::{traits::INominationAgent, NominationAgentRef};
-
-    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum RegistryError {
-        InvalidInput,
-        DuplicateAgent,
-        AgentNotFound,
-        ActiveAgent,
-        InvalidPermissions,
-        InvalidRole,
-        NoChange,
-        /// An interaction with ink! environment has failed
-        // NOTE: We're representing the `ink::env::Error` as `String` b/c the
-        // type does not have Encode/Decode implemented.
-        InkEnvError(String),
-    }
+    use nomination_agent::{nomination_agent::NominationAgentRef, traits::INominationAgent};
 
     impl From<InkEnvError> for RegistryError {
         fn from(e: InkEnvError) -> Self {
@@ -174,13 +161,15 @@ pub mod registry {
                 nomination_agent_counter: 0,
             }
         }
+    }
 
+    impl IRegistry for Registry {
         /// Add a new nomination agent
         ///
         /// Caller must have the AddAgent role.
         /// Cannot add the same nomination agent twice.
-        #[ink(message, payable)]
-        pub fn add_agent(
+        #[ink(message, payable, selector = 1)]
+        fn add_agent(
             &mut self,
             admin: AccountId,
             validator: AccountId,
@@ -223,8 +212,8 @@ pub mod registry {
         /// Update weight of existing nomination agents
         ///
         /// Caller must have the UpdateAgents role.
-        #[ink(message)]
-        pub fn update_agents(
+        #[ink(message, selector = 2)]
+        fn update_agents(
             &mut self,
             agents: Vec<AccountId>,
             new_weights: Vec<u64>,
@@ -268,8 +257,8 @@ pub mod registry {
         /// Caller must have the RemoveAgent role.
         /// Agent must have no AZERO staked (excludes initial bond).
         /// Agent must have no AZERO unbonding.
-        #[ink(message)]
-        pub fn remove_agent(&mut self, agent: AccountId) -> Result<(), RegistryError> {
+        #[ink(message, selector = 3)]
+        fn remove_agent(&mut self, agent: AccountId) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
             if caller != self.roles.get(RoleType::RemoveAgent).unwrap().account {
@@ -302,8 +291,8 @@ pub mod registry {
             Ok(())
         }
 
-        #[ink(message)]
-        pub fn get_agents(&self) -> (u64, Vec<Agent>) {
+        #[ink(message, selector = 4)]
+        fn get_agents(&self) -> (u64, Vec<Agent>) {
             (self.total_weight, self.agents.clone())
         }
 
@@ -313,7 +302,7 @@ pub mod registry {
         ///
         /// Caller must be the admin for the role
         #[ink(message)]
-        pub fn transfer_role(
+        fn transfer_role(
             &mut self,
             role_type: RoleType,
             new_account: AccountId,
@@ -345,7 +334,7 @@ pub mod registry {
         ///
         /// Caller must be the admin for the role
         #[ink(message)]
-        pub fn transfer_role_admin(
+        fn transfer_role_admin(
             &mut self,
             role_type: RoleType,
             new_account: AccountId,
@@ -379,7 +368,7 @@ pub mod registry {
         ///
         /// Caller must have the SetCodeHash role.
         #[ink(message)]
-        pub fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), RegistryError> {
+        fn set_code(&mut self, code_hash: [u8; 32]) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
             if caller != self.roles.get(RoleType::SetCodeHash).unwrap().account {
@@ -395,7 +384,7 @@ pub mod registry {
         ///
         /// Caller must have the SetCodeHash role.
         #[ink(message)]
-        pub fn set_agent_code(&mut self, nomination_agent_hash: [u8; 32]) -> Result<(), RegistryError> {
+        fn set_agent_code(&mut self, nomination_agent_hash: [u8; 32]) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
             if caller != self.roles.get(RoleType::SetCodeHash).unwrap().account {
@@ -417,12 +406,12 @@ pub mod registry {
         /// ================================ View Only Role Methods ================================
 
         #[ink(message)]
-        pub fn get_role(&self, role_type: RoleType) -> AccountId {
+        fn get_role(&self, role_type: RoleType) -> AccountId {
             self.roles.get(role_type).unwrap().account
         }
 
         #[ink(message)]
-        pub fn get_role_admin(&self, role_type: RoleType) -> AccountId {
+        fn get_role_admin(&self, role_type: RoleType) -> AccountId {
             self.roles.get(role_type).unwrap().admin
         }
     }
