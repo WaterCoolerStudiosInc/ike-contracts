@@ -7,14 +7,7 @@ members = [
     "src/registry",
     "src/nomination_agent",
     "src/mock_nominator",
-    "src/governance",
-    "src/governance_nft",
-    "src/governance_staking",
-    "src/governance_token",
-    "src/validator_whitelist",
-    "src/vesting",
 ]
 exclude = [
     "drink_tests",
-    "governance_tests"
 ]
