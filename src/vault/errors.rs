@@ -1,8 +1,6 @@
-use ink::{
-    prelude::string::String,
-};
-use psp22::PSP22Error;
 use crate::nomination_agent_utils::RuntimeError;
+use ink::prelude::string::String;
+use psp22::PSP22Error;
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]

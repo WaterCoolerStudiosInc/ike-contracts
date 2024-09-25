@@ -27,7 +27,7 @@ mod validator_whitelist {
         validator: AccountId,
         admin: AccountId,
         stake: u128,
-        deposit:u128
+        deposit: u128,
     }
 
     #[ink(storage)]
@@ -170,8 +170,8 @@ mod validator_whitelist {
             let nft_weight = self.query_weight(id);
             let caller: ink::primitives::AccountId = Self::env().caller();
             let azero = Self::env().transferred_value();
-            if azero != self.create_deposit+self.existential_deposit{
-                return Err(WhitelistError::InvalidCreateDeposit)
+            if azero != self.create_deposit + self.existential_deposit {
+                return Err(WhitelistError::InvalidCreateDeposit);
             }
             if nft_weight < self.token_stake_amount {
                 return Err(WhitelistError::InvalidStake);
@@ -191,7 +191,7 @@ mod validator_whitelist {
                 validator: validator,
                 admin: caller,
                 stake: id,
-                deposit:azero
+                deposit: azero,
             });
             Ok(())
         }

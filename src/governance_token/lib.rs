@@ -1,7 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-
-
 pub use crate::token::TokenRef;
 
 #[ink::contract]
@@ -16,12 +14,12 @@ mod token {
         operator: AccountId,
         name: Option<String>,
         symbol: Option<String>,
-        
+
         decimals: u8,
     }
-    pub struct LastReceived{
-        amount:u128,
-        timestamp:u64
+    pub struct LastReceived {
+        amount: u128,
+        timestamp: u64,
     }
     impl Token {
         #[ink(constructor)]
@@ -30,12 +28,12 @@ mod token {
                 owner: Self::env().caller(),
                 operator: Self::env().caller(),
                 data: PSP22Data::new(100_000_000_000_000_000, Self::env().caller()), // (2)
-                name:Some(String::from("Governance Token")),
-                symbol:Some(String::from("GT")),
+                name: Some(String::from("Governance Token")),
+                symbol: Some(String::from("GT")),
                 decimals: 18_u8,
             }
         }
-       
+
         #[ink(message)]
         pub fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), PSP22Error> {
             if Self::env().caller() != self.owner {
@@ -147,7 +145,7 @@ mod token {
                 let events = self.data.transfer_from(caller, from, to, value)?;
                 self.emit_events(events);
             }
-            
+
             Ok(())
         }
 

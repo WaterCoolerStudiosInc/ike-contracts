@@ -8,7 +8,7 @@ pub mod vesting {
     use crate::errors::VestingError;
     use ink::{
         contract_ref,
-        env::{Error as InkEnvError},
+        env::Error as InkEnvError,
         prelude::{format, vec::Vec},
         storage::Mapping,
     };
@@ -28,7 +28,10 @@ pub mod vesting {
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
     pub struct Schedule {
         pub amount: u128,
         pub cliff: u128,
@@ -48,9 +51,7 @@ pub mod vesting {
 
     impl Vesting {
         #[ink(constructor)]
-        pub fn new(
-            token: AccountId,
-        ) -> Self {
+        pub fn new(token: AccountId) -> Self {
             Self {
                 token,
                 admin: Some(Self::env().caller()),
@@ -162,7 +163,9 @@ pub mod vesting {
             let mut removed_funding_required = 0u128;
 
             for recipient in recipients.iter() {
-                let schedule = self.schedules.get(recipient)
+                let schedule = self
+                    .schedules
+                    .get(recipient)
                     .ok_or(VestingError::RecipientDoesNotExist)
                     .unwrap();
 
@@ -181,9 +184,7 @@ pub mod vesting {
         ///
         /// Caller must be the current admin
         #[ink(message)]
-        pub fn activate(
-            &mut self,
-        ) -> Result<(), VestingError> {
+        pub fn activate(&mut self) -> Result<(), VestingError> {
             let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
 
             if self.env().caller() != admin {
@@ -203,10 +204,7 @@ pub mod vesting {
         ///
         /// Caller must be the current admin
         #[ink(message)]
-        pub fn admin_transfer(
-            &mut self,
-            to: AccountId,
-        ) -> Result<(), VestingError> {
+        pub fn admin_transfer(&mut self, to: AccountId) -> Result<(), VestingError> {
             let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
 
             if self.env().caller() != admin {
@@ -232,9 +230,7 @@ pub mod vesting {
         /// Caller must be the current admin
         /// Contract must have been activated
         #[ink(message)]
-        pub fn admin_relinquish(
-            &mut self,
-        ) -> Result<(), VestingError> {
+        pub fn admin_relinquish(&mut self) -> Result<(), VestingError> {
             let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
 
             if self.env().caller() != admin {
@@ -255,9 +251,7 @@ pub mod vesting {
         /// Caller must be the current admin
         /// Can be disabled by removing the admin via `admin_relinquish()`
         #[ink(message)]
-        pub fn admin_abort(
-            &mut self,
-        ) -> Result<(), VestingError> {
+        pub fn admin_abort(&mut self) -> Result<(), VestingError> {
             let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
 
             if self.env().caller() != admin {
@@ -272,9 +266,7 @@ pub mod vesting {
         }
 
         #[ink(message)]
-        pub fn claim(
-            &mut self,
-        ) -> Result<u128, VestingError> {
+        pub fn claim(&mut self) -> Result<u128, VestingError> {
             let now = self.env().block_timestamp();
             let recipient = self.env().caller();
 
@@ -283,7 +275,9 @@ pub mod vesting {
                 return Err(VestingError::NotActive);
             }
 
-            let mut schedule = self.schedules.get(recipient)
+            let mut schedule = self
+                .schedules
+                .get(recipient)
                 .ok_or(VestingError::RecipientDoesNotExist)
                 .unwrap();
 
@@ -306,7 +300,8 @@ pub mod vesting {
             if now < end {
                 // Vest amount proportional to elapsed time
                 let time_elapsed = now - start;
-                let amount_proportional = time_elapsed as u128 * schedule.amount / schedule.duration as u128;
+                let amount_proportional =
+                    time_elapsed as u128 * schedule.amount / schedule.duration as u128;
                 payable += amount_proportional;
                 schedule.amount -= amount_proportional;
                 schedule.offset += time_elapsed;
@@ -327,12 +322,10 @@ pub mod vesting {
 
             self.token_transfer_to(recipient, payable)?;
 
-            Self::env().emit_event(
-                Claim {
-                    recipient,
-                    amount: payable,
-                }
-            );
+            Self::env().emit_event(Claim {
+                recipient,
+                amount: payable,
+            });
 
             Ok(payable)
         }

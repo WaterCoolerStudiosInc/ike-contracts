@@ -1,9 +1,6 @@
 use crate::data::{Balance, UnlockRequest};
 use crate::errors::VaultError;
-use ink::{
-    primitives::AccountId,
-    prelude::vec::Vec,
-};
+use ink::{prelude::vec::Vec, primitives::AccountId};
 
 #[ink::trait_definition]
 pub trait RateProvider {

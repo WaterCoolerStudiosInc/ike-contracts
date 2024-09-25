@@ -47,11 +47,7 @@ pub mod nomination_agent {
         }
 
         #[ink(constructor, payable)]
-        pub fn new(
-            vault: AccountId,
-            admin: AccountId,
-            validator: AccountId,
-        ) -> Self {
+        pub fn new(vault: AccountId, admin: AccountId, validator: AccountId) -> Self {
             let creation_bond = Self::env().transferred_value();
 
             let nomination_agent = NominationAgent {
@@ -118,9 +114,7 @@ pub mod nomination_agent {
 
             // Unbond AZERO
             self.env()
-                .call_runtime(&RuntimeCall::Staking(StakingCall::Unbond {
-                    value: amount,
-                }))?;
+                .call_runtime(&RuntimeCall::Staking(StakingCall::Unbond { value: amount }))?;
 
             let withdrawn = Self::env().balance() - balance_before;
 
@@ -146,11 +140,12 @@ pub mod nomination_agent {
 
             let balance_before = Self::env().balance();
 
-            if let Err(e) = self.env().call_runtime(&RuntimeCall::Staking(
-                StakingCall::WithdrawUnbonded {
-                    num_slashing_spans: 0,
-                },
-            )) {
+            if let Err(e) =
+                self.env()
+                    .call_runtime(&RuntimeCall::Staking(StakingCall::WithdrawUnbonded {
+                        num_slashing_spans: 0,
+                    }))
+            {
                 ink::env::debug_println!("Ignoring StakingCall::WithdrawUnbonded error {:?}", e);
                 return Ok(());
             };

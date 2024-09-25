@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 mod traits;
 
-pub use traits::ShareToken;
 pub use crate::token::TokenRef;
+pub use traits::ShareToken;
 
 #[ink::contract]
 mod token {
@@ -156,7 +156,7 @@ mod token {
                 let events = self.data.transfer_from(caller, from, to, value)?;
                 self.emit_events(events);
             }
-            
+
             Ok(())
         }
 

@@ -1,4 +1,4 @@
-use ink::{primitives::AccountId};
+use ink::primitives::AccountId;
 use psp22::PSP22Error;
 
 #[ink::trait_definition]

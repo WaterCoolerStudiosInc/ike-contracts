@@ -1,6 +1,6 @@
 use crate::errors::RegistryError;
 use crate::registry::{Agent, RoleType};
-use ink::{primitives::AccountId, prelude::vec::Vec};
+use ink::{prelude::vec::Vec, primitives::AccountId};
 
 #[ink::trait_definition]
 pub trait IRegistry {

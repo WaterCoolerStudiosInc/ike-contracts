@@ -18,7 +18,8 @@ struct Artifact {
     source: Source,
 }
 pub fn hash_governance_nft() -> String {
-    let json = read_to_string("../deployments/development/governance_nft/governance_nft.json").unwrap();
+    let json =
+        read_to_string("../deployments/development/governance_nft/governance_nft.json").unwrap();
     let artifact: Artifact = from_str(&json).unwrap();
     artifact.source.hash
 }
@@ -27,7 +28,7 @@ pub fn transcoder_governance_nft() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/governance_nft/governance_nft.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn bytes_governance_nft() -> Vec<u8> {
@@ -36,7 +37,8 @@ pub fn bytes_governance_nft() -> Vec<u8> {
 }
 
 pub fn hash_governance_token() -> String {
-    let json = read_to_string("../deployments/development/governance_token/governance_token.json").unwrap();
+    let json = read_to_string("../deployments/development/governance_token/governance_token.json")
+        .unwrap();
     let artifact: Artifact = from_str(&json).expect("Should extract hash from share_token.json");
     artifact.source.hash
 }
@@ -48,7 +50,7 @@ pub fn transcoder_governance_token() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/governance_token/governance_token.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn bytes_governance_token() -> Vec<u8> {
@@ -57,7 +59,9 @@ pub fn bytes_governance_token() -> Vec<u8> {
 }
 
 pub fn hash_governance_staking() -> String {
-    let json = read_to_string("../deployments/development/governance_staking/governance_staking.json").unwrap();
+    let json =
+        read_to_string("../deployments/development/governance_staking/governance_staking.json")
+            .unwrap();
     let artifact: Artifact = from_str(&json).expect("Should extract hash from share_token.json");
     artifact.source.hash
 }
@@ -69,7 +73,7 @@ pub fn transcoder_governance_staking() -> Option<Rc<ContractMessageTranscoder>> 
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/governance_staking/governance_staking.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn bytes_governance_staking() -> Vec<u8> {
@@ -90,7 +94,7 @@ pub fn transcoder_governance() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/governance/governance.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn bytes_governance() -> Vec<u8> {
@@ -110,7 +114,8 @@ pub fn hash_share_token() -> String {
 }
 
 pub fn hash_nominator() -> String {
-    let json = read_to_string("../deployments/development/mock_nominator/mock_nominator.json").unwrap();
+    let json =
+        read_to_string("../deployments/development/mock_nominator/mock_nominator.json").unwrap();
     let artifact: Artifact = from_str(&json).expect("Should extract hash from mock_nominator.json");
     artifact.source.hash
 }
@@ -133,7 +138,7 @@ pub fn transcoder_registry() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/registry/registry.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn transcoder_share_token() -> Option<Rc<ContractMessageTranscoder>> {
@@ -141,7 +146,7 @@ pub fn transcoder_share_token() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/share_token/share_token.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn transcoder_vault() -> Option<Rc<ContractMessageTranscoder>> {
@@ -149,7 +154,7 @@ pub fn transcoder_vault() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/vault/vault.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn transcoder_nominator() -> Option<Rc<ContractMessageTranscoder>> {
@@ -157,7 +162,7 @@ pub fn transcoder_nominator() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/mock_nominator/mock_nominator.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn transcoder_multisig() -> Option<Rc<ContractMessageTranscoder>> {
@@ -165,7 +170,7 @@ pub fn transcoder_multisig() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/multisig/multisig.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 pub fn transcoder_vesting() -> Option<Rc<ContractMessageTranscoder>> {
@@ -173,7 +178,7 @@ pub fn transcoder_vesting() -> Option<Rc<ContractMessageTranscoder>> {
         ContractMessageTranscoder::load(PathBuf::from(
             "../deployments/development/vesting/vesting.json",
         ))
-            .expect("Failed to create transcoder"),
+        .expect("Failed to create transcoder"),
     ))
 }
 // Bytes for instantiating contracts

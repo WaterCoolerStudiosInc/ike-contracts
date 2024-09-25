@@ -1,17 +1,9 @@
 use crate::errors::VaultError;
 use crate::nomination_agent_utils::{
-    call_compound,
-    call_deposit,
-    call_unbond,
-    call_withdraw_unbonded,
-    query_staked_value,
+    call_compound, call_deposit, call_unbond, call_withdraw_unbonded, query_staked_value,
 };
 use ink::{
-    env::{
-        debug_println,
-        DefaultEnvironment,
-        Environment,
-    },
+    env::{debug_println, DefaultEnvironment, Environment},
     prelude::vec::Vec,
     primitives::AccountId,
     storage::Mapping,
@@ -31,7 +23,10 @@ pub const DAY: u64 = 86400 * 1000;
 pub const YEAR: u64 = DAY * 365_25 / 100; // https://docs.alephzero.org/aleph-zero/use/stake/staking-rewards
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+#[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+)]
 pub struct UnlockRequest {
     pub creation_time: Timestamp,
     pub azero: u128,
@@ -150,8 +145,8 @@ impl VaultData {
 
         let new_total_pooled = self.total_pooled + azero;
 
-        let (_pos_diff, neg_diff, _stakes, imbalances) = self
-            .get_weight_imbalances(&agents, total_weight, new_total_pooled);
+        let (_pos_diff, neg_diff, _stakes, imbalances) =
+            self.get_weight_imbalances(&agents, total_weight, new_total_pooled);
 
         // Amount to distribute to under-allocated agents
         let phase1 = if azero < neg_diff { azero } else { neg_diff };
@@ -233,8 +228,8 @@ impl VaultData {
 
         let new_total_pooled = total_pooled_ - azero;
 
-        let (pos_diff, _neg_diff, stakes, imbalances) = self
-            .get_weight_imbalances(&agents, total_weight, new_total_pooled);
+        let (pos_diff, _neg_diff, stakes, imbalances) =
+            self.get_weight_imbalances(&agents, total_weight, new_total_pooled);
 
         // Amount to withdraw from over-allocated agents
         let phase1 = if azero < pos_diff { azero } else { pos_diff };
@@ -343,7 +338,7 @@ impl VaultData {
                 Ok(compound_amount) => {
                     debug_println!("Compounded {} to agent #{}", compound_amount, i);
                     total_compounded += compound_amount;
-                },
+                }
                 Err(e) => return Err(VaultError::InternalError(e)),
             }
         }
@@ -371,7 +366,8 @@ impl VaultData {
                 self.fee_percentage as u128,
                 BIPS as u128,
             );
-            let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
+            let time_weighted_virtual_shares =
+                self.pro_rata(virtual_shares, time as u128, YEAR as u128);
 
             self.total_shares_virtual += time_weighted_virtual_shares;
             self.last_fee_update = current_time;
@@ -390,7 +386,8 @@ impl VaultData {
                 self.fee_percentage as u128,
                 BIPS as u128,
             );
-            let time_weighted_virtual_shares = self.pro_rata(virtual_shares, time as u128, YEAR as u128);
+            let time_weighted_virtual_shares =
+                self.pro_rata(virtual_shares, time as u128, YEAR as u128);
             self.total_shares_virtual + time_weighted_virtual_shares
         } else {
             // No additional fee accumulation is required

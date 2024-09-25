@@ -109,16 +109,20 @@ mod vault {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let registry_ref = RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
-                .endowment(0)
-                .code_hash(registry_code_hash)
-                .salt_bytes(now.to_le_bytes())
-                .instantiate();
-            let share_token_ref = TokenRef::new(Some(String::from("Ike Liquid Staked AZERO")), Some(String::from("sA0")))
-                .endowment(0)
-                .code_hash(share_token_hash)
-                .salt_bytes(now.to_le_bytes())
-                .instantiate();
+            let registry_ref =
+                RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
+                    .endowment(0)
+                    .code_hash(registry_code_hash)
+                    .salt_bytes(now.to_le_bytes())
+                    .instantiate();
+            let share_token_ref = TokenRef::new(
+                Some(String::from("Ike Liquid Staked AZERO")),
+                Some(String::from("sA0")),
+            )
+            .endowment(0)
+            .code_hash(share_token_hash)
+            .salt_bytes(now.to_le_bytes())
+            .instantiate();
 
             Self {
                 data: VaultData::new(
@@ -251,12 +255,18 @@ mod vault {
             let azero = self.get_azero_from_shares(shares);
 
             // Update user's unlock requests
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(caller).unwrap_or_default();
+            let mut user_unlock_requests = self
+                .data
+                .user_unlock_requests
+                .get(caller)
+                .unwrap_or_default();
             user_unlock_requests.push(UnlockRequest {
                 creation_time: now,
                 azero,
             });
-            self.data.user_unlock_requests.insert(caller, &user_unlock_requests);
+            self.data
+                .user_unlock_requests
+                .insert(caller, &user_unlock_requests);
 
             // Allocate unlock quantity across nomination pools
             self.data.delegate_unbonding(azero)?;
@@ -267,7 +277,7 @@ mod vault {
                 Self::env(),
                 Event::UnlockRequested(UnlockRequested {
                     staker: caller,
-                    unlock_id: (user_unlock_requests.len()-1) as u128,
+                    unlock_id: (user_unlock_requests.len() - 1) as u128,
                     shares,
                     azero,
                     virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
@@ -295,7 +305,8 @@ mod vault {
         fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             let now = Self::env().block_timestamp();
 
-            let mut user_unlock_requests = self.data.user_unlock_requests.get(user).unwrap_or_default();
+            let mut user_unlock_requests =
+                self.data.user_unlock_requests.get(user).unwrap_or_default();
 
             // Ensure user specified a valid unlock request index
             if unlock_id >= user_unlock_requests.len() as u64 {
@@ -312,7 +323,9 @@ mod vault {
 
             // Delete completed user unlock request
             user_unlock_requests.remove(unlock_id as usize);
-            self.data.user_unlock_requests.insert(user, &user_unlock_requests);
+            self.data
+                .user_unlock_requests
+                .insert(user, &user_unlock_requests);
 
             // Send AZERO to user
             Self::env().transfer(user, azero)?;
@@ -334,7 +347,11 @@ mod vault {
         /// This should be called instead of `redeem()` when insufficient AZERO exists in the Vault and
         /// validator(s) have unbonded AZERO which can be claimed
         #[ink(message)]
-        fn redeem_with_withdraw(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
+        fn redeem_with_withdraw(
+            &mut self,
+            user: AccountId,
+            unlock_id: u64,
+        ) -> Result<(), VaultError> {
             // Claim all unbonded AZERO into Vault
             self.data.delegate_withdraw_unbonded()?;
 
@@ -387,12 +404,7 @@ mod vault {
             self.mint_shares(shares, role_fee_to)?;
             self.data.total_shares_virtual = 0;
 
-            Self::emit_event(
-                Self::env(),
-                Event::FeesWithdrawn(FeesWithdrawn {
-                    shares,
-                }),
-            );
+            Self::emit_event(Self::env(), Event::FeesWithdrawn(FeesWithdrawn { shares }));
 
             Ok(())
         }
@@ -413,12 +425,7 @@ mod vault {
 
             ink::env::set_code_hash(&code_hash)?;
 
-            Self::emit_event(
-                Self::env(),
-                Event::NewHash(NewHash {
-                    code_hash,
-                }),
-            );
+            Self::emit_event(Self::env(), Event::NewHash(NewHash { code_hash }));
 
             Ok(())
         }
@@ -437,10 +444,7 @@ mod vault {
 
             self.data.role_set_code = None;
 
-            Self::emit_event(
-                Self::env(),
-                Event::SetHashDisabled(SetHashDisabled {}),
-            );
+            Self::emit_event(Self::env(), Event::SetHashDisabled(SetHashDisabled {}));
 
             Ok(())
         }
@@ -502,9 +506,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleAdjustFeeTransferred(RoleAdjustFeeTransferred {
-                    new_account,
-                }),
+                Event::RoleAdjustFeeTransferred(RoleAdjustFeeTransferred { new_account }),
             );
 
             Ok(())
@@ -534,9 +536,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::RoleFeeToTransferred(RoleFeeToTransferred {
-                    new_account,
-                }),
+                Event::RoleFeeToTransferred(RoleFeeToTransferred { new_account }),
             );
 
             Ok(())
@@ -572,7 +572,7 @@ mod vault {
         fn get_fee_percentage(&self) -> u16 {
             self.data.fee_percentage
         }
-        
+
         #[ink(message)]
         fn get_share_token_contract(&self) -> AccountId {
             self.data.shares_contract
@@ -605,7 +605,8 @@ mod vault {
                 // This should never happen
                 0
             } else {
-                self.data.pro_rata(shares, self.data.total_pooled, total_shares)
+                self.data
+                    .pro_rata(shares, self.data.total_pooled, total_shares)
             }
         }
 
@@ -618,7 +619,8 @@ mod vault {
         #[ink(message)]
         fn get_weight_imbalances(&self, total_pooled: u128) -> (u128, u128, Vec<u128>, Vec<i128>) {
             let (total_weight, agents) = self.data.registry_contract.get_agents();
-            self.data.get_weight_imbalances(&agents, total_weight, total_pooled)
+            self.data
+                .get_weight_imbalances(&agents, total_weight, total_pooled)
         }
     }
 }

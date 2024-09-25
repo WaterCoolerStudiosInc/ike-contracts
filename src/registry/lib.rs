@@ -183,15 +183,11 @@ pub mod registry {
 
             let nomination_agent_counter = self.nomination_agent_counter; // shadow
 
-            let agent_ref = NominationAgentRef::new(
-                self.vault,
-                admin,
-                validator,
-            )
-            .endowment(nominator_bond)
-            .code_hash(self.nomination_agent_hash)
-            .salt_bytes(nomination_agent_counter.to_le_bytes())
-            .instantiate();
+            let agent_ref = NominationAgentRef::new(self.vault, admin, validator)
+                .endowment(nominator_bond)
+                .code_hash(self.nomination_agent_hash)
+                .salt_bytes(nomination_agent_counter.to_le_bytes())
+                .instantiate();
 
             let agent_address = NominationAgentRef::to_account_id(&agent_ref);
 

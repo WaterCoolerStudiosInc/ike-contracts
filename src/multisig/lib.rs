@@ -3,8 +3,6 @@ mod traits;
 pub use crate::multisig::MultiSigRef;
 pub use traits::MultiSig;
 
-
-
 #[ink::contract]
 mod multisig {
     use core::fmt::Error;
@@ -16,7 +14,7 @@ mod multisig {
             hash::{HashOutput, Sha2x256},
             hash_encoded,
         },
-        prelude::{string::String, vec::Vec,vec},
+        prelude::{string::String, vec, vec::Vec},
         reflect::ContractEventBase,
         storage::Mapping,
     };
@@ -181,9 +179,7 @@ mod multisig {
                     self.execute_update(weight_update.accounts, weight_update.weights)
                 }
                 Action::AddValidator(validator) => self.execute_add(validator),
-                Action::RemoveValidator(validator, slash) => {
-                    self.execute_remove(validator, slash)
-                }
+                Action::RemoveValidator(validator, slash) => self.execute_remove(validator, slash),
             }
         }
     }

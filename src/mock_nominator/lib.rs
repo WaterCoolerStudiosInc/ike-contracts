@@ -45,18 +45,13 @@ mod mock_nominator {
         }
 
         #[ink(constructor, payable)]
-        pub fn new(
-            vault: AccountId,
-            admin: AccountId,
-            validator: AccountId,
-        ) -> Self {
+        pub fn new(vault: AccountId, admin: AccountId, validator: AccountId) -> Self {
             let creation_bond = Self::env().transferred_value();
 
             // Mock spending AZERO to create agent
-            Self::env().transfer(
-                AccountId::from([0u8; 32]),
-                creation_bond,
-            ).unwrap();
+            Self::env()
+                .transfer(AccountId::from([0u8; 32]), creation_bond)
+                .unwrap();
 
             Self {
                 vault,

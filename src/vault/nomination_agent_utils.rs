@@ -1,8 +1,7 @@
 use ink::{
     env::{
         call::{build_call, ExecutionInput, Selector},
-        DefaultEnvironment,
-        Environment,
+        DefaultEnvironment, Environment,
     },
     primitives::AccountId,
 };
@@ -20,7 +19,7 @@ type Balance = <DefaultEnvironment as Environment>::Balance;
 const DEPOSIT_SELECTOR: Selector = Selector::new([0, 0, 0, 1]);
 const UNBOND_SELECTOR: Selector = Selector::new([0, 0, 0, 2]);
 const WITHDRAW_SELECTOR: Selector = Selector::new([0, 0, 0, 3]);
-const COMPOUND_SELECTOR: Selector = Selector::new( [0, 0, 0, 4]);
+const COMPOUND_SELECTOR: Selector = Selector::new([0, 0, 0, 4]);
 const QUERY_STAKED_VALUE_SELECTOR: Selector = Selector::new([0, 0, 0, 12]);
 
 pub fn make_call(
@@ -39,7 +38,11 @@ pub fn call_deposit(
     nomination_agent_instance: AccountId,
     transferred_value: u128,
 ) -> Result<(), RuntimeError> {
-    make_call(nomination_agent_instance, DEPOSIT_SELECTOR, transferred_value)
+    make_call(
+        nomination_agent_instance,
+        DEPOSIT_SELECTOR,
+        transferred_value,
+    )
 }
 
 pub fn call_unbond(nomination_agent_instance: AccountId, amount: u128) -> Result<(), RuntimeError> {

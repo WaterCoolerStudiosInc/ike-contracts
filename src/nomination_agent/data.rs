@@ -50,12 +50,10 @@ pub enum StakingCall {
         value: u128,
     },
     #[codec(index = 3)]
-    WithdrawUnbonded {
-        num_slashing_spans: u32,
-    },
+    WithdrawUnbonded { num_slashing_spans: u32 },
     #[codec(index = 5)]
     Nominate {
-        targets: Vec<MultiAddress<AccountId, ()>>
+        targets: Vec<MultiAddress<AccountId, ()>>,
     },
     #[codec(index = 6)]
     Chill,

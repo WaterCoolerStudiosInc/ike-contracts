@@ -4,16 +4,10 @@ use drink::{
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
     AccountId32,
 };
-use serde::{Deserialize, Serialize};
-use std::{
-    fmt,
-    error::Error, rc::Rc
-};
 use hex_literal;
-use sp_core::{
-    Encode,
-    Pair,
-};
+use serde::{Deserialize, Serialize};
+use sp_core::{Encode, Pair};
+use std::{error::Error, fmt, rc::Rc};
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
 pub const SECOND: u64 = 1_000;
@@ -68,6 +62,8 @@ pub enum PropType {
     UpdateRejectThreshhold(u128),
     UpdateExecThreshhold(u128),
     SetCodeHash([u8; 32]),
+    UnlockTransfer(),
+    LockTransfer(),
 }
 
 impl fmt::Display for PropType {
@@ -75,12 +71,11 @@ impl fmt::Display for PropType {
         write!(f, "{:?}", self)
     }
 }
-fn sign(hash:[u8;32],pk:&str) -> [u8; 65] {
-    
+fn sign(hash: [u8; 32], pk: &str) -> [u8; 65] {
     // Use Dan's seed
     // `subkey inspect //Dan --scheme Ecdsa --output-type json | jq .secretSeed`
-    
-    let pair = sp_core::ecdsa::Pair::from_legacy_string(pk,None);
+
+    let pair = sp_core::ecdsa::Pair::from_legacy_string(pk, None);
 
     let signature = pair.sign_prehashed(&hash);
     signature.0
@@ -154,14 +149,10 @@ pub fn query_governance_get_all_proposals(
     governance: &AccountId32,
 ) -> Result<(Vec<Proposal>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(
-        governance.clone(),
-        "get_all_proposals",
-        NO_ARGS,
-        None,
-    )?;
+    sess.call_with_address(governance.clone(), "get_all_proposals", NO_ARGS, None)?;
 
-    let proposals: Result<Vec<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let proposals: Result<Vec<Proposal>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     Ok((proposals.unwrap(), sess))
 }
 pub fn query_owner(
