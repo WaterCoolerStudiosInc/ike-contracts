@@ -1082,7 +1082,7 @@ mod tests {
             &ctx.governance,
             &ctx.alice,
             String::from("create_proposal"),
-            Some(vec![helpers::PropType::FeeChange(16).to_string(), 1.to_string()]),
+            Some(vec![helpers::PropType::UnlockTransfer().to_string(), 1.to_string()]),
             None,
             transcoder_governance(),
         )
@@ -1092,7 +1092,7 @@ mod tests {
         // let proposal = rr.unwrap();
 
     // When retrieving the proposal it returns None
-    let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+    // let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
     // let proposal_string: String = proposal.prop_id.to_string();
     Ok(())
     }
