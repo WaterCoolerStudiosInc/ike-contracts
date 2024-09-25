@@ -48,6 +48,9 @@ pub mod governance {
         StakingError,
         TokenError(PSP22Error),
         InkEnvError(String),
+        TransferLockError,
+        TransferAlreadyUnlocked,
+        TransferAlreadyLocked,
     }
     impl From<InkEnvError> for GovernanceError {
         fn from(e: InkEnvError) -> Self {
@@ -88,6 +91,10 @@ pub mod governance {
         UpdateExecThreshhold(u128),
 
         SetCodeHash([u8; 32]),
+        // Unlock Transfer for governance nft
+        UnlockTransfer(),
+        // Lock Transfer for governance nft
+        LockTransfer(),
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
@@ -288,6 +295,26 @@ pub mod governance {
             ink::env::set_code_hash(&code_hash)?;
             Ok(())
         }
+        fn unlock_transfer(&self) -> Result<(), GovernanceError> {
+            let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
+            if gov_nft.is_collection_locked() == false {
+                return Err(GovernanceError::TransferAlreadyUnlocked)
+            }
+            if let Err(e) = gov_nft.unlock_transfer(){
+                return Err(GovernanceError::TransferLockError)
+            }
+            Ok(())
+        }
+        fn lock_transfer(&self) -> Result<(), GovernanceError> {
+            let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
+            if gov_nft.is_collection_locked() == true {
+                return Err(GovernanceError::TransferAlreadyLocked)
+            }
+            if let Err(e) = gov_nft.lock_transfer(){
+                return Err(GovernanceError::TransferLockError)
+            }
+            Ok(())
+        }
         /**
          // Transfer Azero from governance
         TransferFunds(TokenTransfer),
@@ -367,7 +394,11 @@ pub mod governance {
                         self.update_staking_rewards(*new_rate)?
                     }
                     PropType::SetCodeHash(code_hash) => self.set_code_internal(*code_hash)?,
-                    _ => (),
+
+                    PropType::UnlockTransfer() => self.unlock_transfer()?,
+
+                    PropType::LockTransfer() => self.lock_transfer()?,
+                    _ => ()
                 };
                 Self::emit_event(
                     Self::env(),

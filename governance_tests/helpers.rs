@@ -1,3 +1,4 @@
+
 use drink::{
     chain_api::ChainApi,
     runtime::MinimalRuntime,
@@ -41,6 +42,7 @@ pub struct Proposal {
     pub vote_start: u64,
     pub vote_end: u64,
 }
+
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
 #[cfg_attr(
     feature = "std",

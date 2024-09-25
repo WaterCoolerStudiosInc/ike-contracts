@@ -110,6 +110,11 @@ mod governance_nft {
             Ok(())
         }
 
+        #[ink(message, selector = 69)]
+        pub fn is_collection_locked(&self) -> bool {
+            self.lock_transfer
+        }
+
         #[ink(message, selector = 7)]
         pub fn transfer_from(
             &mut self,
