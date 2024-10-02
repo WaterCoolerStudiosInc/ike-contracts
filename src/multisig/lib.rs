@@ -152,14 +152,14 @@ mod multisig {
         }
         fn execute_add(&self, validator: AccountId) -> Result<(), MultiSigError> {
             let mut whitelist: contract_ref!(ValidatorWhitelist) = self.whitelist.into();
-            if let Err(e) = whitelist.init_add_validator(validator) {
+            if let Err(_) = whitelist.init_add_validator(validator) {
                 return Err(MultiSigError::VaultFailure);
             }
             Ok(())
         }
         fn execute_remove(&self, validator: AccountId, slash: bool) -> Result<(), MultiSigError> {
             let mut whitelist: contract_ref!(ValidatorWhitelist) = self.whitelist.into();
-            if let Err(e) = whitelist.remove_validator_by_agent(validator, slash) {
+            if let Err(_) = whitelist.remove_validator_by_agent(validator, slash) {
                 return Err(MultiSigError::VaultFailure);
             }
             Ok(())
@@ -170,7 +170,7 @@ mod multisig {
             weights: Vec<u64>,
         ) -> Result<(), MultiSigError> {
             let mut registry: contract_ref!(Registry) = self.registry.into();
-            if let Err(e) = registry.update_agents(agents, weights) {
+            if let Err(_) = registry.update_agents(agents, weights) {
                 return Err(MultiSigError::RegistryFailure);
             }
             Ok(())
@@ -287,7 +287,7 @@ mod multisig {
                 .unwrap();
             let caller = Self::env().caller();
             let existing = self.proposals.get(hash);
-            let mut signers = self.signers.clone();
+            let signers = self.signers.clone();
 
             if !signers.contains(&caller) {
                 return Err(MultiSigError::Unauthorized);
@@ -358,7 +358,6 @@ mod multisig {
             }
             let mut _signers = self.signers.clone();
             let action_hash = self.hash_execution(action.clone(), nonce.clone()).unwrap();
-            let count = 0;
             for signature in signatures {
                 let _signer = self.recover_signer(&action_hash, signature);
                 if !_signers.contains(&_signer) {

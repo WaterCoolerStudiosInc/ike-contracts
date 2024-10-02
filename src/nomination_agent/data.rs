@@ -24,32 +24,7 @@ pub enum RewardDestination<_0> {
     #[codec(index = 1)]
     Stash,
     #[codec(index = 2)]
-<<<<<<< HEAD
-    Remove,
-}
-#[derive(Clone, PartialEq, scale::Encode, scale::Decode,Debug)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
-pub enum PoolState {
-    #[codec(index = 0)]
-    Open,
-    #[codec(index = 1)]
-    Blocked,
-    #[codec(index = 2)]
-    Destroying,
-}
-#[derive(scale::Encode)]
-pub enum BondExtra {
-    FreeBalance { balance: u128 },
-}
-#[derive(scale::Encode)]
-pub enum NominationCall {
-    #[codec(index = 1)]
-    BondExtra { extra: BondExtra },
-    #[codec(index = 2)]
-    ClaimPayout {},
-=======
     Controller,
->>>>>>> main
     #[codec(index = 3)]
     Account(_0),
     #[codec(index = 4)]

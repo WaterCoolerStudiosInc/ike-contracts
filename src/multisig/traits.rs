@@ -1,5 +1,4 @@
 use ink::{primitives::AccountId};
-use psp22::PSP22Error;
 use crate::multisig::MultiSigError;
 
 #[ink::trait_definition]

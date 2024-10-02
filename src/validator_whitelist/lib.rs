@@ -9,21 +9,21 @@ mod validator_whitelist {
         contract_ref,
         env::{
             call::{build_call, ExecutionInput, Selector},
-            debug_println, DefaultEnvironment,
+            DefaultEnvironment,
         },
-        prelude::{string::String, vec::Vec},
+        prelude::vec::Vec,
         storage::Mapping,
     };
 
-    use psp22::{PSP22Error, PSP22};
-    use psp34::{Id, PSP34Error, PSP34};
-    use registry::{registry::RegistryError, Registry};
+    use psp22::PSP22Error;
+    use psp34::PSP34Error;
+    use registry::Registry;
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
-    struct Validator {
+    pub struct Validator {
         validator: AccountId,
         admin: AccountId,
         stake: u128,
@@ -118,7 +118,7 @@ mod validator_whitelist {
         */
         fn call_remove_validator(&self, agent: AccountId) -> Result<(), WhitelistError> {
             let mut registry: contract_ref!(Registry) = self.registry.into();
-            if let Err(e) = registry.remove_agent(agent) {
+            if let Err(_) = registry.remove_agent(agent) {
                 return Err(WhitelistError::RegistryError);
             }
             Ok(())
@@ -217,7 +217,7 @@ mod validator_whitelist {
                 .enumerate()
                 .find(|p| p.1.validator == validator);
 
-            if let Some(_validator) = (v) {
+            if let Some(_validator) = v {
                 let new_agent = self
                     .call_add_agent(
                         _validator.1.clone().admin,
@@ -237,8 +237,8 @@ mod validator_whitelist {
         #[ink(message)]
         pub fn reject_application(
             &mut self,
-            validator: AccountId,
-            slash: bool,
+            _validator: AccountId,
+            _slash: bool,
         ) -> Result<(), WhitelistError> {
             Ok(())
         }

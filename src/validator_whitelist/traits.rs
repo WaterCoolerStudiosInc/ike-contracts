@@ -1,5 +1,5 @@
 use crate::validator_whitelist::WhitelistError;
-use ink::{prelude::vec::Vec, primitives::AccountId};
+use ink::primitives::AccountId;
 
 #[ink::trait_definition]
 pub trait ValidatorWhitelist {

@@ -23,7 +23,7 @@ pub use traits::GovernanceNFT;
 #[ink::contract]
 mod governance_nft {
     use ink::{
-        env::{debug_println, DefaultEnvironment},
+        env::debug_println,
         prelude::{string::String, vec::Vec},
         storage::Mapping,
     };

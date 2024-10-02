@@ -9,13 +9,13 @@ mod staking {
     use ink::ToAccountId;
     use ink::{
         codegen::EmitEvent,
-        env::{debug_println, DefaultEnvironment},
-        prelude::{string::String, vec::Vec},
+        env::debug_println,
+        prelude::vec::Vec,
         storage::Mapping,
     };
-    use ink::{contract_ref, env::call};
+    use ink::contract_ref;
     use psp22::{PSP22Error, PSP22};
-    use psp34::{Id, PSP34Error, PSP34};
+    use psp34::PSP34Error;
 
     use governance_nft::GovernanceNFTRef;
 
@@ -277,7 +277,7 @@ mod staking {
             let caller = Self::env().caller();
             let data = self.nft.get_governance_data(token_id);
 
-            self.update_stake_accumulation(now);
+            self.update_stake_accumulation(now)?;
 
             let last_claim = self
                 .last_reward_claim

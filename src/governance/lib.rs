@@ -2,11 +2,7 @@
 
 #[ink::contract]
 pub mod governance {
-
-    use hex::*;
-
     use vault::traits::IVault;
-
     use governance_nft::{GovernanceNFT, GovernanceNFTRef};
     use governance_staking::{Staking, StakingRef};
     use ink::{
@@ -14,8 +10,7 @@ pub mod governance {
         contract_ref,
         env::{
             debug_println,
-            hash::{HashOutput, Sha2x256},
-            hash_encoded, Error as InkEnvError,
+            Error as InkEnvError,
         },
         prelude::{format, string::String, vec::Vec},
         reflect::ContractEventBase,
@@ -26,7 +21,7 @@ pub mod governance {
     use multisig::{MultiSig, MultiSigRef};
 
     use psp22::{PSP22Error, PSP22};
-    use psp34::{Id, PSP34};
+    use psp34::PSP34;
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -201,8 +196,8 @@ pub mod governance {
             update > MIN_VOTING_PERIOD && update < MAX_VOTING_PERIOD
         }
         fn check_ownership(&self, id: u128, user: AccountId) -> bool {
-            let mut nft: contract_ref!(PSP34) = self.gov_nft.into();
-            let owner = nft.owner_of(psp34::Id::U128((id))).unwrap();
+            let nft: contract_ref!(PSP34) = self.gov_nft.into();
+            let owner = nft.owner_of(psp34::Id::U128(id)).unwrap();
             owner == user
         }
         fn query_weight(&self, id: u128) -> u128 {
@@ -222,23 +217,23 @@ pub mod governance {
                 _ => ProposalState::Expired,
             }
         }
-        fn generate_proposal_id(&self, time_stamp: u64, creator_id: u128) -> String {
-            let encodable = (time_stamp, creator_id);
-            let mut output = <Sha2x256 as HashOutput>::Type::default();
-            hash_encoded::<Sha2x256, _>(&encodable, &mut output);
-            String::from_utf8(output.to_vec()).unwrap()
-        }
+        // fn generate_proposal_id(&self, time_stamp: u64, creator_id: u128) -> String {
+        //     let encodable = (time_stamp, creator_id);
+        //     let mut output = <Sha2x256 as HashOutput>::Type::default();
+        //     hash_encoded::<Sha2x256, _>(&encodable, &mut output);
+        //     String::from_utf8(output.to_vec()).unwrap()
+        // }
         fn update_vault_fee(&self, new_fee: &u16) -> Result<(), GovernanceError> {
             let mut vault: contract_ref!(IVault) = self.vault.into();
-            if let Err(e) = vault.adjust_fee(*new_fee) {
+            if let Err(_) = vault.adjust_fee(*new_fee) {
                 return Err(GovernanceError::VaultFailure);
             }
             Ok(())
         }
         fn update_incentive(&self, new_incentive: &u16) -> Result<(), GovernanceError> {
             debug_println!("{}{:?}", "updating incentive", new_incentive);
-            let mut vault: contract_ref!(IVault) = self.vault.into();
-            /*if let Err(e) = vault.adjust_incentive(*new_incentive) {
+            // let mut vault: contract_ref!(IVault) = self.vault.into();
+            /*if let Err(_) = vault.adjust_incentive(*new_incentive) {
                 return Err(GovernanceError::VaultFailure);
             }
             */
@@ -259,14 +254,14 @@ pub mod governance {
         }
         fn remove_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(e) = multisig.remove_signer(*member) {
+            if let Err(_) = multisig.remove_signer(*member) {
                 return Err(GovernanceError::MultiSigError);
             }
             Ok(())
         }
         fn add_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(e) = multisig.remove_signer(*member) {
+            if let Err(_) = multisig.remove_signer(*member) {
                 return Err(GovernanceError::MultiSigError);
             }
             Ok(())
@@ -274,7 +269,7 @@ pub mod governance {
 
         fn change_multisig_threshold(&self, update: u16) -> Result<(), GovernanceError> {
             let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(e) = multisig.update_threshold(update) {
+            if let Err(_) = multisig.update_threshold(update) {
                 return Err(GovernanceError::MultiSigError);
             }
             Ok(())
@@ -285,14 +280,14 @@ pub mod governance {
             new_member: AccountId,
         ) -> Result<(), GovernanceError> {
             let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(e) = multisig.replace_signer(*member, new_member) {
+            if let Err(_) = multisig.replace_signer(*member, new_member) {
                 return Err(GovernanceError::MultiSigError);
             }
             Ok(())
         }
         fn update_staking_rewards(&self, new_reward: u128) -> Result<(), GovernanceError> {
             let mut staking: contract_ref!(Staking) = self.staking.into();
-            if let Err(e) = staking.update_rewards_rate(new_reward) {
+            if let Err(_) = staking.update_rewards_rate(new_reward) {
                 return Err(GovernanceError::StakingError);
             }
             Ok(())
@@ -311,7 +306,7 @@ pub mod governance {
             to: AccountId,
             amount: u128,
         ) -> Result<(), GovernanceError> {
-            if let Err(e) = Self::env().transfer(to, amount) {
+            if let Err(_) = Self::env().transfer(to, amount) {
                 return Err(GovernanceError::TransferError);
             }
             Ok(())
@@ -363,11 +358,11 @@ pub mod governance {
         fn handle_pro_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
             if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
                 match &self.proposals[index].prop_type {
-                    PropType::TransferFunds(TokenTransfer) => self.transfer_psp22_from(
-                        TokenTransfer.token,
+                    PropType::TransferFunds(token_transfer) => self.transfer_psp22_from(
+                        token_transfer.token,
                         &Self::env().account_id(),
-                        &TokenTransfer.to,
-                        TokenTransfer.amount,
+                        &token_transfer.to,
+                        token_transfer.amount,
                     )?,
                     PropType::NativeTokenTransfer(to, funds) => {
                         self.transfer_native_funds(*to, *funds)?
@@ -404,7 +399,6 @@ pub mod governance {
                         self.update_staking_rewards(*new_rate)?
                     }
                     PropType::SetCodeHash(code_hash) => self.set_code_internal(*code_hash)?,
-                    _ => return Err(GovernanceError::InvalidInput),
                 };
                 Self::emit_event(
                     Self::env(),

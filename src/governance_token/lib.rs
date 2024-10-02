@@ -19,10 +19,6 @@ mod token {
         
         decimals: u8,
     }
-    pub struct LastReceived{
-        amount:u128,
-        timestamp:u64
-    }
     impl Token {
         #[ink(constructor)]
         pub fn new() -> Self {
