@@ -49,6 +49,7 @@ mod governance_nft {
         admin: AccountId,
         mint_count: u128,
         token_governance_data: Mapping<u128, GovernanceData>,
+        lock_transfer: bool,
     }
 
     impl GovernanceNFT {
@@ -60,6 +61,7 @@ mod governance_nft {
                 admin: _admin,
                 mint_count: 0_u128,
                 token_governance_data: Mapping::default(), // (8)
+                lock_transfer: true,
             }
         }
 
@@ -89,6 +91,30 @@ mod governance_nft {
                 }
             }
         }
+
+        #[ink(message)]
+        pub fn lock_transfer(&mut self) -> Result<(), PSP34Error> {
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
+            self.lock_transfer = true;
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn unlock_transfer(&mut self) -> Result<(), PSP34Error> {
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
+            self.lock_transfer = false;
+            Ok(())
+        }
+
+        #[ink(message, selector = 69)]
+        pub fn is_collection_locked(&self) -> bool {
+            self.lock_transfer
+        }
+
         #[ink(message, selector = 7)]
         pub fn transfer_from(
             &mut self,
@@ -98,6 +124,9 @@ mod governance_nft {
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
             let events = self.data.transfer(from, to, id, data)?;
+            if self.lock_transfer == true {
+                return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
+            }
             self.emit_events(events);
             Ok(())
         }
@@ -248,6 +277,9 @@ mod governance_nft {
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
             let events = self.data.transfer(self.env().caller(), to, id, data)?;
+            if self.lock_transfer == true {
+                return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
+            }
             self.emit_events(events);
             Ok(())
         }
