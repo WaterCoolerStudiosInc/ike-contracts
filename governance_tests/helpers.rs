@@ -80,7 +80,14 @@ impl fmt::Display for Vote {
 }
 impl fmt::Display for PropType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            PropType::NativeTokenTransfer(address,amount) => write!(f, "NativeTokenTransfer({},{})", address,amount),
+            PropType::ReplaceCouncilMember(address1,address2)=>write!(f, "ReplaceCouncilMember({},{})", address1,address2)
+            PropType::RemoveCouncilMember(address)=>write!(f,"RemoveCouncilMember({})",address)
+            PropType::AddCouncilMember(address)=>write!(f,"AddCouncilMember({})",address)
+             _ =>write!(f, "{:?}", self)
+        }
+        
     }
 }
 fn sign(hash: [u8; 32], pk: &str) -> [u8; 65] {

@@ -796,6 +796,7 @@ mod tests {
     fn vault_fee_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+        println!("{:?}",helpers::PropType::FeeChange(2333_u16).to_string());
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
