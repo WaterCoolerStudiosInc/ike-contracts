@@ -63,6 +63,8 @@ pub enum PropType {
     UpdateRejectThreshhold(u128),
     UpdateExecThreshhold(u128),
     SetCodeHash([u8; 32]),
+    UnlockTransfer(),
+    LockTransfer(),
 }
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
 #[cfg_attr(
