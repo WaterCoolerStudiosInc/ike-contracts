@@ -13,6 +13,12 @@ pub trait GovernanceNFT{
     fn increment_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>;
     #[ink(message, selector = 77)]
     fn decrement_weight(&mut self,id:u128,weight:u128) -> Result<(), PSP34Error>;
+    #[ink(message)]
+    fn unlock_transfer(&mut self) -> Result<(), PSP34Error>;
+    #[ink(message)]
+    fn lock_transfer(&mut self) -> Result<(), PSP34Error>;
+    #[ink(message, selector = 69)]
+    fn is_collection_locked(&self) -> bool;
     #[ink(message, selector = 17)]
     fn transfer_from(
         &mut self,
