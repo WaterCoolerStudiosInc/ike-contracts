@@ -16,7 +16,7 @@
     "@polkadot/util": "12.6.2",
     "@scio-labs/use-inkathon": "0.10.0",
     "dotenv": "16.4.5",
-    "ts-node": "10.9.2",
+    "ts-node": "^10.9.2",
     "typescript": "5.4.5"
   },
   "files": [
@@ -25,5 +25,8 @@
     "deployments/**/share_token/**/*",
     "deployments/**/vault/**/*",
     "!deployments/development/**/*"
-  ]
+  ],
+  "dependencies": {
+    "@water-cooler-studios/ike-contracts": "^0.1.0"
+  }
 }

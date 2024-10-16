@@ -22,7 +22,7 @@ async function main() {
   const { api, chain, account } = initParams;
   const gtoken_data = await getDeploymentData("governance_token");
   const governance = await getDeploymentData("governance");
-
+  console.log('===== Contract Deployment =====')
   const gtoken = await deployContract(
     api,
     account,
@@ -34,6 +34,7 @@ async function main() {
   const multisig = await getDeploymentData("multisig");
   const gov_staking = await getDeploymentData("governance_staking");
   const gov_nft = await getDeploymentData("governance_nft");
+  console.log('===== MultiSig Deploy Hash =====')
   await deployContract(
     api,
     account,
@@ -42,6 +43,7 @@ async function main() {
     "deploy_hash",
     []
   );
+  console.log('===== Staking Deploy Hash =====')
   await deployContract(
     api,
     account,
@@ -50,6 +52,7 @@ async function main() {
     "governance_staking",
     []
   );
+  console.log('===== NFT Deploy Hash =====')
   await deployContract(
     api,
     account,
@@ -64,16 +67,32 @@ async function main() {
   const reject_threshold = 10000;
   const acc_threshold = 1000000;
   const REWARDS_PER_SECOND = 100000;
-  await deployContract(api, account, governance.abi, governance.wasm, "new", [
-    vault.address,
-    registry.address,
-    gtoken.address,
-    multisig.abi.source.hash,
-    gov_nft.abi.source.hash,
-    gov_staking.abi.source.hash,
-    exec_threshold,
-    reject_threshold,
-    acc_threshold,
-    REWARDS_PER_SECOND,
-  ]);
+  console.log('===== GOVERNANCE CONTRACT DEPLOY =====')
+  let result = await deployContract(
+    api,
+    account,
+    governance.abi,
+    governance.wasm,
+    "new",
+    [
+      vault.address,
+      registry.address,
+      gtoken.address,
+      multisig.abi.source.hash,
+      gov_nft.abi.source.hash,
+      gov_staking.abi.source.hash,
+      exec_threshold,
+      reject_threshold,
+      acc_threshold,
+      REWARDS_PER_SECOND,
+    ]
+  );
+  console.log(result);
 }
+
+main()
+  .catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+  .finally(() => process.exit(0))

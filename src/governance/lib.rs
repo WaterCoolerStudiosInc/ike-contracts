@@ -2,21 +2,18 @@
 
 #[ink::contract]
 pub mod governance {
-    use vault::traits::IVault;
     use governance_nft::{GovernanceNFT, GovernanceNFTRef};
     use governance_staking::{Staking, StakingRef};
     use ink::{
         codegen::EmitEvent,
         contract_ref,
-        env::{
-            debug_println,
-            Error as InkEnvError,
-        },
+        env::{debug_println, Error as InkEnvError},
         prelude::{format, string::String, vec::Vec},
         reflect::ContractEventBase,
         storage::Mapping,
         ToAccountId,
     };
+    use vault::traits::IVault;
 
     use multisig::{MultiSig, MultiSigRef};
 
@@ -59,7 +56,7 @@ pub mod governance {
     )]
     pub enum PropType {
         // Transfer Azero from governance
-        TransferFunds(TokenTransfer),
+        TransferFunds(AccountId, u128, AccountId),
         // Transfer psp22 token from governance
         NativeTokenTransfer(AccountId, u128),
         // update tokens per second for staker in staking contract
@@ -268,7 +265,7 @@ pub mod governance {
         }
         fn add_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(_) = multisig.remove_signer(*member) {
+            if let Err(_) = multisig.add_signer(*member) {
                 return Err(GovernanceError::MultiSigError);
             }
             Ok(())
@@ -326,20 +323,20 @@ pub mod governance {
         fn unlock_transfer(&self) -> Result<(), GovernanceError> {
             let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
             if gov_nft.is_collection_locked() == false {
-                return Err(GovernanceError::TransferAlreadyUnlocked)
+                return Err(GovernanceError::TransferAlreadyUnlocked);
             }
-            if let Err(e) = gov_nft.unlock_transfer(){
-                return Err(GovernanceError::TransferLockError)
+            if let Err(e) = gov_nft.unlock_transfer() {
+                return Err(GovernanceError::TransferLockError);
             }
             Ok(())
         }
         fn lock_transfer(&self) -> Result<(), GovernanceError> {
             let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
             if gov_nft.is_collection_locked() == true {
-                return Err(GovernanceError::TransferAlreadyLocked)
+                return Err(GovernanceError::TransferAlreadyLocked);
             }
-            if let Err(e) = gov_nft.lock_transfer(){
-                return Err(GovernanceError::TransferLockError)
+            if let Err(e) = gov_nft.lock_transfer() {
+                return Err(GovernanceError::TransferLockError);
             }
             Ok(())
         }
@@ -386,12 +383,9 @@ pub mod governance {
         fn handle_pro_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
             if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
                 match &self.proposals[index].prop_type {
-                    PropType::TransferFunds(token_transfer) => self.transfer_psp22_from(
-                        token_transfer.token,
-                        &Self::env().account_id(),
-                        &token_transfer.to,
-                        token_transfer.amount,
-                    )?,
+                    PropType::TransferFunds(token, amount, to) => {
+                        self.transfer_psp22_from(*token, &Self::env().account_id(), to, *amount)?
+                    }
                     PropType::NativeTokenTransfer(to, funds) => {
                         self.transfer_native_funds(*to, *funds)?
                     }
@@ -557,25 +551,25 @@ pub mod governance {
             self.staking
         }
         #[ink(message)]
-        pub fn get_voting_delay(&self)->u64{
+        pub fn get_voting_delay(&self) -> u64 {
             self.voting_delay
         }
         #[ink(message)]
-        pub fn get_voting_period(&self)->u64{
+        pub fn get_voting_period(&self) -> u64 {
             self.voting_period
         }
         #[ink(message)]
-        pub fn get_execution_threshold(&self)->u128{
+        pub fn get_execution_threshold(&self) -> u128 {
             self.execution_threshold
         }
 
         #[ink(message)]
-        pub fn get_rejection_threshold(&self)->u128{
+        pub fn get_rejection_threshold(&self) -> u128 {
             self.rejection_threshold
         }
 
         #[ink(message)]
-        pub fn get_acceptance_threshold(&self)->u128{
+        pub fn get_acceptance_threshold(&self) -> u128 {
             self.acceptance_threshold
         }
         #[ink(message)]
@@ -680,7 +674,7 @@ pub mod governance {
                 Self::env(),
                 Event::ProposlCreated(ProposlCreated { proposal: new_prop }),
             );
-            
+
             Ok(())
         }
 

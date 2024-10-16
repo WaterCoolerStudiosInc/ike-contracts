@@ -1144,18 +1144,19 @@ mod tests {
             amount: u128,
             to: AccountId,
         } */
-        let transfer = helpers::TokenTransfer {
+        /*let transfer = helpers::TokenTransfer {
             token: ctx.gov_token,
             amount: (TOTAL_SUPPLY / 50),
             to: ctx.dave,
         };
+        **/
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
             String::from("create_proposal"),
             Some(vec![
-                helpers::PropType::TransferFunds(transfer).to_string(),
+                helpers::PropType::TransferFunds(ctx.gov_token,TOTAL_SUPPLY / 50,ctx.dave).to_string(),
                 1.to_string(),
             ]),
             None,

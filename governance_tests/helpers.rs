@@ -48,7 +48,7 @@ pub struct Proposal {
     derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
 )]
 pub enum PropType {
-    TransferFunds(TokenTransfer),
+    TransferFunds(AccountId, u128, AccountId),
     NativeTokenTransfer(AccountId, u128),
     ChangeStakingRewardRate(u128),
     AddCouncilMember(AccountId),
@@ -83,10 +83,11 @@ impl fmt::Display for Vote {
 impl fmt::Display for PropType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            PropType::TransferFunds(token,amount,recipient)=>write!(f, "TransferFunds({},{},{})",token,amount,recipient),
             PropType::NativeTokenTransfer(address,amount) => write!(f, "NativeTokenTransfer({},{})", address,amount),
-            PropType::ReplaceCouncilMember(address1,address2)=>write!(f, "ReplaceCouncilMember({},{})", address1,address2)
-            PropType::RemoveCouncilMember(address)=>write!(f,"RemoveCouncilMember({})",address)
-            PropType::AddCouncilMember(address)=>write!(f,"AddCouncilMember({})",address)
+            PropType::ReplaceCouncilMember(address1,address2)=>write!(f, "ReplaceCouncilMember({},{})", address1,address2),
+            PropType::RemoveCouncilMember(address)=>write!(f,"RemoveCouncilMember({})",address),
+            PropType::AddCouncilMember(address)=>write!(f,"AddCouncilMember({})",address),
              _ =>write!(f, "{:?}", self)
         }
         
