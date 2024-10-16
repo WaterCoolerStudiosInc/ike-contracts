@@ -68,6 +68,9 @@ pub trait IVault {
     fn get_role_set_code(&self) -> Option<AccountId>;
 
     #[ink(message)]
+    fn transfer_role_set_code(&mut self, new_account: AccountId) -> Result<(), VaultError>;
+
+    #[ink(message)]
     fn get_total_pooled(&self) -> Balance;
 
     #[ink(message)]

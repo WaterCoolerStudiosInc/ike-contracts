@@ -552,6 +552,77 @@ mod tests {
         assert_eq!(fee_to, ctx.charlie);
     }
     #[test]
+    fn test_vault_transfer_role_set_code_panic_because_caller_restricted() {
+        let ctx = setup().unwrap();
+        match helpers::call_function(
+            ctx.sess,
+            &ctx.vault,
+            &ctx.alice, // not bob
+            String::from("IVault::transfer_role_set_code"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        ) {
+            Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_vault_disable_set_code_flow() {
+        let ctx = setup().unwrap();
+
+        let (set_code, sess) = helpers::get_role_set_code(ctx.sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, Some(ctx.bob.clone()));
+
+        let sess = helpers::call_function(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            String::from("IVault::disable_set_code"),
+            None,
+            None,
+            helpers::transcoder_vault(),
+        ).unwrap();
+
+        let (set_code, sess) = helpers::get_role_set_code(sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, None);
+
+        match helpers::call_function(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            String::from("IVault::transfer_role_set_code"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        ) {
+            Ok(_) => panic!("Should panic because role is disabled"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_vault_transfer_role_set_code_flow() {
+        let ctx = setup().unwrap();
+
+        let (set_code, sess) = helpers::get_role_set_code(ctx.sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, Some(ctx.bob.clone()));
+
+        // Transfer role to Charlie
+        let sess = helpers::call_function(
+            sess,
+            &ctx.vault,
+            &set_code.unwrap(),
+            String::from("IVault::transfer_role_set_code"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        )
+            .unwrap();
+
+        let (set_code, _sess) = helpers::get_role_set_code(sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, Some(ctx.charlie.clone()));
+    }
+    #[test]
     fn test_nominator_add_agent_role_flow() {
         let ctx = setup().unwrap();
 
