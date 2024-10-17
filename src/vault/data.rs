@@ -67,7 +67,7 @@ pub struct VaultData {
 
     /// token contract used for representing protocol staked AZERO ownership
     pub shares_contract: AccountId,
-    /// registry contract used for tracking nominator pools and weights
+    /// registry contract used for tracking agents and weights
     pub registry_contract: RegistryRef,
 }
 
@@ -138,7 +138,7 @@ impl VaultData {
 
     /// Deposits a given amount to nominator agents splitting deposits by nominator weights and stake imbalances
     ///
-    /// Uses a weighting algorithm that prioritizes negatively imbalanced (under-allocated) pools.
+    /// Uses a weighting algorithm that prioritizes negatively imbalanced (under-allocated) agents.
     /// Phase1: The amount is split among negatively imbalanced nodes according to their proportion of the total imbalance.
     /// Phase2: If the deposit amount is more than the negative imbalance, the remainder is split according to nominator weight proportions.
     pub fn delegate_bonding(&mut self, azero: Balance) -> Result<(), VaultError> {
@@ -221,9 +221,9 @@ impl VaultData {
         Ok(())
     }
 
-    /// Unlocks a given amount of staked AZERO from the nominator pools
+    /// Unlocks a given amount of staked AZERO
     ///
-    /// Uses a weighting algorithm that prioritizes positively imbalanced (over-allocated) pools.
+    /// Uses a weighting algorithm that prioritizes positively imbalanced (over-allocated) agents.
     /// Phase1: The amount is split among positively imbalanced nodes according to their proportion of the total imbalance.
     /// Phase2: If the unlock amount is more than the positive imbalance, the remainder is split according to nominator stake proportions.
     pub fn delegate_unbonding(&mut self, azero: Balance) -> Result<(), VaultError> {
