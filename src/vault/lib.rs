@@ -87,11 +87,15 @@ mod vault {
         new_account: AccountId,
     }
     #[ink(event)]
-    pub struct NewHash {
+    pub struct RoleSetCodeTransferred {
+        new_account: AccountId,
+    }
+    #[ink(event)]
+    pub struct NewCodeHash {
         code_hash: [u8; 32],
     }
     #[ink(event)]
-    pub struct SetHashDisabled {}
+    pub struct SetCodeDisabled {}
 
     #[ink(storage)]
     pub struct Vault {
@@ -277,10 +281,10 @@ mod vault {
             Ok(())
         }
 
-        /// Attempts to claim unbonded AZERO from all validators
+        /// Attempts to claim unbonded AZERO from specified agents
         #[ink(message)]
-        fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError> {
-            self.data.delegate_withdraw_unbonded()?;
+        fn delegate_withdraw_unbonded(&mut self, agents: Vec<AccountId>) -> Result<(), VaultError> {
+            self.data.delegate_withdraw_unbonded(agents)?;
 
             Ok(())
         }
@@ -336,7 +340,7 @@ mod vault {
         #[ink(message)]
         fn redeem_with_withdraw(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             // Claim all unbonded AZERO into Vault
-            self.data.delegate_withdraw_unbonded()?;
+            self.data.delegate_withdraw_unbonded_all()?;
 
             self.redeem(user, unlock_id)?;
 
@@ -415,7 +419,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::NewHash(NewHash {
+                Event::NewCodeHash(NewCodeHash {
                     code_hash,
                 }),
             );
@@ -423,6 +427,10 @@ mod vault {
             Ok(())
         }
 
+        /// Removes the ability to "upgrade" the contract via `self.set_code()`
+        ///
+        /// The set code role (`role_set_code`) must be set
+        /// Caller must have the set code role (`role_set_code`)
         #[ink(message)]
         fn disable_set_code(&mut self) -> Result<(), VaultError> {
             let caller = Self::env().caller();
@@ -439,7 +447,7 @@ mod vault {
 
             Self::emit_event(
                 Self::env(),
-                Event::SetHashDisabled(SetHashDisabled {}),
+                Event::SetCodeDisabled(SetCodeDisabled {}),
             );
 
             Ok(())
@@ -545,6 +553,34 @@ mod vault {
         #[ink(message)]
         fn get_role_set_code(&self) -> Option<AccountId> {
             self.data.role_set_code
+        }
+
+        /// Transfers set code role to a new account
+        ///
+        /// The set code role (`role_set_code`) must be set
+        /// Caller must have the set code role (`role_set_code`)
+        #[ink(message)]
+        fn transfer_role_set_code(&mut self, new_account: AccountId) -> Result<(), VaultError> {
+            let caller = Self::env().caller();
+            let role_set_code = self.data.role_set_code; // shadow
+
+            if role_set_code.is_none() || caller != role_set_code.unwrap() {
+                return Err(VaultError::InvalidPermissions);
+            }
+            if role_set_code.unwrap() == new_account {
+                return Err(VaultError::NoChange);
+            }
+
+            self.data.role_set_code = Some(new_account);
+
+            Self::emit_event(
+                Self::env(),
+                Event::RoleSetCodeTransferred(RoleSetCodeTransferred {
+                    new_account,
+                }),
+            );
+
+            Ok(())
         }
 
         /// Returns the total amount of bonded AZERO

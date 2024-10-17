@@ -23,6 +23,8 @@ pub mod registry {
         }
     }
 
+    pub const MAX_AGENTS: usize = 20;
+
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -179,6 +181,10 @@ pub mod registry {
 
             if caller != self.roles.get(RoleType::AddAgent).unwrap().account {
                 return Err(RegistryError::InvalidPermissions);
+            }
+
+            if self.agents.len() >= MAX_AGENTS {
+                return Err(RegistryError::TooManyAgents);
             }
 
             let nomination_agent_counter = self.nomination_agent_counter; // shadow

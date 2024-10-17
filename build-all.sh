@@ -14,7 +14,7 @@ CP_CMD=$(command -v cp &> /dev/null && echo "cp" || echo "copy")
 
 # Determine all contracts under `$CONTRACTS_DIR`
 contracts=($(find $CONTRACTS_DIR -maxdepth 1 -type d -exec test -f {}/Cargo.toml \; -print | xargs -n 1 basename))
-echo $contracts
+
 # Build all contracts
 for i in "${contracts[@]}"
 do

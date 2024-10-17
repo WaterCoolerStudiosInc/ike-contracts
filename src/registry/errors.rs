@@ -4,7 +4,7 @@ use ink::prelude::string::String;
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum RegistryError {
     InvalidInput,
-    DuplicateAgent,
+    TooManyAgents,
     AgentNotFound,
     ActiveAgent,
     InvalidPermissions,

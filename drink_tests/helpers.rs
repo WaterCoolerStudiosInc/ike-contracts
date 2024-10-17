@@ -265,6 +265,15 @@ pub fn get_role_fee_to(
     let fee_to: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((fee_to.unwrap(), sess))
 }
+pub fn get_role_set_code(
+    mut sess: Session<MinimalRuntime>,
+    vault: &AccountId32,
+) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(vault.clone(), "IVault::get_role_set_code", NO_ARGS, None)?;
+
+    let set_code: Result<Option<AccountId32>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((set_code.unwrap(), sess))
+}
 pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId32,

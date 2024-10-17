@@ -552,6 +552,77 @@ mod tests {
         assert_eq!(fee_to, ctx.charlie);
     }
     #[test]
+    fn test_vault_transfer_role_set_code_panic_because_caller_restricted() {
+        let ctx = setup().unwrap();
+        match helpers::call_function(
+            ctx.sess,
+            &ctx.vault,
+            &ctx.alice, // not bob
+            String::from("IVault::transfer_role_set_code"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        ) {
+            Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_vault_disable_set_code_flow() {
+        let ctx = setup().unwrap();
+
+        let (set_code, sess) = helpers::get_role_set_code(ctx.sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, Some(ctx.bob.clone()));
+
+        let sess = helpers::call_function(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            String::from("IVault::disable_set_code"),
+            None,
+            None,
+            helpers::transcoder_vault(),
+        ).unwrap();
+
+        let (set_code, sess) = helpers::get_role_set_code(sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, None);
+
+        match helpers::call_function(
+            sess,
+            &ctx.vault,
+            &ctx.bob,
+            String::from("IVault::transfer_role_set_code"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        ) {
+            Ok(_) => panic!("Should panic because role is disabled"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_vault_transfer_role_set_code_flow() {
+        let ctx = setup().unwrap();
+
+        let (set_code, sess) = helpers::get_role_set_code(ctx.sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, Some(ctx.bob.clone()));
+
+        // Transfer role to Charlie
+        let sess = helpers::call_function(
+            sess,
+            &ctx.vault,
+            &set_code.unwrap(),
+            String::from("IVault::transfer_role_set_code"),
+            Some([ctx.charlie.to_string()].to_vec()),
+            None,
+            helpers::transcoder_vault(),
+        )
+            .unwrap();
+
+        let (set_code, _sess) = helpers::get_role_set_code(sess, &ctx.vault).unwrap();
+        assert_eq!(set_code, Some(ctx.charlie.clone()));
+    }
+    #[test]
     fn test_nominator_add_agent_role_flow() {
         let ctx = setup().unwrap();
 
@@ -687,6 +758,41 @@ mod tests {
             100e12 as u128,
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_nominator_addition_panic_because_too_many_agents() {
+        let ctx = setup().unwrap();
+
+        const MAX_AGENTS: usize = 20;
+
+        let (_, agents_before, mut sess) = helpers::get_agents(ctx.sess, &ctx.registry).unwrap();
+        let prior_agent_count = agents_before.len();
+
+        for i in prior_agent_count..MAX_AGENTS {
+            (_, sess) = helpers::call_add_agent(
+                sess,
+                &ctx.registry,
+                &ctx.bob,
+                &ctx.charlie,
+                &AccountId32::new([i as u8; 32]),
+                100e12 as u128,
+            ).unwrap();
+        }
+
+        let (_, agents_after, sess) = helpers::get_agents(sess, &ctx.registry).unwrap();
+        assert_eq!(agents_after.len(), MAX_AGENTS);
+
+        match helpers::call_add_agent(
+            sess,
+            &ctx.registry,
+            &ctx.bob,
+            &ctx.charlie,
+            &AccountId32::new([MAX_AGENTS as u8; 32]),
+            100e12 as u128,
+        ) {
+            Ok(_) => panic!("Should panic because agent count exceeded"),
             Err(_) => (),
         };
     }
