@@ -34,6 +34,7 @@ pub mod governance {
         ExistingProposal,
         NonExistingProposal,
         ProposalInactive,
+        ProposalActive,
         DoubleVote,
         TransferError,
         NFTError,
@@ -595,12 +596,11 @@ pub mod governance {
                 .clone()
                 .into_iter()
                 .find(|p| p.creator_id == id);
-            if prop.is_some(){
+            if prop.is_some() {
                 self.get_proposal_state(prop.unwrap(), current_time) != ProposalState::Expired
-            }else{
+            } else {
                 false
             }
-                
         }
         #[ink(message)]
         pub fn create_proposal(
@@ -717,6 +717,32 @@ pub mod governance {
                     pro_vote: pro,
                 }),
             );
+
+            Ok(())
+        }
+        #[ink(message)]
+        pub fn cancel_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
+            let current_time = Self::env().block_timestamp();
+            if let Some(proposal) = self
+                .proposals
+                .clone()
+                .into_iter()
+                .find(|p| p.prop_id == prop_id)
+            {
+                if self.get_proposal_state(proposal, current_time) != ProposalState::Active {
+                    let update = self
+                        .proposals
+                        .clone()
+                        .into_iter()
+                        .filter(|p| p.prop_id != prop_id)
+                        .collect();
+                    self.proposals = update;
+                } else {
+                    return Err(GovernanceError::ProposalActive);
+                }
+            } else {
+                return Err(GovernanceError::NonExistingProposal);
+            }
 
             Ok(())
         }
