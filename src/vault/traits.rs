@@ -29,7 +29,7 @@ pub trait IVault {
     fn request_unlock(&mut self, shares: u128) -> Result<(), VaultError>;
 
     #[ink(message)]
-    fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError>;
+    fn delegate_withdraw_unbonded(&mut self, agents: Vec<AccountId>) -> Result<(), VaultError>;
 
     #[ink(message)]
     fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError>;

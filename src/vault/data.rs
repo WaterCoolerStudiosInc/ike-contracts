@@ -314,8 +314,28 @@ impl VaultData {
         Ok(())
     }
 
-    /// Claim all unbonded AZERO from the agents looping over each nominator pool
-    pub fn delegate_withdraw_unbonded(&self) -> Result<(), VaultError> {
+    /// Claim unbonded AZERO from specific agents
+    ///
+    /// Specified agents must be currently known by the Registry
+    /// Specifying duplicate agents will waste gas
+    pub fn delegate_withdraw_unbonded(&self, agents: Vec<AccountId>) -> Result<(), VaultError> {
+        let (_total_weight, registry_agents) = self.registry_contract.get_agents();
+
+        for agent in agents.into_iter() {
+            // Ensure user-provided agent is known by the Registry
+            if !registry_agents.iter().any(|registry_agent| registry_agent.address == agent) {
+                return Err(VaultError::InvalidIndex);
+            }
+            if let Err(e) = call_withdraw_unbonded(agent) {
+                return Err(VaultError::InternalError(e));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Claim unbonded AZERO from all agents
+    pub fn delegate_withdraw_unbonded_all(&self) -> Result<(), VaultError> {
         let (_total_weight, agents) = self.registry_contract.get_agents();
 
         for a in agents.into_iter() {

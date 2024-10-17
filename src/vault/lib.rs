@@ -281,10 +281,10 @@ mod vault {
             Ok(())
         }
 
-        /// Attempts to claim unbonded AZERO from all validators
+        /// Attempts to claim unbonded AZERO from specified agents
         #[ink(message)]
-        fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError> {
-            self.data.delegate_withdraw_unbonded()?;
+        fn delegate_withdraw_unbonded(&mut self, agents: Vec<AccountId>) -> Result<(), VaultError> {
+            self.data.delegate_withdraw_unbonded(agents)?;
 
             Ok(())
         }
@@ -340,7 +340,7 @@ mod vault {
         #[ink(message)]
         fn redeem_with_withdraw(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError> {
             // Claim all unbonded AZERO into Vault
-            self.data.delegate_withdraw_unbonded()?;
+            self.data.delegate_withdraw_unbonded_all()?;
 
             self.redeem(user, unlock_id)?;
 

@@ -7,9 +7,8 @@ use crate::nomination_agent_utils::RuntimeError;
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum VaultError {
-    Duplication,
     InvalidPercent,
-    InvalidBatchUnlockRequest,
+    InvalidIndex,
     InvalidUserUnlockRequest,
     CooldownPeriod,
     InvalidPermissions,
@@ -25,5 +24,4 @@ pub enum VaultError {
     InkEnvError(String),
     InternalError(RuntimeError),
     TokenError(PSP22Error),
-    InternalTokenError,
 }
