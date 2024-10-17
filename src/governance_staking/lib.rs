@@ -5,15 +5,19 @@ pub use crate::traits::Staking;
 #[ink::contract]
 mod staking {
 
+    use ink::contract_ref;
     use ink::reflect::ContractEventBase;
     use ink::ToAccountId;
     use ink::{
         codegen::EmitEvent,
         env::debug_println,
+        env::{
+            call::{build_call, ExecutionInput, Selector},
+            DefaultEnvironment,
+        },
         prelude::vec::Vec,
         storage::Mapping,
     };
-    use ink::contract_ref;
     use psp22::{PSP22Error, PSP22};
     use psp34::PSP34Error;
 
@@ -27,6 +31,7 @@ mod staking {
         Invalid,
         Unauthorized,
         InvalidTimeWindow,
+        NftLocked,
         NFTError(PSP34Error),
         TokenError(PSP22Error),
     }
@@ -84,6 +89,15 @@ mod staking {
     }
     type Event = <Staking as ContractEventBase>::Type;
     impl Staking {
+        pub fn query_nft_proposal_lock(&self, governance: AccountId, id: u128) -> bool {
+            let call_result: bool = build_call::<DefaultEnvironment>()
+                .call(governance)
+                .exec_input(ExecutionInput::new(Selector::new([0, 0, 0, 33])).push_arg(id))
+                .transferred_value(0)
+                .returns::<bool>()
+                .invoke();
+            call_result
+        }
         fn emit_event<EE>(emitter: EE, event: Event)
         where
             EE: EmitEvent<Staking>,
@@ -276,6 +290,9 @@ mod staking {
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
             let data = self.nft.get_governance_data(token_id);
+            if self.query_nft_proposal_lock(self.governor, token_id) {
+                return Err(StakingError::NftLocked);
+            }
 
             self.update_stake_accumulation(now)?;
 
@@ -285,7 +302,7 @@ mod staking {
                 .unwrap_or(data.block_created);
 
             let reward = self.calculate_reward_share(now, last_claim, data.vote_weight);
-            debug_println!("{}{:?}","reward earned ",reward);
+            debug_println!("{}{:?}", "reward earned ", reward);
             self.staked_token_balance -= data.vote_weight;
             self.unstake_requests.insert(
                 token_id,

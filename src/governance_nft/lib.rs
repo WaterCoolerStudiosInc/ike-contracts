@@ -64,6 +64,7 @@ mod governance_nft {
                 lock_transfer: true,
             }
         }
+     
 
         // A helper function translating a vector of PSP34Events into the proper
         // ink event types (defined internally in this contract) and emitting them.
@@ -191,6 +192,7 @@ mod governance_nft {
 
         #[ink(message, selector = 8057)]
         pub fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
+            
             // Add security, restrict usage of the message
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
@@ -211,7 +213,7 @@ mod governance_nft {
             Ok(())
         }
         #[ink(message)]
-        pub fn owner_of_id(&self, id:u128) -> Option<AccountId> {
+        pub fn owner_of_id(&self, id: u128) -> Option<AccountId> {
             self.data.owner_of(&Id::U128(id))
         }
     }

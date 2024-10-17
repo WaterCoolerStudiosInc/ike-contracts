@@ -163,8 +163,8 @@ pub fn query_governance_get_proposal_by_nft(
         None,
     )?;
 
-    let proposal: Result<Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
-    Ok((proposal.unwrap(), sess))
+    let proposal: Result<Option<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok(((proposal.unwrap()).unwrap(), sess))
 }
 pub fn query_governance_get_all_proposals(
     mut sess: Session<MinimalRuntime>,

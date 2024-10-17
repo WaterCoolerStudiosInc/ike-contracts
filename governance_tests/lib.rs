@@ -637,6 +637,60 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn nft_unlocks_fail_with_active_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.alice,
+            String::from("PSP34::approve"),
+            Some(vec![
+                (&ctx.stake_contract).to_string(),
+                String::from("None"),
+                true.to_string(),
+            ]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+        match call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("create_unwrap_request"),
+            Some(vec![1_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ) {
+            Ok(_) => panic!("Should panic because of a proposal resuse"),
+            Err(_) => (),
+        }
+
+        Ok(())
+    }
+    #[test]
     fn change_interest_rate_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
@@ -796,7 +850,7 @@ mod tests {
     fn vault_fee_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
-        println!("{:?}",helpers::PropType::FeeChange(2333_u16).to_string());
+        println!("{:?}", helpers::PropType::FeeChange(2333_u16).to_string());
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
@@ -1156,7 +1210,8 @@ mod tests {
             &ctx.alice,
             String::from("create_proposal"),
             Some(vec![
-                helpers::PropType::TransferFunds(ctx.gov_token,TOTAL_SUPPLY / 50,ctx.dave).to_string(),
+                helpers::PropType::TransferFunds(ctx.gov_token, TOTAL_SUPPLY / 50, ctx.dave)
+                    .to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1926,7 +1981,10 @@ mod tests {
             &ctx.governance,
             &ctx.alice,
             String::from("create_proposal"),
-            Some(vec![helpers::PropType::UnlockTransfer().to_string(), 1.to_string()]),
+            Some(vec![
+                helpers::PropType::UnlockTransfer().to_string(),
+                1.to_string(),
+            ]),
             None,
             transcoder_governance(),
         )
@@ -1935,9 +1993,9 @@ mod tests {
         // let rr: Result<helpers::Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
         // let proposal = rr.unwrap();
 
-    // When retrieving the proposal it returns None
-    // let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
-    // let proposal_string: String = proposal.prop_id.to_string();
-    Ok(())
+        // When retrieving the proposal it returns None
+        // let (proposal, sess) = helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        // let proposal_string: String = proposal.prop_id.to_string();
+        Ok(())
     }
 }

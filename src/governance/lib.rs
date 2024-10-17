@@ -573,42 +573,27 @@ pub mod governance {
             self.acceptance_threshold
         }
         #[ink(message)]
-        pub fn get_proposal_by_id(&self, id: u128) -> Proposal {
-            self.proposals
-                .clone()
-                .into_iter()
-                .find(|p| p.prop_id == id)
-                .unwrap_or(Proposal {
-                    creation_timestamp: 0,
-                    creator_id: 0,
-                    prop_type: PropType::FeeChange(0),
-                    prop_id: 0_u128,
-                    pro_vote_count: 0u128,
-                    con_vote_count: 0u128,
-                    vote_start: 0,
-                    vote_end: 0,
-                })
+        pub fn get_proposal_by_id(&self, id: u128) -> Option<Proposal> {
+            self.proposals.clone().into_iter().find(|p| p.prop_id == id)
         }
         #[ink(message)]
         pub fn get_all_proposals(&self) -> Vec<Proposal> {
             self.proposals.clone()
         }
         #[ink(message)]
-        pub fn get_proposal_by_nft(&self, id: u128) -> Proposal {
+        pub fn get_proposal_by_nft(&self, id: u128) -> Option<Proposal> {
             self.proposals
                 .clone()
                 .into_iter()
                 .find(|p| p.creator_id == id)
-                .unwrap_or(Proposal {
-                    creation_timestamp: 0,
-                    creator_id: 0,
-                    prop_type: PropType::FeeChange(0),
-                    prop_id: 0_u128,
-                    pro_vote_count: 0u128,
-                    con_vote_count: 0u128,
-                    vote_start: 0,
-                    vote_end: 0,
-                })
+        }
+        #[ink(message, selector = 33)]
+        pub fn get_active_proposal_status_by_nft(&self, id: u128) -> bool {
+            self.proposals
+                .clone()
+                .into_iter()
+                .find(|p| p.creator_id == id)
+                .is_some()
         }
         #[ink(message)]
         pub fn create_proposal(
