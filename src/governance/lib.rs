@@ -589,11 +589,18 @@ pub mod governance {
         }
         #[ink(message, selector = 33)]
         pub fn get_active_proposal_status_by_nft(&self, id: u128) -> bool {
-            self.proposals
+            let current_time = Self::env().block_timestamp();
+            let prop = self
+                .proposals
                 .clone()
                 .into_iter()
-                .find(|p| p.creator_id == id)
-                .is_some()
+                .find(|p| p.creator_id == id);
+            if prop.is_some(){
+                self.get_proposal_state(prop.unwrap(), current_time) != ProposalState::Expired
+            }else{
+                false
+            }
+                
         }
         #[ink(message)]
         pub fn create_proposal(

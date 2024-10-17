@@ -687,7 +687,61 @@ mod tests {
             Ok(_) => panic!("Should panic because of a proposal resuse"),
             Err(_) => (),
         }
+       
+        Ok(())
+    }
+    #[test]
+    fn nft_unlocks_work_with_expired_proposal() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
 
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.alice,
+            String::from("PSP34::approve"),
+            Some(vec![
+                (&ctx.stake_contract).to_string(),
+                String::from("None"),
+                true.to_string(),
+            ]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+
+        let sess = update_days(sess, 30);
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("create_unwrap_request"),
+            Some(vec![1_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        );
         Ok(())
     }
     #[test]
