@@ -153,6 +153,8 @@ const main = async (validators: string[]) => {
     ...agents.reduce((obj, a, i) => ({...obj, [`agent[${i}]`]: a.address}), {}),
   })
 
+  console.log()
+
   await writeContractAddresses(chain.network, {
     vault,
     share_token,

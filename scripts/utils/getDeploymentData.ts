@@ -7,9 +7,7 @@ import path from 'path'
  */
 export const getDeploymentData = async (contractName: string) => {
   const chainId = process.env.CHAIN || 'development'
-  const baseDir = process.env.DIR || `./deployments/${chainId}`
-  const contractPath = path.join(path.resolve(), baseDir, contractName)
-  console.log(contractPath)
+  const contractPath = path.join(path.resolve(), 'deployments', chainId, contractName)
 
   let abi, wasm
   try {

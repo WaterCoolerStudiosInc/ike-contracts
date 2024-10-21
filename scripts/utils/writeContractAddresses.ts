@@ -11,12 +11,9 @@ export const writeContractAddresses = async (
   contractDeployments: Record<string, Awaited<ReturnType<typeof deployContract>>>,
   metadata?: { [key: string]: string | number },
 ) => {
-  const baseDir = process.env.DIR || './deployments'
-
-  console.log()
   for (const [contractName, deployment] of Object.entries(contractDeployments)) {
     const contractNamePath = path.join(networkId, contractName, `deployment.ts`)
-    const relativePath = path.join(baseDir, contractNamePath)
+    const relativePath = path.join('deployments', contractNamePath)
     const absolutePath = path.join(path.resolve(), relativePath)
 
     let fileContents = ''
