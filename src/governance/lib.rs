@@ -170,6 +170,10 @@ pub mod governance {
         proposal: Proposal,
     }
     #[ink(event)]
+    pub struct ProposalCancelled {
+        id: u128,
+    }
+    #[ink(event)]
     pub struct VoteSubmitted {
         proposal_id: u128,
         nft_id: u128,
@@ -339,6 +343,21 @@ pub mod governance {
             if let Err(e) = gov_nft.lock_transfer() {
                 return Err(GovernanceError::TransferLockError);
             }
+            Ok(())
+        }
+        fn remove_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
+            let update = self
+                .proposals
+                .clone()
+                .into_iter()
+                .filter(|p| p.prop_id != prop_id)
+                .collect();
+            self.proposals = update;
+            Self::emit_event(
+                Self::env(),
+                Event::ProposalCancelled(ProposalCancelled { id: prop_id }),
+            );
+
             Ok(())
         }
         /**
@@ -602,6 +621,7 @@ pub mod governance {
                 false
             }
         }
+
         #[ink(message)]
         pub fn create_proposal(
             &mut self,
@@ -723,22 +743,27 @@ pub mod governance {
         #[ink(message)]
         pub fn cancel_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
+
             if let Some(proposal) = self
                 .proposals
                 .clone()
                 .into_iter()
                 .find(|p| p.prop_id == prop_id)
             {
-                if self.get_proposal_state(proposal, current_time) != ProposalState::Active {
-                    let update = self
-                        .proposals
-                        .clone()
-                        .into_iter()
-                        .filter(|p| p.prop_id != prop_id)
-                        .collect();
-                    self.proposals = update;
-                } else {
-                    return Err(GovernanceError::ProposalActive);
+                if self.check_ownership(proposal.creator_id, Self::env().caller()) != true {
+                    return Err(GovernanceError::Unauthorized);
+                }
+                let state = self.get_proposal_state(proposal, current_time);
+                match state {
+                    ProposalState::Created => {
+                        self.remove_proposal(prop_id).unwrap();
+                        return Ok(());
+                    }
+                    ProposalState::Active => return Err(GovernanceError::NonExistingProposal),
+                    ProposalState::Expired => {
+                        self.remove_expired_proposals(current_time);
+                        return Ok(());
+                    }
                 }
             } else {
                 return Err(GovernanceError::NonExistingProposal);
