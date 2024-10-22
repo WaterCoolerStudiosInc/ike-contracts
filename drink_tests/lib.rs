@@ -765,7 +765,8 @@ mod tests {
     fn test_nominator_addition_panic_because_too_many_agents() {
         let ctx = setup().unwrap();
 
-        const MAX_AGENTS: usize = 20;
+        // Defined in Registry
+        const MAX_AGENTS: usize = 30;
 
         let (_, agents_before, mut sess) = helpers::get_agents(ctx.sess, &ctx.registry).unwrap();
         let prior_agent_count = agents_before.len();
