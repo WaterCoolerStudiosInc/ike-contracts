@@ -687,7 +687,7 @@ mod tests {
             Ok(_) => panic!("Should panic because of a proposal resuse"),
             Err(_) => (),
         }
-       
+
         Ok(())
     }
     #[test]
@@ -715,7 +715,7 @@ mod tests {
         let (proposal, sess) =
             helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
         println!("{:?}", proposal.clone().prop_id.to_string());
-        
+
         let sess = call_function(
             sess,
             &ctx.gov_nft,
@@ -785,6 +785,81 @@ mod tests {
         )
         .unwrap();
 
+        Ok(())
+    }
+    #[test]
+    fn cancel_proposal_works() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("cancel_proposal"),
+            Some(vec![1.to_string()]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        Ok(())
+    }
+    #[test]
+    fn cancel_proposal_fails_during_active_period() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, TOTAL_SUPPLY / 10).unwrap();
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("create_proposal"),
+            Some(vec![
+                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        println!("all proposals: {:?}", proposals);
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        let sess = update_days(sess, 7_u64);
+        println!("{:?}", proposal.clone().prop_id.to_string());
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("cancel_proposal"),
+            Some(vec![1.to_string()]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
         Ok(())
     }
     #[test]
