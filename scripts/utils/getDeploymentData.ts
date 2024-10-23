@@ -9,9 +9,10 @@ export const getDeploymentData = async (contractName: string) => {
   const chainId = process.env.CHAIN || 'development'
   const contractPath = path.join(path.resolve(), 'deployments', chainId, contractName)
 
-  let abi, wasm
+  let abi, wasm, contract
   try {
     abi = JSON.parse(await readFile(path.join(contractPath, `${contractName}.json`), 'utf-8'))
+    contract = JSON.parse(await readFile(path.join(contractPath, `${contractName}.contract`), 'utf-8'))
     wasm = await readFile(path.join(contractPath, `${contractName}.wasm`))
   } catch (e) {
     console.error(e)
@@ -29,6 +30,7 @@ export const getDeploymentData = async (contractName: string) => {
     contractPath,
     abi,
     wasm,
+    contract,
     address,
     blockNumber,
   }

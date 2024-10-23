@@ -105,18 +105,6 @@ pub mod registry {
 
     impl Registry {
         #[ink(constructor)]
-        pub fn deploy_hash() -> Self {
-            Self {
-                agents: Vec::new(),
-                total_weight: 0,
-                roles: Mapping::default(),
-                vault: Self::env().caller(),
-                nomination_agent_hash: Hash::default(),
-                nomination_agent_counter: 0,
-            }
-        }
-
-        #[ink(constructor)]
         pub fn new(
             role_add: AccountId,
             role_update: AccountId,
