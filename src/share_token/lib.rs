@@ -13,7 +13,6 @@ mod token {
     pub struct Token {
         data: PSP22Data, // (1)
         owner: AccountId,
-        operator: AccountId,
         name: Option<String>,
         symbol: Option<String>,
         decimals: u8,
@@ -25,7 +24,6 @@ mod token {
             let caller = Self::env().caller();
             Self {
                 owner: caller,
-                operator: caller,
                 data: PSP22Data::new(0, caller),
                 name: Some(String::from("Example")),
                 symbol: Some(String::from("EX")),
@@ -37,7 +35,6 @@ mod token {
             let caller = Self::env().caller();
             Self {
                 owner: caller,
-                operator: caller,
                 data: PSP22Data::new(0, caller),
                 name,
                 symbol,
@@ -149,7 +146,7 @@ mod token {
         ) -> Result<(), PSP22Error> {
             let caller = self.env().caller();
 
-            if caller == self.operator {
+            if caller == self.owner {
                 let events = self.data.transfer(from, to, value)?;
                 self.emit_events(events);
             } else {
