@@ -22,14 +22,14 @@ export const getDeploymentData = async (contractName: string) => {
   let address: string
   let blockNumber: number
 
-  // if (!!chainId) {
-  //   try {
-  //     ({ address, blockNumber } = await import(path.join(contractPath, `deployment.ts`)))
-  //   } catch (e) {
-  //     console.error(e)
-  //     throw new Error("Couldn't find deployed contract file. Did you deploy it via `pnpm deploy`?")
-  //   }
-  // }
+   if (!!chainId) {
+     try {
+       ({ address, blockNumber } = await import(path.join(contractPath, `deployment.ts`)))
+     } catch (e) {
+       console.error(e)
+       throw new Error("Couldn't find deployed contract file. Did you deploy it via `pnpm deploy`?")
+     }
+   }
 
   return {
     contractPath,

@@ -7,6 +7,7 @@
     "build": "bash build-all.sh",
     "script": "f() { node --no-warnings=ExperimentalWarning --loader ts-node/esm ./scripts/$1; }; f \"$@\"",
     "deploy": "pnpm run script deploy",
+    "deploy_governance":"pnpm run script deploy_governance",
     "prepublishOnly": "tsc"
   },
   "devDependencies": {
