@@ -13,6 +13,7 @@ mod tests {
         runtime::MinimalRuntime,
         session::Session,
         AccountId32,
+        Weight,
     };
     use std::error::Error;
 
@@ -29,8 +30,11 @@ mod tests {
         dave: AccountId32,
         ed: AccountId32,
     }
-    
-    const VALIDATOR_COUNT: usize = 10;
+
+    // Defined in Registry
+    const MAX_AGENTS: usize = 30;
+    // Initial validator count
+    const VALIDATOR_COUNT: usize = 30;
 
     fn setup(validator_count: usize) -> Result<TestContext, Box<dyn Error>> {
         let bob = AccountId32::new([1u8; 32]);
@@ -39,7 +43,9 @@ mod tests {
         let dave = AccountId32::new([4u8; 32]);
         let ed = AccountId32::new([5u8; 32]);
 
+        // Gas weights taken from mainnet api.const.system.blockWeights > perClass.normal.maxExtrinsic
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
+        sess.set_gas_limit(Weight::from_parts(355_875_586_000u64, 16_417_602_225_601_500_938u64));
 
         // FUND DEFAULT ACCOUNTS
         sess.chain_api().add_tokens(alice.clone(), 100_000_000e12 as u128);
@@ -777,14 +783,14 @@ mod tests {
     }
     #[test]
     fn test_nominator_addition_panic_because_caller_restricted() {
-        let ctx = setup(VALIDATOR_COUNT).unwrap();
+        let ctx = setup(2 as usize).unwrap();
 
         match helpers::call_add_agent(
             ctx.sess,
             &ctx.registry,
             &ctx.charlie, // does not have `helpers::RoleType::AddAgent`
             &ctx.charlie,
-            &ctx.validators[2],
+            &ctx.validators[ctx.validators.len() - 1],
             100e12 as u128,
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
@@ -794,9 +800,6 @@ mod tests {
     #[test]
     fn test_nominator_addition_panic_because_too_many_agents() {
         let ctx = setup(VALIDATOR_COUNT).unwrap();
-
-        // Defined in Registry
-        const MAX_AGENTS: usize = 30;
 
         let (_, agents_before, mut sess) = helpers::get_agents(ctx.sess, &ctx.registry).unwrap();
         let prior_agent_count = agents_before.len();
@@ -1044,7 +1047,7 @@ mod tests {
     }
     #[test]
     fn test_gas_cost_of_nominator_addition_flow_with_many_agents() -> Result<(), Box<dyn Error>> {
-        let ctx = setup(VALIDATOR_COUNT).unwrap();
+        let ctx = setup(MAX_AGENTS - 1).unwrap();
 
         // Stake 10 million AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000_000e12 as u128).unwrap();
