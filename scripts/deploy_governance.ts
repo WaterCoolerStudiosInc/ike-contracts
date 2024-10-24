@@ -70,14 +70,14 @@ async function main() {
   let nft_hash = await uploadCode(api, account, gov_nft.abi, gov_nft.wasm);
   const vault = await getDeploymentData("vault");
   const registry = await getDeploymentData("registry");
-  console.log(vault);
-  console.log(registry)
+  console.log(vault.address);
+  console.log(registry.address)
   const exec_threshold = 10000;
   const reject_threshold = 10000;
   const acc_threshold = 1000000;
   const REWARDS_PER_SECOND = 100000;
   console.log("===== GOVERNANCE CONTRACT DEPLOY =====");
- /**  let result = await deployContract(
+  let result = await deployContract(
     api,
     account,
     governance.abi,
@@ -97,7 +97,7 @@ async function main() {
     ]
   );
   console.log(result);
-  **/
+  
 }
 
 main()
