@@ -28,14 +28,14 @@ export type InitParams = {
 export const initPolkadotJs = async (): Promise<InitParams> => {
   const accountUri = process.env.ACCOUNT_URI || '//Alice'
   const chain = getSubstrateChain(chainId)
-  console.log('THE CHAIN INFO')
+
+  if (!chain) throw new Error(`Chain '${chainId}' not found`)
+
   console.log(chain)
   if (process.env.CHAIN === 'ALEPH_DEVNET') {
     chain.rpcUrls = ['wss://ws-fe-testnet-cr.dev.azero.dev']
     chain.faucetUrls = ['https://faucet-fe-testnet-cr.dev.azero.dev/']
   }
-
-  if (!chain) throw new Error(`Chain '${chainId}' not found`)
 
   // Initialize api
   const { api } = await initApi(chain, { noInitWarn: true })
