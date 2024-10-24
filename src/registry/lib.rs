@@ -23,7 +23,7 @@ pub mod registry {
         }
     }
 
-    pub const MAX_AGENTS: usize = 30;
+    pub const MAX_AGENTS: usize = 50;
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
@@ -395,6 +395,11 @@ pub mod registry {
             self.nomination_agent_hash = Hash::from(nomination_agent_hash);
 
             Ok(())
+        }
+
+        #[ink(message)]
+        fn get_max_agents(&self) -> u32 {
+            MAX_AGENTS as u32
         }
 
         /// ================================ View Only Role Methods ================================

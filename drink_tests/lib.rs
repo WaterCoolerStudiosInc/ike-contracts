@@ -24,6 +24,7 @@ mod tests {
         vault: AccountId32,
         nominators: Vec<AccountId32>,
         validators: Vec<AccountId32>,
+        max_agents: usize,
         alice: AccountId32,
         bob: AccountId32,
         charlie: AccountId32,
@@ -31,8 +32,6 @@ mod tests {
         ed: AccountId32,
     }
 
-    // Defined in Registry
-    const MAX_AGENTS: usize = 30;
     // Initial validator count
     const VALIDATOR_COUNT: usize = 30;
 
@@ -87,6 +86,19 @@ mod tests {
         let registry = rr.unwrap();
         sess.set_transcoder(registry.clone(), &helpers::transcoder_registry().unwrap());
 
+        let sess = helpers::call_function(
+            sess,
+            &registry,
+            &bob,
+            String::from("IRegistry::get_max_agents"),
+            None,
+            None,
+            helpers::transcoder_registry(),
+        )
+            .unwrap();
+        let get_max_agents_result: Result<u32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let max_agents = get_max_agents_result.unwrap() as usize;
+
         let mut sess = helpers::call_function(
             sess,
             &vault,
@@ -135,6 +147,7 @@ mod tests {
             vault,
             nominators: agents.iter().map(|a| a.address.clone()).collect(),
             validators,
+            max_agents,
             alice,
             bob,
             charlie,
@@ -804,7 +817,7 @@ mod tests {
         let (_, agents_before, mut sess) = helpers::get_agents(ctx.sess, &ctx.registry).unwrap();
         let prior_agent_count = agents_before.len();
 
-        for i in prior_agent_count..MAX_AGENTS {
+        for i in prior_agent_count..ctx.max_agents {
             (_, sess) = helpers::call_add_agent(
                 sess,
                 &ctx.registry,
@@ -816,14 +829,14 @@ mod tests {
         }
 
         let (_, agents_after, sess) = helpers::get_agents(sess, &ctx.registry).unwrap();
-        assert_eq!(agents_after.len(), MAX_AGENTS);
+        assert_eq!(agents_after.len(), ctx.max_agents);
 
         match helpers::call_add_agent(
             sess,
             &ctx.registry,
             &ctx.bob,
             &ctx.charlie,
-            &AccountId32::new([MAX_AGENTS as u8; 32]),
+            &AccountId32::new([ctx.max_agents as u8; 32]),
             100e12 as u128,
         ) {
             Ok(_) => panic!("Should panic because agent count exceeded"),
@@ -1047,7 +1060,7 @@ mod tests {
     }
     #[test]
     fn test_gas_cost_of_nominator_addition_flow_with_many_agents() -> Result<(), Box<dyn Error>> {
-        let ctx = setup(MAX_AGENTS - 1).unwrap();
+        let ctx = setup(VALIDATOR_COUNT - 1).unwrap();
 
         // Stake 10 million AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000_000e12 as u128).unwrap();
