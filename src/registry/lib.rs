@@ -23,7 +23,7 @@ pub mod registry {
         }
     }
 
-    pub const MAX_AGENTS: usize = 20;
+    pub const MAX_AGENTS: usize = 30;
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
