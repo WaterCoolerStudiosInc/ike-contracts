@@ -3,6 +3,7 @@ import { deployContract, contractTx, decodeOutput, contractQuery } from '@scio-l
 import * as dotenv from 'dotenv'
 import { getDeploymentData } from './utils/getDeploymentData.js'
 import { initPolkadotJs } from './utils/initPolkadotJs.js'
+import { uploadCode } from './utils/uploadCode.js'
 import { writeContractAddresses } from './utils/writeContractAddresses.js'
 
 // Dynamic environment variables
@@ -37,39 +38,27 @@ const main = async (validators: string[]) => {
   const eraDurationMs = 1000n * BigInt(sessionPeriod) * BigInt(sessionsPerEra)
   console.log(`Era duration: ${eraDurationMs.toLocaleString()} ms`)
 
+  const blockWeights = api.consts.system.blockWeights.toHuman()
+  const maxBlock = blockWeights['maxBlock']
+  const maxExtrinsic = blockWeights['perClass']['normal']['maxExtrinsic']
+  console.log(`Normal refTime: ${maxExtrinsic.refTime} / ${maxBlock.refTime}`)
+
   console.log('===== Code Hash Deployment =====')
 
   console.log(`Deploying code hash: 'registry' ...`)
   const registry_data = await getDeploymentData('registry')
-  const registry = await deployContract(
-    api,
-    account,
-    registry_data.abi,
-    registry_data.wasm,
-    'deploy_hash',
-  )
+  const registry_hash = await uploadCode(api, account, registry_data.contract)
+  console.log(`Registry hash: ${registry_hash}`)
 
   console.log(`Deploying code hash: 'share_token' ...`)
-  const token_data = await getDeploymentData('share_token')
-  const share_token = await deployContract(
-    api,
-    account,
-    token_data.abi,
-    token_data.wasm,
-    'deploy_hash',
-  )
+  const share_token_data = await getDeploymentData('share_token')
+  const share_token_hash = await uploadCode(api, account, share_token_data.contract)
+  console.log(`Share token hash: ${share_token_hash}`)
 
   console.log(`Deploying code hash: 'nomination_agent' ...`)
   const nomination_agent_data = await getDeploymentData('nomination_agent')
-  console.log(`Data hash: ${nomination_agent_data.abi.source.hash}`)
-  const nomination_agent = await deployContract(
-    api,
-    account,
-    nomination_agent_data.abi,
-    nomination_agent_data.wasm,
-    'deploy_hash',
-  )
-  console.log(`Hash: ${nomination_agent.hash}`)
+  const nomination_agent_hash = await uploadCode(api, account, nomination_agent_data.contract)
+  console.log(`Hash: ${nomination_agent_hash}`)
 
   console.log('===== Contract Deployment =====')
 
@@ -81,7 +70,7 @@ const main = async (validators: string[]) => {
     vault_data.abi,
     vault_data.wasm,
     'new',
-    [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, eraDurationMs],
+    [share_token_hash, registry_hash, nomination_agent_hash, eraDurationMs],
   )
 
   const vault_instance = new ContractPromise(api, vault_data.abi, vault.address)
@@ -95,7 +84,12 @@ const main = async (validators: string[]) => {
     vault_instance,
     'iVault::get_registry_contract',
   )
-  registry.address = decodeOutput(registry_contract_result, vault_instance, 'iVault::get_registry_contract').output
+  const registry = {
+    address: decodeOutput(registry_contract_result, vault_instance, 'iVault::get_registry_contract').output,
+    hash: registry_hash,
+    block: vault.block,
+    blockNumber: vault.blockNumber,
+  }
   const registry_instance = new ContractPromise(api, registry_data.abi, registry.address)
   console.log(`Registry Address: ${registry.address}`)
 
@@ -106,7 +100,12 @@ const main = async (validators: string[]) => {
     vault_instance,
     'iVault::get_share_token_contract',
   )
-  share_token.address = decodeOutput(share_token_contract_result, vault_instance, 'iVault::get_share_token_contract').output
+  const share_token = {
+    address: decodeOutput(share_token_contract_result, vault_instance, 'iVault::get_share_token_contract').output,
+    hash: share_token_hash,
+    block: vault.block,
+    blockNumber: vault.blockNumber,
+  }
   console.log(`Share Token Address: ${share_token.address}`)
 
   console.log('===== Agent Configuration =====')
@@ -152,6 +151,8 @@ const main = async (validators: string[]) => {
     share_token: share_token.address,
     ...agents.reduce((obj, a, i) => ({...obj, [`agent[${i}]`]: a.address}), {}),
   })
+
+  console.log()
 
   await writeContractAddresses(chain.network, {
     vault,

@@ -20,17 +20,6 @@ mod token {
 
     impl Token {
         #[ink(constructor)]
-        pub fn deploy_hash() -> Self {
-            let caller = Self::env().caller();
-            Self {
-                owner: caller,
-                data: PSP22Data::new(0, caller),
-                name: Some(String::from("Example")),
-                symbol: Some(String::from("EX")),
-                decimals: 12_u8,
-            }
-        }
-        #[ink(constructor)]
         pub fn new(name: Option<String>, symbol: Option<String>) -> Self {
             let caller = Self::env().caller();
             Self {

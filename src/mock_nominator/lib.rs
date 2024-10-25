@@ -30,20 +30,6 @@ mod mock_nominator {
     }
 
     impl NominationAgent {
-        #[ink(constructor)]
-        pub fn deploy_hash() -> Self {
-            let account_id = Self::env().account_id();
-            Self {
-                vault: account_id,
-                registry: account_id,
-                admin: account_id,
-                validator: account_id,
-                staked: 0,
-                unbonding: 0,
-                creation_bond: 0,
-            }
-        }
-
         #[ink(constructor, payable)]
         pub fn new(
             vault: AccountId,
