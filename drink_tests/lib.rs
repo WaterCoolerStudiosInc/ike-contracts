@@ -13,6 +13,7 @@ mod tests {
         runtime::MinimalRuntime,
         session::Session,
         AccountId32,
+        Weight,
     };
     use std::error::Error;
 
@@ -23,6 +24,7 @@ mod tests {
         vault: AccountId32,
         nominators: Vec<AccountId32>,
         validators: Vec<AccountId32>,
+        max_agents: usize,
         alice: AccountId32,
         bob: AccountId32,
         charlie: AccountId32,
@@ -30,18 +32,19 @@ mod tests {
         ed: AccountId32,
     }
 
-    fn setup() -> Result<TestContext, Box<dyn Error>> {
+    // Initial validator count
+    const VALIDATOR_COUNT: usize = 30;
+
+    fn setup(validator_count: usize) -> Result<TestContext, Box<dyn Error>> {
         let bob = AccountId32::new([1u8; 32]);
         let alice = AccountId32::new([2u8; 32]);
         let charlie = AccountId32::new([3u8; 32]);
         let dave = AccountId32::new([4u8; 32]);
         let ed = AccountId32::new([5u8; 32]);
 
-        let validator1 = AccountId32::new([101u8; 32]);
-        let validator2 = AccountId32::new([102u8; 32]);
-        let validator3 = AccountId32::new([103u8; 32]);
-
+        // Gas weights taken from mainnet api.const.system.blockWeights > perClass.normal.maxExtrinsic
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
+        sess.set_gas_limit(Weight::from_parts(355_875_586_000u64, 16_417_602_225_601_500_938u64));
 
         // FUND DEFAULT ACCOUNTS
         sess.chain_api().add_tokens(alice.clone(), 100_000_000e12 as u128);
@@ -83,6 +86,19 @@ mod tests {
         let registry = rr.unwrap();
         sess.set_transcoder(registry.clone(), &helpers::transcoder_registry().unwrap());
 
+        let sess = helpers::call_function(
+            sess,
+            &registry,
+            &bob,
+            String::from("IRegistry::get_max_agents"),
+            None,
+            None,
+            helpers::transcoder_registry(),
+        )
+            .unwrap();
+        let get_max_agents_result: Result<u32, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let max_agents = get_max_agents_result.unwrap() as usize;
+
         let mut sess = helpers::call_function(
             sess,
             &vault,
@@ -100,22 +116,19 @@ mod tests {
         sess.set_actor(bob.clone());
 
         // ADD AGENTS
-        let (_new_agent, sess) = helpers::call_add_agent(
-            sess,
-            &registry,
-            &bob,
-            &bob,
-            &validator1,
-            100e12 as u128,
-        )?;
-        let (_new_agent, sess) = helpers::call_add_agent(
-            sess,
-            &registry,
-            &bob,
-            &bob,
-            &validator2,
-            100e12 as u128,
-        )?;
+        let mut validators: Vec<AccountId32> = Vec::default();
+        while validators.len() < validator_count {
+            let validator = AccountId32::new([101u8 + validators.len() as u8; 32]);
+            (_, sess) = helpers::call_add_agent(
+                sess,
+                &registry,
+                &bob,
+                &bob,
+                &validator,
+                100e12 as u128,
+            )?;
+            validators.push(validator);
+        }
 
         let (_, agents, sess) = helpers::get_agents(sess, &registry)?;
 
@@ -123,8 +136,8 @@ mod tests {
             sess,
             &registry,
             &bob,
-            vec![agents[0].address.to_string(), agents[1].address.to_string()],
-            vec![String::from("100"), String::from("100")],
+            agents.iter().map(|a| a.address.to_string()).collect(),
+            agents.iter().map(|_| String::from("100")).collect(),
         )?;
 
         Ok(TestContext {
@@ -132,8 +145,9 @@ mod tests {
             registry,
             share_token,
             vault,
-            nominators: vec![agents[0].address.clone(), agents[1].address.clone()],
-            validators: vec![validator1, validator2, validator3],
+            nominators: agents.iter().map(|a| a.address.clone()).collect(),
+            validators,
+            max_agents,
             alice,
             bob,
             charlie,
@@ -144,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_fees_flow_multiple_stakes_success() -> Result<(), Box<dyn Error>> {
-        let ctx: TestContext = setup().unwrap();
+        let ctx: TestContext = setup(VALIDATOR_COUNT).unwrap();
         const STAKE_AMOUNT: u128 = 10_000e10 as u128;
         const INTERVALS: u64 = 5;
 
@@ -188,7 +202,7 @@ mod tests {
     }
     #[test]
     fn test_minimum_stake_panic_because_below_threshold() {
-        let ctx: TestContext = setup().unwrap();
+        let ctx: TestContext = setup(VALIDATOR_COUNT).unwrap();
         let sess = ctx.sess;
 
         let minimum_stake = 1_000_000;
@@ -200,7 +214,7 @@ mod tests {
     }
     #[test]
     fn test_staking_redeem_flow() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(2 as usize).unwrap();
 
         // Verify nominators
         let (staked, unbonded, sess) = helpers::query_nominator_balance(ctx.sess, &ctx.nominators[0]).unwrap();
@@ -277,8 +291,43 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn test_gas_cost_of_staking_redeem_flow_with_many_agents() -> Result<(), Box<dyn Error>> {
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
+        let sess = ctx.sess;
+
+        // Staking of 5m AZERO
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.charlie, 1_000_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.dave, 1_000_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_stake(sess, &ctx.vault, &ctx.share_token, &ctx.ed, 1_000_000e10 as u128).unwrap();
+
+        // Allow fees to accumulate
+        let sess = helpers::update_days(sess, 2);
+
+        // Unlock requests of 50k AZERO
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.alice, 10_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.charlie, 10_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.dave, 10_000e10 as u128).unwrap();
+        let (_, sess) = helpers::call_request_unlock(sess, &ctx.vault, &ctx.share_token, &ctx.ed, 10_000e10 as u128).unwrap();
+
+        // Wait for cooldown period to complete
+        let sess = helpers::update_days(sess, 14);
+
+        // Redeem AZERO minus fees
+        let (_, sess) = helpers::call_redeem_with_withdraw(sess, &ctx.vault, &ctx.alice, 0).unwrap();
+        let (_, sess) = helpers::call_redeem(sess, &ctx.vault, &ctx.bob, 0).unwrap();
+        let (_, sess) = helpers::call_redeem(sess, &ctx.vault, &ctx.charlie, 0).unwrap();
+        let (_, sess) = helpers::call_redeem(sess, &ctx.vault, &ctx.dave, 0).unwrap();
+        let (_, sess) = helpers::call_redeem(sess, &ctx.vault, &ctx.ed, 0).unwrap();
+        helpers::call_withdraw_fees(sess, &ctx.vault, &ctx.bob).unwrap();
+
+        Ok(())
+    }
+    #[test]
     fn test_fee_adjustment_success() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         let sess = helpers::call_function(
             ctx.sess,
             &ctx.vault,
@@ -304,7 +353,7 @@ mod tests {
     }
     #[test]
     fn test_fee_adjustment_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
@@ -320,7 +369,7 @@ mod tests {
     }
     #[test]
     fn test_fee_adjustment_panic_because_overflow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
@@ -336,7 +385,7 @@ mod tests {
     }
     #[test]
     fn test_withdraw_fees_after_one_second_success() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         const STAKE_AMOUNT: u128 = 10_000e10 as u128;
 
@@ -362,7 +411,7 @@ mod tests {
     }
     #[test]
     fn test_withdraw_fees_after_one_day_success() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         const STAKE_AMOUNT: u128 = 10_000e10 as u128;
         const EXPECTED_FEES: u128 = STAKE_AMOUNT * (helpers::DAY as u128) / (helpers::YEAR as u128) * 200 / helpers::BIPS;
@@ -386,7 +435,7 @@ mod tests {
     }
     #[test]
     fn test_withdraw_fees_after_one_year_success() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         const STAKE_AMOUNT: u128 = 10_000e10 as u128;
         const EXPECTED_FEES: u128 = STAKE_AMOUNT * 200 / helpers::BIPS;
@@ -418,7 +467,7 @@ mod tests {
         const ONE_DAY_FEE_2_PERCENT: u128 = STAKE * helpers::DAY as u128 / helpers::YEAR as u128 * 2_00 / helpers::BIPS;
         const ONE_DAY_FEE_4_PERCENT: u128 = STAKE * helpers::DAY as u128 / helpers::YEAR as u128 * 4_00 / helpers::BIPS;
 
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Initial stake
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, STAKE).unwrap();
@@ -463,7 +512,7 @@ mod tests {
     }
     #[test]
     fn test_withdraw_fees_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000).unwrap();
         let sess = helpers::update_days(sess, 365);
         match helpers::call_withdraw_fees(
@@ -477,7 +526,7 @@ mod tests {
     }
     #[test]
     fn test_vault_transfer_role_adjust_fee_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
@@ -493,7 +542,7 @@ mod tests {
     }
     #[test]
     fn test_vault_transfer_role_adjust_fee_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         let (adjust_fee, sess) = helpers::get_role_adjust_fee(ctx.sess, &ctx.vault).unwrap();
         assert_eq!(adjust_fee, ctx.bob);
@@ -515,7 +564,7 @@ mod tests {
     }
     #[test]
     fn test_vault_transfer_role_fee_to_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
@@ -531,7 +580,7 @@ mod tests {
     }
     #[test]
     fn test_vault_transfer_role_fee_to_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         let (fee_to, sess) = helpers::get_role_fee_to(ctx.sess, &ctx.vault).unwrap();
         assert_eq!(fee_to, ctx.bob);
@@ -553,7 +602,7 @@ mod tests {
     }
     #[test]
     fn test_vault_transfer_role_set_code_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         match helpers::call_function(
             ctx.sess,
             &ctx.vault,
@@ -569,7 +618,7 @@ mod tests {
     }
     #[test]
     fn test_vault_disable_set_code_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         let (set_code, sess) = helpers::get_role_set_code(ctx.sess, &ctx.vault).unwrap();
         assert_eq!(set_code, Some(ctx.bob.clone()));
@@ -602,7 +651,7 @@ mod tests {
     }
     #[test]
     fn test_vault_transfer_role_set_code_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         let (set_code, sess) = helpers::get_role_set_code(ctx.sess, &ctx.vault).unwrap();
         assert_eq!(set_code, Some(ctx.bob.clone()));
@@ -624,7 +673,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_add_agent_role_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Check roles
         let (role, sess) = helpers::get_role(ctx.sess, &ctx.registry, &helpers::RoleType::AddAgent).unwrap();
@@ -645,7 +694,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_add_agent_role_panic_on_transfer_role_because_caller_not_admin() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Charlie (not admin) cannot transfer role
         match helpers::transfer_role(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::AddAgent, &ctx.dave) {
@@ -655,7 +704,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_add_agent_role_panic_on_transfer_admin_because_caller_not_admin() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Charlie (not admin) cannot transfer admin
         match helpers::transfer_role_admin(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::AddAgent, &ctx.dave) {
@@ -665,7 +714,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_update_agents_role_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Check roles
         let (role, sess) = helpers::get_role(ctx.sess, &ctx.registry, &helpers::RoleType::UpdateAgents).unwrap();
@@ -686,7 +735,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_update_agents_role_panic_on_transfer_role_because_caller_not_admin() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Charlie (not admin) cannot transfer role
         match helpers::transfer_role(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::UpdateAgents, &ctx.dave) {
@@ -696,7 +745,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_update_agents_role_panic_on_transfer_admin_because_caller_not_admin() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Charlie (not admin) cannot transfer admin
         match helpers::transfer_role_admin(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::UpdateAgents, &ctx.dave) {
@@ -706,7 +755,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_remove_agent_role_flow() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Check roles
         let (role, sess) = helpers::get_role(ctx.sess, &ctx.registry, &helpers::RoleType::RemoveAgent).unwrap();
@@ -727,7 +776,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_remove_agent_role_panic_on_transfer_role_because_caller_not_admin() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Charlie (not admin) cannot transfer role
         match helpers::transfer_role(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::AddAgent, &ctx.dave) {
@@ -737,7 +786,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_remove_agent_role_panic_on_transfer_admin_because_caller_not_admin() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Charlie (not admin) cannot transfer admin
         match helpers::transfer_role_admin(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::AddAgent, &ctx.dave) {
@@ -747,14 +796,14 @@ mod tests {
     }
     #[test]
     fn test_nominator_addition_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(2 as usize).unwrap();
 
         match helpers::call_add_agent(
             ctx.sess,
             &ctx.registry,
             &ctx.charlie, // does not have `helpers::RoleType::AddAgent`
             &ctx.charlie,
-            &ctx.validators[2],
+            &ctx.validators[ctx.validators.len() - 1],
             100e12 as u128,
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
@@ -763,15 +812,12 @@ mod tests {
     }
     #[test]
     fn test_nominator_addition_panic_because_too_many_agents() {
-        let ctx = setup().unwrap();
-
-        // Defined in Registry
-        const MAX_AGENTS: usize = 30;
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         let (_, agents_before, mut sess) = helpers::get_agents(ctx.sess, &ctx.registry).unwrap();
         let prior_agent_count = agents_before.len();
 
-        for i in prior_agent_count..MAX_AGENTS {
+        for i in prior_agent_count..ctx.max_agents {
             (_, sess) = helpers::call_add_agent(
                 sess,
                 &ctx.registry,
@@ -783,14 +829,14 @@ mod tests {
         }
 
         let (_, agents_after, sess) = helpers::get_agents(sess, &ctx.registry).unwrap();
-        assert_eq!(agents_after.len(), MAX_AGENTS);
+        assert_eq!(agents_after.len(), ctx.max_agents);
 
         match helpers::call_add_agent(
             sess,
             &ctx.registry,
             &ctx.bob,
             &ctx.charlie,
-            &AccountId32::new([MAX_AGENTS as u8; 32]),
+            &AccountId32::new([ctx.max_agents as u8; 32]),
             100e12 as u128,
         ) {
             Ok(_) => panic!("Should panic because agent count exceeded"),
@@ -799,7 +845,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_update_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         match helpers::call_update_agents(
             ctx.sess,
@@ -814,7 +860,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_remove_panic_because_stake_is_non_zero() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Stake 1k AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.alice, 1_000e12 as u128).unwrap();
@@ -831,7 +877,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_remove_panic_because_caller_restricted() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         match helpers::call_remove_agent(
             ctx.sess,
@@ -845,7 +891,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_remove_success() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         let (total_weight_before, agents_before, sess) = helpers::get_agents(
             ctx.sess,
@@ -875,7 +921,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_addition_equal_weights() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(2 as usize).unwrap();
 
         // Stake 10 million AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000_000).unwrap();
@@ -897,7 +943,7 @@ mod tests {
             &ctx.registry,
             &ctx.bob,
             &ctx.bob,
-            &ctx.validators[2],
+            &AccountId32::new([101u8; 32]),
             100e12 as u128,
         )?;
 
@@ -945,7 +991,7 @@ mod tests {
     }
     #[test]
     fn test_nominator_addition_unequal_weights() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(2 as usize).unwrap();
 
         // Stake 10m AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000_000).unwrap();
@@ -967,7 +1013,7 @@ mod tests {
             &ctx.registry,
             &ctx.bob,
             &ctx.bob,
-            &ctx.validators[2],
+            &AccountId32::new([101u8; 32]),
             100e12 as u128,
         )?;
 
@@ -1012,10 +1058,52 @@ mod tests {
 
         Ok(())
     }
+    #[test]
+    fn test_gas_cost_of_nominator_addition_flow_with_many_agents() -> Result<(), Box<dyn Error>> {
+        let ctx = setup(VALIDATOR_COUNT - 1).unwrap();
 
+        // Stake 10 million AZERO
+        let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 10_000_000e12 as u128).unwrap();
+
+        let (total_weight_before, agents_before, sess) = helpers::get_agents(sess, &ctx.registry).unwrap();
+
+        // Add nomination agent
+        let (_new_agent, sess) = helpers::call_add_agent(
+            sess,
+            &ctx.registry,
+            &ctx.bob,
+            &ctx.bob,
+            &AccountId32::new([101u8; 32]),
+            100e12 as u128,
+        )?;
+
+        let (total_weight_after, agents_after, sess) = helpers::get_agents(sess, &ctx.registry).unwrap();
+
+        assert_eq!(agents_after.len(), agents_before.len() + 1);
+        assert_eq!(total_weight_after, total_weight_before);
+        assert_eq!(agents_after[agents_after.len() - 1].weight, 0);
+
+        // Update weight to 100
+        let sess = helpers::call_update_agents(
+            sess,
+            &ctx.registry,
+            &ctx.bob,
+            vec![agents_after[agents_after.len() - 1].address.to_string()],
+            vec![100.to_string()],
+        )
+            .unwrap();
+
+        let (total_weight_after, agents_after, _sess) = helpers::get_agents(sess, &ctx.registry).unwrap();
+
+        assert_eq!(agents_after.len(), agents_before.len() + 1);
+        assert_eq!(total_weight_after, total_weight_before + 100);
+        assert_eq!(agents_after[agents_after.len() - 1].weight, 100);
+
+        Ok(())
+    }
     #[test]
     fn test_unlock_weight_change() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(2 as usize).unwrap();
         let sess = ctx.sess;
 
         // Stake 5 million AZERO
@@ -1060,7 +1148,7 @@ mod tests {
     }
     #[test]
     fn test_withdraw_all() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(2 as usize).unwrap();
         let sess = ctx.sess;
 
         // Stake 5 million AZERO
@@ -1123,7 +1211,7 @@ mod tests {
     }
     #[test]
     fn test_token_transfer_from_panics_properly() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Bob stakes 1m AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000).unwrap();
@@ -1144,7 +1232,7 @@ mod tests {
     }
     #[test]
     fn test_token_transfer_from_works_normally() {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Bob stakes 1m AZERO
         let (_, sess) = helpers::call_stake(ctx.sess, &ctx.vault, &ctx.share_token, &ctx.bob, 1_000_000).unwrap();
@@ -1173,7 +1261,7 @@ mod tests {
     }
     #[test]
     fn test_compound_call() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
 
         // Stake 1 AZERO
         let deposit_amount = 1e12 as u128;
@@ -1205,7 +1293,7 @@ mod tests {
 
     #[test]
     fn test_compound_before_initial_stake() -> Result<(), Box<dyn Error>> {
-        let ctx = setup().unwrap();
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
         let mut sess = ctx.sess;
 
         // Send funds to an agent

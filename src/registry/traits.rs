@@ -46,4 +46,7 @@ pub trait IRegistry {
 
     #[ink(message)]
     fn get_role_admin(&self, role_type: RoleType) -> AccountId;
+
+    #[ink(message)]
+    fn get_max_agents(&self) -> u32;
 }
