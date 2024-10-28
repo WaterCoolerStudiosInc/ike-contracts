@@ -1,5 +1,5 @@
 import { ContractPromise } from '@polkadot/api-contract'
-import { deployContract, contractTx, decodeOutput, contractQuery } from '@scio-labs/use-inkathon'
+import { deployContract, contractTx, decodeOutput, contractQuery, DeployedContract } from '@scio-labs/use-inkathon'
 import * as dotenv from 'dotenv'
 import { getDeploymentData } from './utils/getDeploymentData.js'
 import { initPolkadotJs } from './utils/initPolkadotJs.js'
@@ -89,7 +89,7 @@ const main = async (validators: string[]) => {
     hash: registry_hash,
     block: vault.block,
     blockNumber: vault.blockNumber,
-  }
+  } as DeployedContract
   const registry_instance = new ContractPromise(api, registry_data.abi, registry.address)
   console.log(`Registry Address: ${registry.address}`)
 
@@ -105,7 +105,7 @@ const main = async (validators: string[]) => {
     hash: share_token_hash,
     block: vault.block,
     blockNumber: vault.blockNumber,
-  }
+  } as DeployedContract
   console.log(`Share Token Address: ${share_token.address}`)
 
   console.log('===== Agent Configuration =====')
