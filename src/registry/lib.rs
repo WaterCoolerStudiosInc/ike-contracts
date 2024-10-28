@@ -59,6 +59,7 @@ pub mod registry {
     pub struct Agent {
         pub address: AccountId,
         pub weight: u64,
+        pub disabled: bool,
     }
 
     #[ink(event)]
@@ -194,6 +195,7 @@ pub mod registry {
             self.agents.push(Agent {
                 address: agent_address,
                 weight: 0,
+                disabled: false,
             });
 
             Self::env().emit_event(AgentAdded {

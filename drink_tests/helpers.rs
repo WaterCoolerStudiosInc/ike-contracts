@@ -18,6 +18,7 @@ pub const BIPS: u128 = 10000;
 pub struct Agent {
     pub address: AccountId32,
     pub weight: u64,
+    pub disabled: bool,
 }
 
 pub fn update_days(
