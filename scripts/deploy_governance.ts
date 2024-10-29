@@ -6,39 +6,17 @@ import {
   contractQuery,
 } from "@scio-labs/use-inkathon";
 import * as dotenv from "dotenv";
-import { getDeploymentData } from "./utils/getDeploymentData.js";
+import { getDeploymentData} from "./utils/getDeploymentData.js";
+import {uploadCode } from "./utils/uploadCode.js"
 import { initPolkadotJs } from "./utils/initPolkadotJs.js";
 import { writeContractAddresses } from "./utils/writeContractAddresses.js";
-import { ApiPromise } from "@polkadot/api";
-import { IKeyringPair } from "@polkadot/types/types";
+
 // Dynamic environment variables
 const chainId = process.env.CHAIN || "development";
 dotenv.config({
   path: `.env.${chainId}`,
 });
-export const uploadCode = async (
-  api: ApiPromise,
-  account: IKeyringPair | string,
-  abi: any,
-  wasm: any
-): Promise<string> => {
-  await new Promise(async (resolve, reject) => {
-    const unsub = await api.tx.contracts
-      .uploadCode(wasm, null, 0)
-      .signAndSend(account, (result) => {
-        if (result.isFinalized) {
-          unsub();
-          resolve(result.txHash);
-        }
-        if (result.isError) {
-          unsub();
-          reject(result);
-        }
-      });
-  });
 
-  return abi.source.hash;
-};
 async function main() {
   // Initialization
   const initParams = await initPolkadotJs();
@@ -58,16 +36,15 @@ async function main() {
   const gov_staking = await getDeploymentData("governance_staking");
   const gov_nft = await getDeploymentData("governance_nft");
   console.log("===== MultiSig Deploy Hash =====");
-  let sig_hash = await uploadCode(api, account, multisig.abi, multisig.wasm);
+  let sig_hash = await uploadCode(api, account, multisig.contract);
   console.log("===== Staking Deploy Hash =====");
   let gov_hash = await uploadCode(
     api,
     account,
-    gov_staking.abi,
-    gov_staking.wasm
+    gov_staking.contract
   );
   console.log("===== NFT Deploy Hash =====");
-  let nft_hash = await uploadCode(api, account, gov_nft.abi, gov_nft.wasm);
+  let nft_hash = await uploadCode(api, account, gov_nft.contract);
   const vault = await getDeploymentData("vault");
   const registry = await getDeploymentData("registry");
   console.log(vault.address);
