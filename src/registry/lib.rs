@@ -24,6 +24,7 @@ pub mod registry {
         InvalidPermissions,
         InvalidRole,
         NoChange,
+        BlacklistedAgent,
         /// An interaction with ink! environment has failed
         // NOTE: We're representing the `ink::env::Error` as `String` b/c the
         // type does not have Encode/Decode implemented.
@@ -70,6 +71,7 @@ pub mod registry {
     pub struct Agent {
         pub address: AccountId,
         pub weight: u64,
+        pub blacklisted: bool,
     }
 
     #[ink(event)]
@@ -214,6 +216,7 @@ pub mod registry {
             self.agents.push(Agent {
                 address: agent_address,
                 weight: 0,
+                blacklisted: false,
             });
 
             Self::env().emit_event(AgentAdded {
@@ -230,7 +233,7 @@ pub mod registry {
         pub fn update_agents(
             &mut self,
             agents: Vec<AccountId>,
-            new_weights: Vec<u64>,
+            new_updates: Vec<(u64, bool)>,
         ) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
@@ -238,19 +241,29 @@ pub mod registry {
                 return Err(RegistryError::InvalidPermissions);
             }
 
-            if agents.len() != new_weights.len() {
+            if agents.len() != new_updates.len() {
                 return Err(RegistryError::InvalidInput);
             }
 
             for (args_index, &agent) in agents.iter().enumerate() {
                 if let Some(index) = self.agents.iter().position(|a| a.address == agent) {
+                    if self.agents[index].blacklisted{
+                        return Err(RegistryError::BlacklistedAgent);
+                    }
                     let old_weight = self.agents[index].weight;
-                    let new_weight = new_weights[args_index];
-
-                    self.total_weight -= old_weight;
-                    self.total_weight += new_weight;
-
-                    self.agents[index].weight = new_weight;
+                    let new_weight;
+                    if new_updates[index].1 {
+                        new_weight = old_weight + new_updates[index].0;
+                        self.agents[index].weight = new_weight;
+                        self.total_weight += new_updates[index].0
+                    } else {
+                        if new_updates[index].0 > old_weight {
+                            return Err(RegistryError::InvalidInput);
+                        }
+                        new_weight = old_weight - new_updates[index].0;
+                        self.agents[index].weight = new_weight;
+                        self.total_weight -= new_updates[index].0
+                    }
 
                     Self::env().emit_event(AgentUpdated {
                         agent,
@@ -265,6 +278,21 @@ pub mod registry {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn init_remove_agent(&mut self, agent: AccountId) -> Result<(), RegistryError> {
+            let caller = Self::env().caller();
+
+            if caller != self.roles.get(RoleType::RemoveAgent).unwrap().account {
+                return Err(RegistryError::InvalidPermissions);
+            }
+            if let Some(index) = self.agents.iter().position(|a| a.address == agent) {
+                self.agents[index].weight = 0;
+                self.agents[index].blacklisted = true;
+            } else {
+                return Err(RegistryError::AgentNotFound);
+            }
+            Ok(())
+        }
         /// Removes a nomination agent
         /// This is intended to remove fully deprecated agents to save gas during iteration.
         ///
@@ -398,7 +426,10 @@ pub mod registry {
         ///
         /// Caller must have the SetCodeHash role.
         #[ink(message)]
-        pub fn set_agent_code(&mut self, nomination_agent_hash: [u8; 32]) -> Result<(), RegistryError> {
+        pub fn set_agent_code(
+            &mut self,
+            nomination_agent_hash: [u8; 32],
+        ) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
             if caller != self.roles.get(RoleType::SetCodeHash).unwrap().account {

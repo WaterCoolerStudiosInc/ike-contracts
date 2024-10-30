@@ -6,6 +6,7 @@ pub use crate::traits::Staking;
 mod staking {
 
     use ink::contract_ref;
+    use ink::primitives::AccountId;
     use ink::reflect::ContractEventBase;
     use ink::ToAccountId;
     use ink::{
@@ -25,13 +26,14 @@ mod staking {
 
     pub const DAY: u64 = 86400 * 1000;
     pub const WITHDRAW_DELAY: u64 = 14 * DAY;
+    pub const MAX_VALIDATORS:u8=5;
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum StakingError {
         Invalid,
         Unauthorized,
         InvalidTimeWindow,
-        NftLocked,
+        NftLocked,        
         NFTError(PSP34Error),
         TokenError(PSP22Error),
     }
@@ -40,6 +42,7 @@ mod staking {
     pub struct Staking {
         creation_time: u64,
         governor: AccountId,
+        registry:AccountId,
         reward_token_balance: u128,
         staked_token_balance: u128,
         rewards_per_second: u128,
@@ -49,11 +52,20 @@ mod staking {
         owner: AccountId,
         governance_token: AccountId,
         nft: GovernanceNFTRef,
+        cast_distribution:Mapping<u128,Vec<(AccountId,u64)>,
         governance_nfts: Mapping<AccountId, Vec<u128>>,
         unstake_requests: Mapping<u128, UnstakeRequest>,
         last_reward_claim: Mapping<u128, u64>,
     }
-
+    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub enum CastType {
+        DirectCast(Vec<(AccountId,u64)>),
+        Delegation(AccountId),
+    }
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -97,6 +109,9 @@ mod staking {
                 .returns::<bool>()
                 .invoke();
             call_result
+        }
+        pub fn update_registry_weights(&self,agents:Vec<(AccountId,u64)>)->bool{
+
         }
         fn emit_event<EE>(emitter: EE, event: Event)
         where
@@ -175,6 +190,7 @@ mod staking {
                 owner: caller,
                 governance_token: governance_token,
                 nft: governance_nft,
+                cast_distribution:Mapping::new(),
                 governance_nfts: Mapping::new(),
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
@@ -204,6 +220,7 @@ mod staking {
             &mut self,
             token_value: u128,
             to: Option<AccountId>,
+            validator_cast: CastType,
         ) -> Result<(), StakingError> {
             debug_println!("ADDing Value {}", token_value);
 
@@ -249,24 +266,7 @@ mod staking {
             }
             Ok(())
         }
-        /*#[ink(message)]
-        pub fn remove_token_value(
-            &mut self,
-            token_value: u128,
-            nft_id: u128,
-        ) -> Result<(), StakingError> {
-            let caller = Self::env().caller();
-            let now = Self::env().block_timestamp();
-            if let Err(e) = self.nft.decrement_weight(nft_id, token_value) {
-                return Err(StakingError::NFTError(e));
-            }
-            self.update_stake_accumulation(now)?;
-            self.transfer_psp22_from(&Self::env().account_id(), &caller, token_value)?;
 
-            self.staked_token_balance-=token_value;
-            Ok(())
-        }
-        */
         #[ink(message)]
         pub fn claim_staking_rewards(&mut self, token_id: u128) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();

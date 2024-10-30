@@ -15,10 +15,12 @@ pub trait Registry {
     fn update_agents(
         &mut self,
         accounts: Vec<AccountId>,
-        new_weights: Vec<u64>,
+        new_weights: Vec<(u64,bool)>,
     ) -> Result<(), RegistryError>;
     #[ink(message, selector = 3)]
     fn remove_agent(&mut self, account: AccountId) -> Result<(), RegistryError>;
     #[ink(message, selector = 4)]
     fn get_agents(&self) -> Result<(u64, Vec<Agent>), RegistryError>;
+    #[ink(message, selector = 5)]
+    fn init_remove_agent(&mut self, account: AccountId) -> Result<(), RegistryError>;
 }
