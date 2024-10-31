@@ -132,12 +132,16 @@ mod tests {
 
         let (_, agents, sess) = helpers::get_agents(sess, &registry)?;
 
+        // Set all weights from 0 -> 100
         let sess = helpers::call_update_agents(
             sess,
             &registry,
             &bob,
-            agents.iter().map(|a| a.address.to_string()).collect(),
-            agents.iter().map(|_| String::from("100")).collect(),
+            agents.iter().map(|a| helpers::WeightUpdate {
+                agent: a.address.clone(),
+                weight: 100,
+                increase: true,
+            }).collect(),
         )?;
 
         Ok(TestContext {
@@ -775,6 +779,26 @@ mod tests {
         assert_eq!(admin, ctx.charlie);
     }
     #[test]
+    fn test_nominator_disable_agent_role_panic_on_transfer_role_because_caller_not_admin() {
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
+
+        // Charlie (not admin) cannot transfer role
+        match helpers::transfer_role(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::DisableAgent, &ctx.dave) {
+            Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_nominator_disable_agent_role_panic_on_transfer_admin_because_caller_not_admin() {
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
+
+        // Charlie (not admin) cannot transfer admin
+        match helpers::transfer_role_admin(ctx.sess, &ctx.registry, &ctx.charlie, &helpers::RoleType::DisableAgent, &ctx.dave) {
+            Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
     fn test_nominator_remove_agent_role_panic_on_transfer_role_because_caller_not_admin() {
         let ctx = setup(VALIDATOR_COUNT).unwrap();
 
@@ -851,10 +875,92 @@ mod tests {
             ctx.sess,
             &ctx.registry,
             &ctx.charlie, // does not have `helpers::RoleType::UpdateAgents`
-            vec![ctx.nominators[0].to_string()],
-            vec![0.to_string()],
+            vec![helpers::WeightUpdate {
+                agent: ctx.nominators[0].clone(),
+                weight: 100,
+                increase: true,
+            }],
         ) {
             Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_nominator_update_panic_because_new_weight_too_low() {
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
+
+        match helpers::call_update_agents(
+            ctx.sess,
+            &ctx.registry,
+            &ctx.bob,
+            vec![helpers::WeightUpdate {
+                agent: ctx.nominators[0].clone(),
+                weight: 101, // weight is already set to 100
+                increase: false,
+            }],
+        ) {
+            Ok(_) => panic!("Should panic because weight cannot underflow"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_nominator_disable_panic_because_caller_restricted() {
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
+
+        match helpers::call_disable_agent(
+            ctx.sess,
+            &ctx.registry,
+            &ctx.charlie, // does not have `helpers::RoleType::DisableAgent`
+            &ctx.nominators[0],
+        ) {
+            Ok(_) => panic!("Should panic because caller is restricted"),
+            Err(_) => (),
+        };
+    }
+    #[test]
+    fn test_nominator_disable_success() {
+        let ctx = setup(VALIDATOR_COUNT).unwrap();
+
+        let (total_weight_before, agents_before, sess) = helpers::get_agents(
+            ctx.sess,
+            &ctx.registry,
+        )
+            .unwrap();
+
+        let agent_to_disable = agents_before[0].address.clone();
+
+        // Disable agent
+        let sess = helpers::call_disable_agent(
+            sess,
+            &ctx.registry,
+            &ctx.bob, // has `helpers::RoleType::DisableAgent`
+            &agent_to_disable,
+        )
+            .unwrap();
+
+        let (total_weight_after, agents_after, sess) = helpers::get_agents(
+            sess,
+            &ctx.registry,
+        )
+            .unwrap();
+
+        assert_eq!(agents_after.len(), agents_before.len());
+        assert_eq!(total_weight_after, total_weight_before - agents_before[0].weight);
+        assert_eq!(agents_after[0].address, agents_before[0].address);
+        assert_eq!(agents_after[0].weight, 0);
+
+        // Attempt to add weight back
+        match helpers::call_update_agents(
+            sess,
+            &ctx.registry,
+            &ctx.bob,
+            vec![helpers::WeightUpdate {
+                agent: agent_to_disable.clone(),
+                weight: 100,
+                increase: true,
+            }],
+        ) {
+            Ok(_) => panic!("Should panic because agent is disabled"),
             Err(_) => (),
         };
     }
@@ -957,13 +1063,16 @@ mod tests {
         assert_eq!(total_weight_after, total_weight_before);
         assert_eq!(agents_after[2].weight, 0);
 
-        // Update weight to 100
+        // Update weight from 0 to 100
         let sess = helpers::call_update_agents(
             sess,
             &ctx.registry,
             &ctx.bob,
-            vec![agents_after[2].address.to_string()],
-            vec![100.to_string()],
+            vec![helpers::WeightUpdate {
+                agent: agents_after[2].address.clone(),
+                weight: 100,
+                increase: true,
+            }],
         )
             .unwrap();
 
@@ -1027,13 +1136,16 @@ mod tests {
         assert_eq!(total_weight_after, total_weight_before);
         assert_eq!(agents_after[2].weight, 0);
 
-        // Update weight to 50
+        // Update weight from 0 to 50
         let sess = helpers::call_update_agents(
             sess,
             &ctx.registry,
             &ctx.bob,
-            vec![agents_after[2].address.to_string()],
-            vec![50.to_string()],
+            vec![helpers::WeightUpdate {
+                agent: agents_after[2].address.clone(),
+                weight: 50,
+                increase: true,
+            }],
         )
             .unwrap();
 
@@ -1083,13 +1195,16 @@ mod tests {
         assert_eq!(total_weight_after, total_weight_before);
         assert_eq!(agents_after[agents_after.len() - 1].weight, 0);
 
-        // Update weight to 100
+        // Update weight from 0 to 100
         let sess = helpers::call_update_agents(
             sess,
             &ctx.registry,
             &ctx.bob,
-            vec![agents_after[agents_after.len() - 1].address.to_string()],
-            vec![100.to_string()],
+            vec![helpers::WeightUpdate {
+                agent: agents_after[agents_after.len() - 1].address.clone(),
+                weight: 100,
+                increase: true,
+            }],
         )
             .unwrap();
 
@@ -1116,12 +1231,16 @@ mod tests {
         let sess = helpers::update_days(sess, 2);
 
         // Update agent #1 weight from 100/200 to 50/150
+        // Change weight -50 (from 100 to 50)
         let sess = helpers::call_update_agents(
             sess,
             &ctx.registry,
             &ctx.bob,
-            vec![ctx.nominators[0].to_string()],
-            vec![50.to_string()],
+            vec![helpers::WeightUpdate {
+                agent: ctx.nominators[0].clone(),
+                weight: 50,
+                increase: false,
+            }],
         )
             .unwrap();
 
@@ -1162,12 +1281,16 @@ mod tests {
         let sess = helpers::update_days(sess, 2);
 
         // Update agent weight from 100/200 to 50/150
+        // Change weight -50 (from 100 to 50)
         let sess = helpers::call_update_agents(
             sess,
             &ctx.registry,
             &ctx.bob,
-            vec![ctx.nominators[0].to_string()],
-            vec![50.to_string()],
+            vec![helpers::WeightUpdate {
+                agent: ctx.nominators[0].clone(),
+                weight: 50,
+                increase: false,
+            }],
         )
             .unwrap();
 
