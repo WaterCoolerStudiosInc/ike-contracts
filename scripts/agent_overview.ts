@@ -16,8 +16,8 @@ async function main() {
   const initParams = await initPolkadotJs()
   const {api, chain, account} = initParams
 
-  const nomination_agent_data = await getDeploymentData('nomination_agent')
-  const registry_data = await getDeploymentData('registry')
+  const nomination_agent_data = await getDeploymentData('nomination_agent', chainId)
+  const registry_data = await getDeploymentData('registry', chainId)
   const registry = new ContractPromise(api, registry_data.abi, registry_data.address)
 
   const [totalWeight, agents] = await contractQueryAndDecode(api, registry, 'iRegistry::getAgents')

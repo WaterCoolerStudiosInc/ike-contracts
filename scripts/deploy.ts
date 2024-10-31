@@ -1,6 +1,7 @@
 import { ContractPromise } from '@polkadot/api-contract'
 import { deployContract, contractTx, decodeOutput, contractQuery, DeployedContract } from '@scio-labs/use-inkathon'
 import * as dotenv from 'dotenv'
+import { copyArtifacts } from './utils/copyArtifacts.js'
 import { getDeploymentData } from './utils/getDeploymentData.js'
 import { initPolkadotJs } from './utils/initPolkadotJs.js'
 import { uploadCode } from './utils/uploadCode.js'
@@ -154,6 +155,13 @@ const main = async (validators: string[]) => {
 
   console.log()
 
+  // Write deployment artifacts into associated chainId subdirectory
+  await copyArtifacts('nomination_agent', chainId)
+  await copyArtifacts('registry', chainId)
+  await copyArtifacts('share_token', chainId)
+  await copyArtifacts('vault', chainId)
+
+  // Write deployment metadata into associated chainId subdirectory
   await writeContractAddresses(chain.network, {
     vault,
     share_token,
