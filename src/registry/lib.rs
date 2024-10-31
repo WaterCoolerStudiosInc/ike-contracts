@@ -45,6 +45,8 @@ pub mod registry {
         AddAgent,
         // Permission to update agent weights
         UpdateAgents,
+        // Permission to disable active agents
+        DisableAgent,
         // Permission to remove deprecated agents
         RemoveAgent,
         // Permission to set code hash aka "upgrade" logic
@@ -59,6 +61,18 @@ pub mod registry {
     pub struct Agent {
         pub address: AccountId,
         pub weight: u64,
+        pub disabled: bool,
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
+    pub struct WeightUpdate {
+        pub agent: AccountId,
+        pub weight: u64,
+        pub increase: bool,
     }
 
     #[ink(event)]
@@ -72,6 +86,12 @@ pub mod registry {
         agent: AccountId,
         old_weight: u64,
         new_weight: u64,
+    }
+    #[ink(event)]
+    pub struct AgentDisabled {
+        #[ink(topic)]
+        agent: AccountId,
+        old_weight: u64,
     }
     #[ink(event)]
     pub struct AgentDeleted {
@@ -108,6 +128,7 @@ pub mod registry {
         pub fn new(
             role_add: AccountId,
             role_update: AccountId,
+            role_disable: AccountId,
             role_remove: AccountId,
             role_set_code_hash: AccountId,
             nomination_agent_hash: Hash,
@@ -125,6 +146,13 @@ pub mod registry {
                 &Role {
                     admin: role_update,
                     account: role_update,
+                },
+            );
+            initial_roles.insert(
+                RoleType::DisableAgent,
+                &Role {
+                    admin: role_disable,
+                    account: role_disable,
                 },
             );
             initial_roles.insert(
@@ -194,6 +222,7 @@ pub mod registry {
             self.agents.push(Agent {
                 address: agent_address,
                 weight: 0,
+                disabled: false,
             });
 
             Self::env().emit_event(AgentAdded {
@@ -206,11 +235,11 @@ pub mod registry {
         /// Update weight of existing nomination agents
         ///
         /// Caller must have the UpdateAgents role.
+        /// Cannot update a disabled agent.
         #[ink(message, selector = 2)]
         fn update_agents(
             &mut self,
-            agents: Vec<AccountId>,
-            new_weights: Vec<u64>,
+            weight_updates: Vec<WeightUpdate>,
         ) -> Result<(), RegistryError> {
             let caller = Self::env().caller();
 
@@ -218,28 +247,67 @@ pub mod registry {
                 return Err(RegistryError::InvalidPermissions);
             }
 
-            if agents.len() != new_weights.len() {
-                return Err(RegistryError::InvalidInput);
-            }
+            for update in weight_updates.iter() {
+                if let Some(index) = self.agents.iter().position(|a| a.address == update.agent) {
+                    if self.agents[index].disabled {
+                        return Err(RegistryError::AgentDisabled);
+                    }
 
-            for (args_index, &agent) in agents.iter().enumerate() {
-                if let Some(index) = self.agents.iter().position(|a| a.address == agent) {
                     let old_weight = self.agents[index].weight;
-                    let new_weight = new_weights[args_index];
+                    let new_weight;
 
-                    self.total_weight -= old_weight;
-                    self.total_weight += new_weight;
+                    if update.increase {
+                        new_weight = old_weight + update.weight;
+                        self.total_weight += update.weight;
+                    } else {
+                        if update.weight > old_weight {
+                            return Err(RegistryError::InvalidInput);
+                        }
+                        new_weight = old_weight - update.weight;
+                        self.total_weight -= update.weight;
+                    };
 
                     self.agents[index].weight = new_weight;
 
                     Self::env().emit_event(AgentUpdated {
-                        agent,
+                        agent: update.agent,
                         old_weight,
                         new_weight,
                     });
                 } else {
                     return Err(RegistryError::AgentNotFound);
                 }
+            }
+
+            Ok(())
+        }
+
+        /// Begins the process of offboarding a nomination agent
+        /// Permanently removes weight allocation from a given agent.
+        /// This allows dynamic registry weights and offboarding to co-exist.
+        ///
+        /// Caller must have the DisableAgent role.
+        #[ink(message, selector = 5)]
+        fn disable_agent(&mut self, agent: AccountId) -> Result<(), RegistryError> {
+            let caller = Self::env().caller();
+
+            if caller != self.roles.get(RoleType::DisableAgent).unwrap().account {
+                return Err(RegistryError::InvalidPermissions);
+            }
+
+            if let Some(index) = self.agents.iter().position(|a| a.address == agent) {
+                if self.agents[index].disabled {
+                    return Err(RegistryError::NoChange);
+                }
+
+                let old_weight = self.agents[index].weight;
+                self.agents[index].weight = 0;
+                self.agents[index].disabled = true;
+                self.total_weight -= old_weight;
+
+                Self::env().emit_event(AgentDisabled { agent, old_weight });
+            } else {
+                return Err(RegistryError::AgentNotFound);
             }
 
             Ok(())

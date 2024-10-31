@@ -18,6 +18,14 @@ pub const BIPS: u128 = 10000;
 pub struct Agent {
     pub address: AccountId32,
     pub weight: u64,
+    pub disabled: bool,
+}
+
+#[derive(Debug, scale::Decode, scale::Encode, serde::Deserialize, serde::Serialize)]
+pub struct WeightUpdate {
+    pub agent: AccountId32,
+    pub weight: u64,
+    pub increase: bool,
 }
 
 pub fn update_days(
@@ -67,18 +75,31 @@ pub fn call_update_agents(
     sess: Session<MinimalRuntime>,
     registry: &AccountId32,
     sender: &AccountId32,
-    agents: Vec<String>,
-    weights: Vec<String>,
+    updates: Vec<WeightUpdate>,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
         &registry,
         &sender,
         String::from("IRegistry::update_agents"),
-        Some(vec![
-            serde_json::to_string(&agents).unwrap(),
-            serde_json::to_string(&weights).unwrap(),
-        ]),
+        Some(vec![serde_json::to_string(&updates).unwrap()]),
+        None,
+        transcoder_registry(),
+    )?;
+    Ok(sess)
+}
+pub fn call_disable_agent(
+    sess: Session<MinimalRuntime>,
+    registry: &AccountId32,
+    sender: &AccountId32,
+    agent: &AccountId32,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &registry,
+        &sender,
+        String::from("IRegistry::disable_agent"),
+        Some([agent.to_string()].to_vec()),
         None,
         transcoder_registry(),
     )?;
@@ -164,6 +185,7 @@ pub fn call_request_unlock(
 pub enum RoleType {
     AddAgent,
     UpdateAgents,
+    DisableAgent,
     RemoveAgent,
     SetCodeHash,
 }
@@ -175,6 +197,7 @@ pub fn get_role(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
@@ -191,6 +214,7 @@ pub fn get_role_admin(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
@@ -209,6 +233,7 @@ pub fn transfer_role(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
@@ -233,6 +258,7 @@ pub fn transfer_role_admin(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };

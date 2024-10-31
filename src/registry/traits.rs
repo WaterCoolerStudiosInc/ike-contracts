@@ -1,5 +1,5 @@
 use crate::errors::RegistryError;
-use crate::registry::{Agent, RoleType};
+use crate::registry::{Agent, RoleType, WeightUpdate};
 use ink::{primitives::AccountId, prelude::vec::Vec};
 
 #[ink::trait_definition]
@@ -11,11 +11,9 @@ pub trait IRegistry {
         validator: AccountId,
     ) -> Result<AccountId, RegistryError>;
     #[ink(message, selector = 2)]
-    fn update_agents(
-        &mut self,
-        accounts: Vec<AccountId>,
-        new_weights: Vec<u64>,
-    ) -> Result<(), RegistryError>;
+    fn update_agents(&mut self, updates: Vec<WeightUpdate>) -> Result<(), RegistryError>;
+    #[ink(message, selector = 5)]
+    fn disable_agent(&mut self, agent: AccountId) -> Result<(), RegistryError>;
     #[ink(message, selector = 3)]
     fn remove_agent(&mut self, account: AccountId) -> Result<(), RegistryError>;
     #[ink(message, selector = 4)]

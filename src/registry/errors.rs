@@ -6,6 +6,7 @@ pub enum RegistryError {
     InvalidInput,
     TooManyAgents,
     AgentNotFound,
+    AgentDisabled,
     ActiveAgent,
     InvalidPermissions,
     InvalidRole,

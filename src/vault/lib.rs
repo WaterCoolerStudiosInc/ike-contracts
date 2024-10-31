@@ -113,7 +113,7 @@ mod vault {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let registry_ref = RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
+            let registry_ref = RegistryRef::new(caller, caller, caller, caller, caller, nomination_agent_hash)
                 .endowment(0)
                 .code_hash(registry_code_hash)
                 .salt_bytes(now.to_le_bytes())
