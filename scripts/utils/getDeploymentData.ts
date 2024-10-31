@@ -3,10 +3,8 @@ import path from 'path'
 
 /**
  * Reads the contract deployment files (wasm & abi).
- * NOTE: Base directory can be configured via the `DIR` environment variable
  */
-export const getDeploymentData = async (contractName: string) => {
-  const chainId = process.env.CHAIN || 'development'
+export const getDeploymentData = async (contractName: string, chainId: string = 'development') => {
   const contractPath = path.join(path.resolve(), 'deployments', chainId, contractName)
 
   let abi, wasm, contract
