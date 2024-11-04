@@ -1032,6 +1032,8 @@ version = "0.1.0"
 dependencies = [
  "governance_nft",
  "ink",
+ "num-bigint",
+ "num-traits",
  "parity-scale-codec",
  "psp22",
  "psp34",

@@ -164,21 +164,11 @@ mod multisig {
             }
             Ok(())
         }
-        fn execute_update(
-            &self,
-            agents: Vec<AccountId>,
-            weights: Vec<u64>,
-        ) -> Result<(), MultiSigError> {
-            let mut registry: contract_ref!(Registry) = self.registry.into();
-            if let Err(_) = registry.update_agents(agents, weights) {
-                return Err(MultiSigError::RegistryFailure);
-            }
-            Ok(())
-        }
+       
         fn execute(&self, tx: Action) -> Result<(), MultiSigError> {
             match tx {
                 Action::UpdateValidators(weight_update) => {
-                    self.execute_update(weight_update.accounts, weight_update.weights)
+                   Ok(())
                 }
                 Action::AddValidator(validator) => self.execute_add(validator),
                 Action::RemoveValidator(validator, slash) => {

@@ -108,7 +108,7 @@ impl VaultData {
     pub fn get_weight_imbalances(
         &self,
         agents: &Vec<Agent>,
-        total_weight: u64,
+        total_weight: u128,
         total_pooled: u128,
     ) -> (u128, u128, Vec<u128>, Vec<i128>) {
         let mut pos_diff = 0_u128;

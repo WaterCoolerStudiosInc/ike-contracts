@@ -528,6 +528,7 @@ pub mod governance {
 
             let staking_ref = StakingRef::new(
                 governance_token,
+                registry,
                 Self::env().account_id(),
                 nft_ref.clone(),
                 interest_rate,
