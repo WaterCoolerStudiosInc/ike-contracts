@@ -21,7 +21,7 @@ export const getDeploymentData = async (contractName: string, chainId: string = 
   let blockNumber: number
 
   try {
-    ({ address, blockNumber } = await import(path.join(contractPath, `deployment.ts`)))
+    ({ address, blockNumber } = await import(path.join(contractPath, `deployment.js`)))
   } catch (e) {}
 
   return {
