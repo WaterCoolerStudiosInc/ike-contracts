@@ -60,7 +60,7 @@ pub mod registry {
     )]
     pub struct Agent {
         pub address: AccountId,
-        pub weight: u64,
+        pub weight: u128,
         pub disabled: bool,
     }
 
@@ -71,7 +71,7 @@ pub mod registry {
     )]
     pub struct WeightUpdate {
         pub agent: AccountId,
-        pub weight: u64,
+        pub weight: u128,
         pub increase: bool,
     }
 
@@ -84,14 +84,14 @@ pub mod registry {
     pub struct AgentUpdated {
         #[ink(topic)]
         agent: AccountId,
-        old_weight: u64,
-        new_weight: u64,
+        old_weight: u128,
+        new_weight: u128,
     }
     #[ink(event)]
     pub struct AgentDisabled {
         #[ink(topic)]
         agent: AccountId,
-        old_weight: u64,
+        old_weight: u128,
     }
     #[ink(event)]
     pub struct AgentDeleted {
@@ -114,7 +114,7 @@ pub mod registry {
         // List of all nomination agents including their deployment and relative weight
         pub agents: Vec<Agent>,
         // Sum of nomination agent relative weights
-        pub total_weight: u64,
+        pub total_weight: u128,
         // Permissions for adding agents, updating weights, and removing agents
         pub roles: Mapping<RoleType, Role>,
         // Used for instantiating agents
@@ -354,7 +354,7 @@ pub mod registry {
         }
 
         #[ink(message, selector = 4)]
-        fn get_agents(&self) -> (u64, Vec<Agent>) {
+        fn get_agents(&self) -> (u128, Vec<Agent>) {
             (self.total_weight, self.agents.clone())
         }
 

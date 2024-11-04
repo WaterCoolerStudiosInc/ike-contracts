@@ -10,21 +10,21 @@ use std::{error::Error, rc::Rc};
 pub use crate::sources::*;
 
 pub const SECOND: u64 = 1_000;
-pub const DAY: u64 = SECOND * 86400;
-pub const YEAR: u64 = DAY * 365_25 / 100;
+pub const DAY: u64 = 86400 * SECOND;
+pub const YEAR: u64 = DAY * 365_25 / 100; // https://docs.alephzero.org/aleph-zero/use/stake/staking-rewards
 pub const BIPS: u128 = 10000;
 
 #[derive(Debug, scale::Decode)]
 pub struct Agent {
     pub address: AccountId32,
-    pub weight: u64,
+    pub weight: u128,
     pub disabled: bool,
 }
 
 #[derive(Debug, scale::Decode, scale::Encode, serde::Deserialize, serde::Serialize)]
 pub struct WeightUpdate {
     pub agent: AccountId32,
-    pub weight: u64,
+    pub weight: u128,
     pub increase: bool,
 }
 
@@ -303,10 +303,10 @@ pub fn get_role_set_code(
 pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId32,
-) -> Result<(u64, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
+) -> Result<(u128, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.call_with_address(registry.clone(), "IRegistry::get_agents", NO_ARGS, None)?;
 
-    let result: Result<(u64, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
+    let result: Result<(u128, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
     let (total_weight, agents) = result.unwrap();
 
     Ok((total_weight, agents, sess))
