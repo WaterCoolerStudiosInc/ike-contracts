@@ -108,7 +108,7 @@ impl VaultData {
     pub fn get_weight_imbalances(
         &self,
         agents: &Vec<Agent>,
-        total_weight: u64,
+        total_weight: u128,
         total_pooled: u128,
     ) -> (u128, u128, Vec<u128>, Vec<i128>) {
         let mut pos_diff = 0_u128;
@@ -119,7 +119,7 @@ impl VaultData {
         for a in agents.into_iter() {
             let staked_amount_current = query_staked_value(a.address) as i128;
             let staked_amount_optimal = if total_weight > 0 {
-                self.pro_rata(a.weight as u128, total_pooled, total_weight as u128) as i128
+                self.pro_rata(a.weight, total_pooled, total_weight) as i128
             } else {
                 0
             };
@@ -175,7 +175,7 @@ impl VaultData {
             // Distribute remaining amount equitably to all agents
             // Weighted by agent weight
             let phase2_amount = if phase2 > 0 {
-                self.pro_rata(phase2, agents[i].weight as u128, total_weight as u128)
+                self.pro_rata(phase2, agents[i].weight, total_weight)
             } else {
                 0
             };

@@ -17,7 +17,7 @@ pub trait IRegistry {
     #[ink(message, selector = 3)]
     fn remove_agent(&mut self, account: AccountId) -> Result<(), RegistryError>;
     #[ink(message, selector = 4)]
-    fn get_agents(&self) -> (u64, Vec<Agent>);
+    fn get_agents(&self) -> (u128, Vec<Agent>);
 
     #[ink(message)]
     fn transfer_role(
