@@ -83,14 +83,19 @@ impl fmt::Display for Vote {
 impl fmt::Display for PropType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            PropType::TransferFunds(token,amount,recipient)=>write!(f, "TransferFunds({},{},{})",token,amount,recipient),
-            PropType::NativeTokenTransfer(address,amount) => write!(f, "NativeTokenTransfer({},{})", address,amount),
-            PropType::ReplaceCouncilMember(address1,address2)=>write!(f, "ReplaceCouncilMember({},{})", address1,address2),
-            PropType::RemoveCouncilMember(address)=>write!(f,"RemoveCouncilMember({})",address),
-            PropType::AddCouncilMember(address)=>write!(f,"AddCouncilMember({})",address),
-             _ =>write!(f, "{:?}", self)
+            PropType::TransferFunds(token, amount, recipient) => {
+                write!(f, "TransferFunds({},{},{})", token, amount, recipient)
+            }
+            PropType::NativeTokenTransfer(address, amount) => {
+                write!(f, "NativeTokenTransfer({},{})", address, amount)
+            }
+            PropType::ReplaceCouncilMember(address1, address2) => {
+                write!(f, "ReplaceCouncilMember({},{})", address1, address2)
+            }
+            PropType::RemoveCouncilMember(address) => write!(f, "RemoveCouncilMember({})", address),
+            PropType::AddCouncilMember(address) => write!(f, "AddCouncilMember({})", address),
+            _ => write!(f, "{:?}", self),
         }
-        
     }
 }
 fn sign(hash: [u8; 32], pk: &str) -> [u8; 65] {
@@ -149,7 +154,91 @@ pub fn call_function(
 
     Ok(sess)
 }
+#[allow(dead_code)]
+pub enum RoleType {
+    AddAgent,
+    UpdateAgents,
+    RemoveAgent,
+    SetCodeHash,
+}
+#[derive(Debug)]
+pub enum CastType {
+    Direct(Vec<(AccountId, u128)>),
+    Delegate(u128),
+}
+#[derive(Debug, scale::Decode)]
+pub struct Agent {
+    pub address: AccountId,
+    pub weight: u128,
+}
+impl fmt::Display for CastType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+pub fn transfer_role_admin(
+    sess: Session<MinimalRuntime>,
+    registry: &AccountId,
+    sender: &AccountId,
+    role_type: &RoleType,
+    new_account: &AccountId,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let role_string = match role_type {
+        RoleType::AddAgent => "AddAgent",
+        RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::RemoveAgent => "RemoveAgent",
+        RoleType::SetCodeHash => "SetCodeHash",
+    };
+    let sess = call_function(
+        sess,
+        &registry,
+        &sender,
+        String::from("transfer_role_admin"),
+        Some([role_string.to_string(), new_account.to_string()].to_vec()),
+        None,
+        transcoder_registry(),
+    )?;
+    Ok(sess)
+}
+pub fn call_add_agent(
+    sess: Session<MinimalRuntime>,
+    registry: AccountId,
+    sender: AccountId,
+    admin: AccountId,
+    validator: AccountId,
+    pool_create_amount: u128,
+    existential_deposit: u128,
+) -> Result<(AccountId, Session<MinimalRuntime>), Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &registry,
+        &sender,
+        String::from("add_agent"),
+        Some([
+            admin.to_string(),
+            validator.to_string(),
+            pool_create_amount.to_string(),
+            existential_deposit.to_string(),
+        ].to_vec()),
+        Some(pool_create_amount + existential_deposit),
+        transcoder_registry(),
+    )?;
 
+    let (_, agents, sess) = get_agents(sess, &registry)?;
+
+    Ok((agents[agents.len() - 1].address.clone(), sess))
+}
+pub fn get_agents(
+    mut sess: Session<MinimalRuntime>,
+    registry: &AccountId,
+) -> Result<(u128, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(registry.clone(), "get_agents", NO_ARGS, None)?;
+
+    let result: Result<(u128, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
+    let (total_weight, agents) = result.unwrap();
+
+    Ok((total_weight, agents, sess))
+}
 pub fn query_governance_get_proposal_by_nft(
     mut sess: Session<MinimalRuntime>,
     governance: &AccountId,
@@ -163,7 +252,8 @@ pub fn query_governance_get_proposal_by_nft(
         None,
     )?;
 
-    let proposal: Result<Option<Proposal>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    let proposal: Result<Option<Proposal>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     Ok(((proposal.unwrap()).unwrap(), sess))
 }
 pub fn query_governance_get_all_proposals(
@@ -200,13 +290,9 @@ pub fn query_owner(
 }
 pub fn query_governance_vote_period(
     mut sess: Session<MinimalRuntime>,
-    governance:AccountId,
-   
+    governance: AccountId,
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(
-        governance.clone(),
-        &transcoder_governance().unwrap(),
-    );
+    sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(governance.clone(), "get_voting_period", NO_ARGS, None)?;
 
     let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
@@ -216,12 +302,8 @@ pub fn query_governance_vote_period(
 pub fn query_governance_vote_delay(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
-  
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(
-        governance.clone(),
-        &transcoder_governance().unwrap(),
-    );
+    sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(governance.clone(), "get_voting_delay", NO_ARGS, None)?;
 
     let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
@@ -232,10 +314,7 @@ pub fn query_governance_acceptance_threshold(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(
-        governance.clone(),
-        &transcoder_governance().unwrap(),
-    );
+    sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
         "get_acceptance_threshold",
@@ -252,16 +331,8 @@ pub fn query_governance_rejection_threshold(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(
-        governance.clone(),
-        &transcoder_governance().unwrap(),
-    );
-    sess.call_with_address(
-        governance.clone(),
-        "get_rejection_threshold",
-        NO_ARGS,
-        None,
-    )?;
+    sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
+    sess.call_with_address(governance.clone(), "get_rejection_threshold", NO_ARGS, None)?;
 
     let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
@@ -272,16 +343,8 @@ pub fn query_governance_execution_threshold(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.set_transcoder(
-        governance.clone(),
-        &transcoder_governance().unwrap(),
-    );
-    sess.call_with_address(
-        governance.clone(),
-        "get_execution_threshold",
-        NO_ARGS,
-        None,
-    )?;
+    sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
+    sess.call_with_address(governance.clone(), "get_execution_threshold", NO_ARGS, None)?;
 
     let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());

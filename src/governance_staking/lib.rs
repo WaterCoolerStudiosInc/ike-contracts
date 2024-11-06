@@ -31,7 +31,7 @@ mod staking {
     pub const WITHDRAW_DELAY: u64 = 14 * DAY;
     pub const MAX_VALIDATORS: u8 = 5;
     pub const BIPS: u128 = 10000000;
-    const UPDATE_SELECTOR: Selector = Selector::new([0, 0, 0, 1]);
+    const UPDATE_SELECTOR: Selector = Selector::new([0, 0, 0, 2]);
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum StakingError {
@@ -352,13 +352,13 @@ mod staking {
             match validator_cast {
                 CastType::Direct(weights) => {
                     self.cast_distribution.insert(minted_nft, &weights);
-                    self.increase_registry_weights(weights, token_value);
+                    self.increase_registry_weights(weights, token_value)?;
                 }
                 CastType::Delegate(nft) => {
                     let d = self.cast_distribution.get(nft);
                     if let Some(dist) = d {
                         self.cast_distribution.insert(minted_nft, &dist);
-                        self.increase_registry_weights(dist, token_value);
+                        self.increase_registry_weights(dist, token_value)?;
                     } else {
                         return Err(StakingError::InvalidInput);
                     }
@@ -390,13 +390,13 @@ mod staking {
             match validator_cast {
                 CastType::Direct(weights) => {
                     self.cast_distribution.insert(nft_id, &weights);
-                    self.increase_registry_weights(weights, data.stake_weight);
+                    self.increase_registry_weights(weights, data.stake_weight)?;
                 }
                 CastType::Delegate(nft) => {
                     let d = self.cast_distribution.get(nft);
                     if let Some(dist) = d {
                         self.cast_distribution.insert(nft_id, &dist);
-                        self.increase_registry_weights(dist, data.stake_weight);
+                        self.increase_registry_weights(dist, data.stake_weight)?;
                     } else {
                         return Err(StakingError::InvalidInput);
                     }
@@ -440,6 +440,7 @@ mod staking {
             }
             Ok(())
         }
+
         #[ink(message)]
         pub fn create_unwrap_request(&mut self, token_id: u128) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
@@ -454,7 +455,7 @@ mod staking {
             }
             self.update_stake_accumulation(now)?;
             let cast_distribution = self.cast_distribution.get(token_id);
-            self.decrease_registry_weights(cast_distribution.unwrap(), data.stake_weight);
+            self.decrease_registry_weights(cast_distribution.unwrap(), data.stake_weight)?;
             let last_claim = self
                 .last_reward_claim
                 .get(token_id)
