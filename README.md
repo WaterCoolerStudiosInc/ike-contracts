@@ -31,8 +31,8 @@ pnpm test
 
 ### Deploying
 Contract deployment is configured with the following environment variables.
-* `CHAIN` - target chain name
 * `ACCOUNT_URI` - deployer account
+* `VALIDATOR_ADDRESSES` - comma separated list of validators used for nomination
 
 ```bash
 pnpm run deploy

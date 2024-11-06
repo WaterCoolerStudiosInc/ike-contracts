@@ -20,7 +20,7 @@ mod multisig {
         reflect::ContractEventBase,
         storage::Mapping,
     };
-    use registry::Registry;
+    use registry::traits::IRegistry;
     use validator_whitelist::ValidatorWhitelist;
     #[ink(storage)]
     pub struct MultiSig {

@@ -18,7 +18,10 @@ use ink::{
 };
 use num_bigint::BigUint;
 use num_traits::cast::ToPrimitive;
-use registry::{registry::Agent, RegistryRef};
+use registry::{
+    registry::{Agent, RegistryRef},
+    traits::IRegistry,
+};
 
 pub type Balance = <DefaultEnvironment as Environment>::Balance;
 pub type Timestamp = u64;
@@ -61,12 +64,10 @@ pub struct VaultData {
     pub last_fee_update: Timestamp,
     /// annualized fee percentage expressed in basis points
     pub fee_percentage: u16,
-    /// compounding incentive percentage expressed in basis points
-    pub incentive_percentage: u16,
 
     /// token contract used for representing protocol staked AZERO ownership
     pub shares_contract: AccountId,
-    /// registry contract used for tracking nominator pools and weights
+    /// registry contract used for tracking agents and weights
     pub registry_contract: RegistryRef,
 }
 
@@ -89,7 +90,6 @@ impl VaultData {
             cooldown_period: era * 14,
             last_fee_update: current_time,
             fee_percentage: 2_00, // 2.00%
-            incentive_percentage: 0_05, // 0.05%
             shares_contract: shares_contract_,
             registry_contract: registry_ref,
         }
@@ -119,7 +119,7 @@ impl VaultData {
         for a in agents.into_iter() {
             let staked_amount_current = query_staked_value(a.address) as i128;
             let staked_amount_optimal = if total_weight > 0 {
-                self.pro_rata(a.weight as u128, total_pooled, total_weight as u128) as i128
+                self.pro_rata(a.weight, total_pooled, total_weight) as i128
             } else {
                 0
             };
@@ -138,7 +138,7 @@ impl VaultData {
 
     /// Deposits a given amount to nominator agents splitting deposits by nominator weights and stake imbalances
     ///
-    /// Uses a weighting algorithm that prioritizes negatively imbalanced (under-allocated) pools.
+    /// Uses a weighting algorithm that prioritizes negatively imbalanced (under-allocated) agents.
     /// Phase1: The amount is split among negatively imbalanced nodes according to their proportion of the total imbalance.
     /// Phase2: If the deposit amount is more than the negative imbalance, the remainder is split according to nominator weight proportions.
     pub fn delegate_bonding(&mut self, azero: Balance) -> Result<(), VaultError> {
@@ -175,7 +175,7 @@ impl VaultData {
             // Distribute remaining amount equitably to all agents
             // Weighted by agent weight
             let phase2_amount = if phase2 > 0 {
-                self.pro_rata(phase2, agents[i].weight as u128, total_weight as u128)
+                self.pro_rata(phase2, agents[i].weight, total_weight)
             } else {
                 0
             };
@@ -221,9 +221,9 @@ impl VaultData {
         Ok(())
     }
 
-    /// Unlocks a given amount of staked AZERO from the nominator pools
+    /// Unlocks a given amount of staked AZERO
     ///
-    /// Uses a weighting algorithm that prioritizes positively imbalanced (over-allocated) pools.
+    /// Uses a weighting algorithm that prioritizes positively imbalanced (over-allocated) agents.
     /// Phase1: The amount is split among positively imbalanced nodes according to their proportion of the total imbalance.
     /// Phase2: If the unlock amount is more than the positive imbalance, the remainder is split according to nominator stake proportions.
     pub fn delegate_unbonding(&mut self, azero: Balance) -> Result<(), VaultError> {
@@ -314,8 +314,28 @@ impl VaultData {
         Ok(())
     }
 
-    /// Claim all unbonded AZERO from the agents looping over each nominator pool
-    pub fn delegate_withdraw_unbonded(&self) -> Result<(), VaultError> {
+    /// Claim unbonded AZERO from specific agents
+    ///
+    /// Specified agents must be currently known by the Registry
+    /// Specifying duplicate agents will waste gas
+    pub fn delegate_withdraw_unbonded(&self, agents: Vec<AccountId>) -> Result<(), VaultError> {
+        let (_total_weight, registry_agents) = self.registry_contract.get_agents();
+
+        for agent in agents.into_iter() {
+            // Ensure user-provided agent is known by the Registry
+            if !registry_agents.iter().any(|registry_agent| registry_agent.address == agent) {
+                return Err(VaultError::InvalidIndex);
+            }
+            if let Err(e) = call_withdraw_unbonded(agent) {
+                return Err(VaultError::InternalError(e));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Claim unbonded AZERO from all agents
+    pub fn delegate_withdraw_unbonded_all(&self) -> Result<(), VaultError> {
         let (_total_weight, agents) = self.registry_contract.get_agents();
 
         for a in agents.into_iter() {
@@ -327,26 +347,22 @@ impl VaultData {
         Ok(())
     }
 
-    /// Claim payouts and re-bond AZERO from the agents looping over each nominator pool
+    /// Reinvest AZERO across all agents without issuing new shares
+    /// Rewards must have already been paid via `PayoutStakers`
     ///
     /// # Returns
     ///
     /// `total_compounded` - Total AZERO compounded across all agents
-    /// `total_incentive` - Total AZERO incentive from all agents
-    pub fn delegate_compound(&mut self) -> Result<(Balance, Balance), VaultError> {
+    pub fn delegate_compound(&mut self) -> Result<Balance, VaultError> {
         let (_total_weight, agents) = self.registry_contract.get_agents();
 
         let mut total_compounded = 0;
-        let mut total_incentive = 0;
-
-        let incentive_percentage_ = self.incentive_percentage; // shadow
 
         for (i, a) in agents.into_iter().enumerate() {
-            match call_compound(a.address, incentive_percentage_) {
-                Ok((compound_amount, incentive_amount)) => {
+            match call_compound(a.address) {
+                Ok(compound_amount) => {
                     debug_println!("Compounded {} to agent #{}", compound_amount, i);
                     total_compounded += compound_amount;
-                    total_incentive += incentive_amount;
                 },
                 Err(e) => return Err(VaultError::InternalError(e)),
             }
@@ -358,7 +374,7 @@ impl VaultData {
 
         self.total_pooled += total_compounded;
 
-        Ok((total_compounded, total_incentive))
+        Ok(total_compounded)
     }
 
     /// Calculates summation of fees from last update until now

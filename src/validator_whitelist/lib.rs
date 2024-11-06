@@ -17,7 +17,7 @@ mod validator_whitelist {
 
     use psp22::PSP22Error;
     use psp34::PSP34Error;
-    use registry::Registry;
+    use registry::traits::IRegistry;
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -117,7 +117,7 @@ mod validator_whitelist {
            }
         */
         fn call_remove_validator(&self, agent: AccountId) -> Result<(), WhitelistError> {
-            let mut registry: contract_ref!(Registry) = self.registry.into();
+            let mut registry: contract_ref!(IRegistry) = self.registry.into();
             if let Err(_) = registry.remove_agent(agent) {
                 return Err(WhitelistError::RegistryError);
             }

@@ -9,8 +9,6 @@ mod mock_nominator {
     use crate::traits::INominationAgent;
     use ink::env::Error as EnvError;
 
-    const BIPS: u128 = 10000;
-
     #[ink(storage)]
     pub struct NominationAgent {
         vault: AccountId,
@@ -32,32 +30,18 @@ mod mock_nominator {
     }
 
     impl NominationAgent {
-        #[ink(constructor)]
-        pub fn deploy_hash() -> Self {
-            let account_id = Self::env().account_id();
-            Self {
-                vault: account_id,
-                registry: account_id,
-                admin: account_id,
-                validator: account_id,
-                staked: 0,
-                unbonding: 0,
-                creation_bond: 0,
-            }
-        }
-
         #[ink(constructor, payable)]
         pub fn new(
             vault: AccountId,
             admin: AccountId,
             validator: AccountId,
-            creation_bond: u128,
-            existential_deposit: u128,
         ) -> Self {
+            let creation_bond = Self::env().transferred_value();
+
             // Mock spending AZERO to create agent
             Self::env().transfer(
                 AccountId::from([0u8; 32]),
-                creation_bond + existential_deposit,
+                creation_bond,
             ).unwrap();
 
             Self {
@@ -105,29 +89,25 @@ mod mock_nominator {
         }
 
         #[ink(message, selector = 4)]
-        fn compound(&mut self, incentive_percentage: u16) -> Result<(Balance, Balance), RuntimeError> {
+        fn compound(&mut self) -> Result<Balance, RuntimeError> {
             let vault = self.vault; // shadow
 
             if Self::env().caller() != vault {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            let balance = Self::env().balance();
+            let compound_amount = Self::env().balance() - self.staked - self.unbonding;
 
             // Gracefully return when nomination agent has no rewards
-            if balance == 0 {
-                return Ok((0, 0));
+            if compound_amount == 0 {
+                return Ok(0);
             }
 
-            let incentive = balance * incentive_percentage as u128 / BIPS;
-            let compound_amount = balance - incentive;
-            self.staked += compound_amount;
-
-            if incentive > 0 {
-                Self::env().transfer(vault, incentive)?;
+            if compound_amount > 0 {
+                self.staked += compound_amount;
             }
 
-            Ok((compound_amount, incentive))
+            Ok(compound_amount)
         }
 
         #[ink(message, selector = 12)]

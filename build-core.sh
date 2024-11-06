@@ -8,10 +8,10 @@ DEPLOYMENTS_DIR="./deployments" # Output directory for build files
 # Copy command helper (cross-platform)
 CP_CMD=$(command -v cp &> /dev/null && echo "cp" || echo "copy")
 
-# Determine all contracts under `$CONTRACTS_DIR`
-contracts=$1
-# Build all contracts
-for i in "${contracts[@]}"
+core_contracts=("mock_nominator" "nomination_agent" "registry" "share_token" "vault")
+
+# Build core contracts
+for i in "${core_contracts[@]}"
 do
   echo -e "\nBuilding '$CONTRACTS_DIR/$i/Cargo.toml'…"
   cargo +stable-2023-12-28 contract build --release --quiet --manifest-path $CONTRACTS_DIR/$i/Cargo.toml

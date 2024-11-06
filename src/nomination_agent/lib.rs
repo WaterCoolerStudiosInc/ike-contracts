@@ -4,16 +4,12 @@ mod data;
 pub mod errors;
 pub mod traits;
 
-pub use crate::nomination_agent::NominationAgentRef;
-
 #[ink::contract]
-mod nomination_agent {
+pub mod nomination_agent {
     use crate::data::{MultiAddress, RewardDestination, RuntimeCall, StakingCall};
     use crate::errors::RuntimeError;
     use crate::traits::INominationAgent;
     use ink::env::Error as EnvError;
-
-    const BIPS: u128 = 10000;
 
     #[ink(storage)]
     pub struct NominationAgent {
@@ -36,31 +32,13 @@ mod nomination_agent {
     }
 
     impl NominationAgent {
-        #[ink(constructor)]
-        pub fn deploy_hash() -> Self {
-            let account_id = Self::env().account_id();
-            NominationAgent {
-                vault: account_id,
-                registry: account_id,
-                admin: account_id,
-                validator: account_id,
-                staked: 0,
-                unbonding: 0,
-                creation_bond: 0,
-            }
-        }
-
         #[ink(constructor, payable)]
         pub fn new(
             vault: AccountId,
             admin: AccountId,
             validator: AccountId,
-            creation_bond: u128,
-            existential_deposit: u128,
         ) -> Self {
-            if Self::env().transferred_value() != creation_bond + existential_deposit {
-                panic!("Insufficient transferred value");
-            }
+            let creation_bond = Self::env().transferred_value();
 
             let nomination_agent = NominationAgent {
                 vault,
@@ -176,42 +154,33 @@ mod nomination_agent {
         }
 
         #[ink(message, selector = 4)]
-        fn compound(
-            &mut self,
-            incentive_percentage: u16,
-        ) -> Result<(Balance, Balance), RuntimeError> {
-            let vault = self.vault; // shadow
-
+        fn compound(&mut self) -> Result<Balance, RuntimeError> {
             // Restricted to vault
-            if Self::env().caller() != vault {
+            if Self::env().caller() != self.vault {
                 return Err(RuntimeError::Unauthorized);
             }
 
-            let rewards = Self::env().balance();
+            let balance_before = Self::env().balance();
 
-            // Gracefully return when nomination agent has no rewards
-            if rewards == 0 {
-                return Ok((0, 0));
+            // Gracefully return when no funds are available
+            if balance_before == 0 {
+                return Ok(0);
             }
 
-            let incentive = rewards * incentive_percentage as u128 / BIPS;
-            let compound_amount = rewards - incentive;
+            // Attempt bonding
+            self.env()
+                .call_runtime(&RuntimeCall::Staking(StakingCall::BondExtra {
+                    max_additional: balance_before,
+                }))
+                .ok();
 
-            // Bond AZERO
-            if compound_amount > 0 {
-                self.staked += compound_amount;
-                self.env()
-                    .call_runtime(&RuntimeCall::Staking(StakingCall::BondExtra {
-                        max_additional: compound_amount,
-                    }))?;
+            let compounded = balance_before - Self::env().balance();
+
+            if compounded > 0 {
+                self.staked += compounded;
             }
 
-            // Send incentive AZERO to vault which will handle distribution to caller
-            if incentive > 0 {
-                Self::env().transfer(vault, incentive)?;
-            }
-
-            Ok((compound_amount, incentive))
+            Ok(compounded)
         }
 
         #[ink(message, selector = 12)]

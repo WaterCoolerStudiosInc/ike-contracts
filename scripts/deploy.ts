@@ -1,8 +1,10 @@
 import { ContractPromise } from '@polkadot/api-contract'
-import { deployContract, contractTx, decodeOutput, contractQuery } from '@scio-labs/use-inkathon'
+import { deployContract, contractTx, decodeOutput, contractQuery, DeployedContract } from '@scio-labs/use-inkathon'
 import * as dotenv from 'dotenv'
+import { copyArtifacts } from './utils/copyArtifacts.js'
 import { getDeploymentData } from './utils/getDeploymentData.js'
 import { initPolkadotJs } from './utils/initPolkadotJs.js'
+import { uploadCode } from './utils/uploadCode.js'
 import { writeContractAddresses } from './utils/writeContractAddresses.js'
 
 // Dynamic environment variables
@@ -32,70 +34,45 @@ const main = async (validators: string[]) => {
   const minNominatorBond = BigInt(minNominatorBondCodec.toString())
   console.log(`Minimum nomination bond: ${minNominatorBond}`)
 
-  const existentialDepositCodec = api.consts.balances.existentialDeposit
-  const existentialDeposit = BigInt(existentialDepositCodec.toString())
-  console.log(`Existential deposit: ${existentialDeposit}`)
-
   const sessionPeriod = api.consts.committeeManagement.sessionPeriod.toString().replace(/,/g, '')
   const sessionsPerEra = api.consts.staking.sessionsPerEra.toString().replace(/,/g, '')
   const eraDurationMs = 1000n * BigInt(sessionPeriod) * BigInt(sessionsPerEra)
   console.log(`Era duration: ${eraDurationMs.toLocaleString()} ms`)
 
+  const blockWeights = api.consts.system.blockWeights.toHuman()
+  const maxBlock = blockWeights['maxBlock']
+  const maxExtrinsic = blockWeights['perClass']['normal']['maxExtrinsic']
+  console.log(`Normal refTime: ${maxExtrinsic.refTime} / ${maxBlock.refTime}`)
+
   console.log('===== Code Hash Deployment =====')
 
   console.log(`Deploying code hash: 'registry' ...`)
   const registry_data = await getDeploymentData('registry')
-  const registry = await deployContract(
-    api,
-    account,
-    registry_data.abi,
-    registry_data.wasm,
-    'deploy_hash',
-  )
+  const registry_hash = await uploadCode(api, account, registry_data.contract)
+  console.log(`Registry hash: ${registry_hash}`)
 
   console.log(`Deploying code hash: 'share_token' ...`)
-  const token_data = await getDeploymentData('share_token')
-  const share_token = await deployContract(
-    api,
-    account,
-    token_data.abi,
-    token_data.wasm,
-    'new',
-    ['TEST', 'TS'],
-  )
+  const share_token_data = await getDeploymentData('share_token')
+  const share_token_hash = await uploadCode(api, account, share_token_data.contract)
+  console.log(`Share token hash: ${share_token_hash}`)
 
   console.log(`Deploying code hash: 'nomination_agent' ...`)
   const nomination_agent_data = await getDeploymentData('nomination_agent')
-  console.log(`Data hash: ${nomination_agent_data.abi.source.hash}`)
-  const nomination_agent = await deployContract(
-    api,
-    account,
-    nomination_agent_data.abi,
-    nomination_agent_data.wasm,
-    'deploy_hash',
-  )
-  console.log(`Hash: ${nomination_agent.hash}`)
+  const nomination_agent_hash = await uploadCode(api, account, nomination_agent_data.contract)
+  console.log(`Hash: ${nomination_agent_hash}`)
 
   console.log('===== Contract Deployment =====')
 
   console.log(`Deploying contract: 'vault' ...`)
   const vault_data = await getDeploymentData('vault')
-  const vault = chainId === 'development'
-    ? await deployContract(
-      api,
-      account,
-      vault_data.abi,
-      vault_data.wasm,
-      'custom_era',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash, eraDurationMs],
-    ) : await deployContract(
-      api,
-      account,
-      vault_data.abi,
-      vault_data.wasm,
-      'new',
-      [token_data.abi.source.hash, registry_data.abi.source.hash, nomination_agent_data.abi.source.hash],
-    )
+  const vault = await deployContract(
+    api,
+    account,
+    vault_data.abi,
+    vault_data.wasm,
+    'new',
+    [share_token_hash, registry_hash, nomination_agent_hash, eraDurationMs],
+  )
 
   const vault_instance = new ContractPromise(api, vault_data.abi, vault.address)
 
@@ -108,7 +85,12 @@ const main = async (validators: string[]) => {
     vault_instance,
     'iVault::get_registry_contract',
   )
-  registry.address = decodeOutput(registry_contract_result, vault_instance, 'iVault::get_registry_contract').output
+  const registry = {
+    address: decodeOutput(registry_contract_result, vault_instance, 'iVault::get_registry_contract').output,
+    hash: registry_hash,
+    block: vault.block,
+    blockNumber: vault.blockNumber,
+  } as DeployedContract
   const registry_instance = new ContractPromise(api, registry_data.abi, registry.address)
   console.log(`Registry Address: ${registry.address}`)
 
@@ -119,7 +101,12 @@ const main = async (validators: string[]) => {
     vault_instance,
     'iVault::get_share_token_contract',
   )
-  share_token.address = decodeOutput(share_token_contract_result, vault_instance, 'iVault::get_share_token_contract').output
+  const share_token = {
+    address: decodeOutput(share_token_contract_result, vault_instance, 'iVault::get_share_token_contract').output,
+    hash: share_token_hash,
+    block: vault.block,
+    blockNumber: vault.blockNumber,
+  } as DeployedContract
   console.log(`Share Token Address: ${share_token.address}`)
 
   console.log('===== Agent Configuration =====')
@@ -130,11 +117,11 @@ const main = async (validators: string[]) => {
       api,
       account,
       registry_instance,
-      'add_agent',
+      'iRegistry::add_agent',
       {
-        value: minNominatorBond + existentialDeposit,
+        value: minNominatorBond,
       },
-      [account.address, validator, minNominatorBond, existentialDeposit],
+      [account.address, validator],
     )
   }
 
@@ -143,18 +130,18 @@ const main = async (validators: string[]) => {
     api,
     '',
     registry_instance,
-    'get_agents',
+    'iRegistry::get_agents',
   )
-  const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'get_agents').output
+  const [total_weight, agents] = decodeOutput(get_agents_result, registry_instance, 'iRegistry::get_agents').output
 
   console.log('Equally weighting agents ...')
   await contractTx(
     api,
     account,
     registry_instance,
-    'update_agents',
+    'iRegistry::update_agents',
     {},
-    [agents.map((a) => a.address), [1000, 1000]],
+    [agents.map((a) => ({ agent: a.address, weight: 1000, increase: true }))],
   )
 
   console.log('===== Contract Locations =====')
@@ -166,6 +153,15 @@ const main = async (validators: string[]) => {
     ...agents.reduce((obj, a, i) => ({...obj, [`agent[${i}]`]: a.address}), {}),
   })
 
+  console.log()
+
+  // Write deployment artifacts into associated chainId subdirectory
+  await copyArtifacts('nomination_agent', chainId)
+  await copyArtifacts('registry', chainId)
+  await copyArtifacts('share_token', chainId)
+  await copyArtifacts('vault', chainId)
+
+  // Write deployment metadata into associated chainId subdirectory
   await writeContractAddresses(chain.network, {
     vault,
     share_token,

@@ -16,28 +16,26 @@ async function main() {
   const initParams = await initPolkadotJs()
   const {api, chain, account} = initParams
 
-  const nomination_agent_data = await getDeploymentData('nomination_agent')
+  const nomination_agent_data = await getDeploymentData('nomination_agent', chainId)
   const registry_data = await getDeploymentData('registry', chainId)
   const registry = new ContractPromise(api, registry_data.abi, registry_data.address)
 
-  const poolMembersResult = await api.query.nominationPools.poolMembers.entries()
-
-  const [totalWeight, agents] = await contractQueryAndDecode(api, registry, 'getAgents')
+  const [totalWeight, agents] = await contractQueryAndDecode(api, registry, 'iRegistry::getAgents')
 
   const table = []
   for (const agent of agents) {
     const agent_contract = new ContractPromise(api, nomination_agent_data.abi, agent.address)
-    const poolMember = poolMembersResult.find(r => r[0].toHuman()[0] === agent.address)
-    const poolId = poolMember?.[1]?.toJSON()?.["poolId"]
 
     const stakedValue = await contractQueryAndDecode(api, agent_contract, 'iNominationAgent::getStakedValue')
     const unbondingValue = await contractQueryAndDecode(api, agent_contract, 'iNominationAgent::getUnbondingValue')
+    const validatorAddress = await contractQueryAndDecode(api, agent_contract, 'iNominationAgent::getValidator')
+    const validatorCommission = (await api.query.staking.validators(validatorAddress)).toHuman()['commission']
 
     table.push({
       agent: agent.address,
+      validator: validatorAddress,
+      commission: validatorCommission,
       weight: agent.weight,
-      init: agent.initialized,
-      pid: poolId,
       stakedValue,
       unbondingValue,
     })

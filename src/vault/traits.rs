@@ -29,7 +29,7 @@ pub trait IVault {
     fn request_unlock(&mut self, shares: u128) -> Result<(), VaultError>;
 
     #[ink(message)]
-    fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError>;
+    fn delegate_withdraw_unbonded(&mut self, agents: Vec<AccountId>) -> Result<(), VaultError>;
 
     #[ink(message)]
     fn redeem(&mut self, user: AccountId, unlock_id: u64) -> Result<(), VaultError>;
@@ -52,9 +52,6 @@ pub trait IVault {
     #[ink(message, selector = 13)]
     fn adjust_fee(&mut self, new_fee: u16) -> Result<(), VaultError>;
 
-    #[ink(message,selector=17)]
-    fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError>;
-
     #[ink(message)]
     fn get_role_adjust_fee(&self) -> AccountId;
 
@@ -71,6 +68,9 @@ pub trait IVault {
     fn get_role_set_code(&self) -> Option<AccountId>;
 
     #[ink(message)]
+    fn transfer_role_set_code(&mut self, new_account: AccountId) -> Result<(), VaultError>;
+
+    #[ink(message)]
     fn get_total_pooled(&self) -> Balance;
 
     #[ink(message)]
@@ -81,9 +81,6 @@ pub trait IVault {
 
     #[ink(message)]
     fn get_fee_percentage(&self) -> u16;
-
-    #[ink(message)]
-    fn get_incentive_percentage(&self) -> u16;
 
     #[ink(message)]
     fn get_share_token_contract(&self) -> AccountId;

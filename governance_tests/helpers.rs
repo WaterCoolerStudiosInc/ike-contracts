@@ -158,6 +158,7 @@ pub fn call_function(
 pub enum RoleType {
     AddAgent,
     UpdateAgents,
+    DisableAgent,
     RemoveAgent,
     SetCodeHash,
 }
@@ -170,6 +171,7 @@ pub enum CastType {
 pub struct Agent {
     pub address: AccountId,
     pub weight: u128,
+    pub disabled: bool,
 }
 impl fmt::Display for CastType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -186,6 +188,7 @@ pub fn transfer_role_admin(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
@@ -193,7 +196,7 @@ pub fn transfer_role_admin(
         sess,
         &registry,
         &sender,
-        String::from("transfer_role_admin"),
+        String::from("IRegistry::transfer_role_admin"),
         Some([role_string.to_string(), new_account.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -207,20 +210,17 @@ pub fn call_add_agent(
     admin: AccountId,
     validator: AccountId,
     pool_create_amount: u128,
-    existential_deposit: u128,
 ) -> Result<(AccountId, Session<MinimalRuntime>), Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
         &registry,
         &sender,
-        String::from("add_agent"),
+        String::from("IRegistry::add_agent"),
         Some([
             admin.to_string(),
             validator.to_string(),
-            pool_create_amount.to_string(),
-            existential_deposit.to_string(),
         ].to_vec()),
-        Some(pool_create_amount + existential_deposit),
+        Some(pool_create_amount),
         transcoder_registry(),
     )?;
 
@@ -232,7 +232,7 @@ pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId,
 ) -> Result<(u128, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.call_with_address(registry.clone(), "get_agents", NO_ARGS, None)?;
+    sess.call_with_address(registry.clone(), "IRegistry::get_agents", NO_ARGS, None)?;
 
     let result: Result<(u128, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
     let (total_weight, agents) = result.unwrap();

@@ -10,14 +10,22 @@ use std::{error::Error, rc::Rc};
 pub use crate::sources::*;
 
 pub const SECOND: u64 = 1_000;
-pub const DAY: u64 = SECOND * 86400;
-pub const YEAR: u64 = DAY * 365_25 / 100;
+pub const DAY: u64 = 86400 * SECOND;
+pub const YEAR: u64 = DAY * 365_25 / 100; // https://docs.alephzero.org/aleph-zero/use/stake/staking-rewards
 pub const BIPS: u128 = 10000;
 
 #[derive(Debug, scale::Decode)]
 pub struct Agent {
     pub address: AccountId32,
-    pub weight: u64,
+    pub weight: u128,
+    pub disabled: bool,
+}
+
+#[derive(Debug, scale::Decode, scale::Encode, serde::Deserialize, serde::Serialize)]
+pub struct WeightUpdate {
+    pub agent: AccountId32,
+    pub weight: u128,
+    pub increase: bool,
 }
 
 pub fn update_days(
@@ -45,20 +53,17 @@ pub fn call_add_agent(
     admin: &AccountId32,
     validator: &AccountId32,
     pool_create_amount: u128,
-    existential_deposit: u128,
 ) -> Result<(AccountId32, Session<MinimalRuntime>), Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
         &registry,
         &sender,
-        String::from("add_agent"),
+        String::from("IRegistry::add_agent"),
         Some([
             admin.to_string(),
             validator.to_string(),
-            pool_create_amount.to_string(),
-            existential_deposit.to_string(),
         ].to_vec()),
-        Some(pool_create_amount + existential_deposit),
+        Some(pool_create_amount),
         transcoder_registry(),
     )?;
 
@@ -70,18 +75,31 @@ pub fn call_update_agents(
     sess: Session<MinimalRuntime>,
     registry: &AccountId32,
     sender: &AccountId32,
-    agents: Vec<String>,
-    weights: Vec<String>,
+    updates: Vec<WeightUpdate>,
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
         &registry,
         &sender,
-        String::from("update_agents"),
-        Some(vec![
-            serde_json::to_string(&agents).unwrap(),
-            serde_json::to_string(&weights).unwrap(),
-        ]),
+        String::from("IRegistry::update_agents"),
+        Some(vec![serde_json::to_string(&updates).unwrap()]),
+        None,
+        transcoder_registry(),
+    )?;
+    Ok(sess)
+}
+pub fn call_disable_agent(
+    sess: Session<MinimalRuntime>,
+    registry: &AccountId32,
+    sender: &AccountId32,
+    agent: &AccountId32,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let sess: Session<MinimalRuntime> = call_function(
+        sess,
+        &registry,
+        &sender,
+        String::from("IRegistry::disable_agent"),
+        Some([agent.to_string()].to_vec()),
         None,
         transcoder_registry(),
     )?;
@@ -97,7 +115,7 @@ pub fn call_remove_agent(
         sess,
         &registry,
         &sender,
-        String::from("remove_agent"),
+        String::from("IRegistry::remove_agent"),
         Some([agent.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -167,6 +185,7 @@ pub fn call_request_unlock(
 pub enum RoleType {
     AddAgent,
     UpdateAgents,
+    DisableAgent,
     RemoveAgent,
     SetCodeHash,
 }
@@ -178,10 +197,11 @@ pub fn get_role(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
-    sess.call_with_address(registry.clone(), "get_role", &[role_string], None)?;
+    sess.call_with_address(registry.clone(), "IRegistry::get_role", &[role_string], None)?;
 
     let role: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((role.unwrap(), sess))
@@ -194,10 +214,11 @@ pub fn get_role_admin(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
-    sess.call_with_address(registry.clone(), "get_role_admin", &[role_string], None)?;
+    sess.call_with_address(registry.clone(), "IRegistry::get_role_admin", &[role_string], None)?;
 
     let admin: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((admin.unwrap(), sess))
@@ -212,6 +233,7 @@ pub fn transfer_role(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
@@ -219,7 +241,7 @@ pub fn transfer_role(
         sess,
         &registry,
         &sender,
-        String::from("transfer_role"),
+        String::from("IRegistry::transfer_role"),
         Some([role_string.to_string(), new_account.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -236,6 +258,7 @@ pub fn transfer_role_admin(
     let role_string = match role_type {
         RoleType::AddAgent => "AddAgent",
         RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
         RoleType::RemoveAgent => "RemoveAgent",
         RoleType::SetCodeHash => "SetCodeHash",
     };
@@ -243,7 +266,7 @@ pub fn transfer_role_admin(
         sess,
         &registry,
         &sender,
-        String::from("transfer_role_admin"),
+        String::from("IRegistry::transfer_role_admin"),
         Some([role_string.to_string(), new_account.to_string()].to_vec()),
         None,
         transcoder_registry(),
@@ -268,13 +291,22 @@ pub fn get_role_fee_to(
     let fee_to: Result<AccountId32, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((fee_to.unwrap(), sess))
 }
+pub fn get_role_set_code(
+    mut sess: Session<MinimalRuntime>,
+    vault: &AccountId32,
+) -> Result<(Option<AccountId32>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(vault.clone(), "IVault::get_role_set_code", NO_ARGS, None)?;
+
+    let set_code: Result<Option<AccountId32>, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((set_code.unwrap(), sess))
+}
 pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId32,
-) -> Result<(u64, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
-    sess.call_with_address(registry.clone(), "get_agents", NO_ARGS, None)?;
+) -> Result<(u128, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(registry.clone(), "IRegistry::get_agents", NO_ARGS, None)?;
 
-    let result: Result<(u64, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
+    let result: Result<(u128, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
     let (total_weight, agents) = result.unwrap();
 
     Ok((total_weight, agents, sess))
@@ -437,24 +469,6 @@ pub fn call_withdraw_fees(
         &sender,
         String::from("IVault::withdraw_fees"),
         None,
-        None,
-        transcoder_vault(),
-    )?;
-    Ok(sess)
-}
-
-pub fn call_adjust_incentive(
-    sess: Session<MinimalRuntime>,
-    vault: &AccountId32,
-    sender: &AccountId32,
-    new_incentive: u16,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let sess = call_function(
-        sess,
-        &vault,
-        &sender,
-        String::from("IVault::adjust_incentive"),
-        Some(vec![new_incentive.to_string()]),
         None,
         transcoder_vault(),
     )?;

@@ -1,14 +1,14 @@
 {
   "name": "@water-cooler-studios/ike-contracts",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "scripts": {
     "test": "cargo test --manifest-path drink_tests/Cargo.toml",
     "build": "bash build-all.sh",
+    "buildCore": "bash build-core.sh",
     "script": "f() { node --no-warnings=ExperimentalWarning --loader ts-node/esm ./scripts/$1; }; f \"$@\"",
     "deploy": "pnpm run script deploy",
-    "deploy_governance":"pnpm run script deploy_governance",
-    "prepublishOnly": "tsc"
+    "deploy_governance":"pnpm run script deploy_governance"
   },
   "devDependencies": {
     "@polkadot/api": "11.0.3",

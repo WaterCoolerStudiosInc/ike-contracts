@@ -19,7 +19,7 @@ mod vault {
         ToAccountId,
     };
     use psp22::{PSP22Burnable, PSP22};
-    use registry::RegistryRef;
+    use registry::{registry::RegistryRef, traits::IRegistry};
     use share_token::{ShareToken, TokenRef};
 
     /// Errors returned by the contract's methods.
@@ -51,7 +51,6 @@ mod vault {
     pub struct Compounded {
         caller: AccountId,
         azero: Balance,
-        incentive: Balance,
         virtual_shares: u128,
     }
     #[ink(event)]
@@ -80,10 +79,6 @@ mod vault {
         virtual_shares: u128,
     }
     #[ink(event)]
-    pub struct IncentiveAdjusted {
-        new_incentive: u16,
-    }
-    #[ink(event)]
     pub struct RoleAdjustFeeTransferred {
         new_account: AccountId,
     }
@@ -92,11 +87,15 @@ mod vault {
         new_account: AccountId,
     }
     #[ink(event)]
-    pub struct NewHash {
+    pub struct RoleSetCodeTransferred {
+        new_account: AccountId,
+    }
+    #[ink(event)]
+    pub struct NewCodeHash {
         code_hash: [u8; 32],
     }
     #[ink(event)]
-    pub struct SetHashDisabled {}
+    pub struct SetCodeDisabled {}
 
     #[ink(storage)]
     pub struct Vault {
@@ -109,39 +108,21 @@ mod vault {
             share_token_hash: Hash,
             registry_code_hash: Hash,
             nomination_agent_hash: Hash,
-        ) -> Self {
-            Self::custom_era(
-                share_token_hash,
-                registry_code_hash,
-                nomination_agent_hash,
-                DAY,
-            )
-        }
-
-        #[ink(constructor)]
-        pub fn custom_era(
-            share_token_hash: Hash,
-            registry_code_hash: Hash,
-            nomination_agent_hash: Hash,
             era: u64,
         ) -> Self {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
 
-            let registry_ref =
-                RegistryRef::new(caller, caller, caller, caller, nomination_agent_hash)
-                    .endowment(0)
-                    .code_hash(registry_code_hash)
-                    .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
-                    .instantiate();
-            let share_token_ref = TokenRef::new(
-                Some(String::from("Ike Liquid Staked AZERO")),
-                Some(String::from("sA0")),
-            )
-            .endowment(0)
-            .code_hash(share_token_hash)
-            .salt_bytes(&[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
-            .instantiate();
+            let registry_ref = RegistryRef::new(caller, caller, caller, caller, caller, nomination_agent_hash)
+                .endowment(0)
+                .code_hash(registry_code_hash)
+                .salt_bytes(now.to_le_bytes())
+                .instantiate();
+            let share_token_ref = TokenRef::new(Some(String::from("Ike Liquid Staked AZERO")), Some(String::from("sA0")))
+                .endowment(0)
+                .code_hash(share_token_hash)
+                .salt_bytes(now.to_le_bytes())
+                .instantiate();
 
             Self {
                 data: VaultData::new(
@@ -306,10 +287,10 @@ mod vault {
             Ok(())
         }
 
-        /// Attempts to claim unbonded AZERO from all validators
+        /// Attempts to claim unbonded AZERO from specified agents
         #[ink(message)]
-        fn delegate_withdraw_unbonded(&mut self) -> Result<(), VaultError> {
-            self.data.delegate_withdraw_unbonded()?;
+        fn delegate_withdraw_unbonded(&mut self, agents: Vec<AccountId>) -> Result<(), VaultError> {
+            self.data.delegate_withdraw_unbonded(agents)?;
 
             Ok(())
         }
@@ -372,7 +353,7 @@ mod vault {
             unlock_id: u64,
         ) -> Result<(), VaultError> {
             // Claim all unbonded AZERO into Vault
-            self.data.delegate_withdraw_unbonded()?;
+            self.data.delegate_withdraw_unbonded_all()?;
 
             self.redeem(user, unlock_id)?;
 
@@ -382,30 +363,23 @@ mod vault {
         /// Compound earned interest for all validators
         ///
         /// Can be called by anyone
-        /// Caller receives an AZERO incentive based on the total AZERO amount compounded
         #[ink(message)]
         fn compound(&mut self) -> Result<Balance, VaultError> {
             let caller = Self::env().caller();
 
             // Delegate compounding to all agents
-            let (compounded, incentive) = self.data.delegate_compound()?;
-
-            // Send AZERO incentive to caller
-            if incentive > 0 {
-                Self::env().transfer(caller, incentive)?;
-            }
+            let compounded = self.data.delegate_compound()?;
 
             Self::emit_event(
                 Self::env(),
                 Event::Compounded(Compounded {
                     caller,
                     azero: compounded,
-                    incentive,
                     virtual_shares: self.get_current_virtual_shares(),
                 }),
             );
 
-            Ok(incentive)
+            Ok(compounded)
         }
 
         /// Claim fees by inflating sA0 supply
@@ -451,11 +425,20 @@ mod vault {
 
             ink::env::set_code_hash(&code_hash)?;
 
-            Self::emit_event(Self::env(), Event::NewHash(NewHash { code_hash }));
+            Self::emit_event(
+                Self::env(),
+                Event::NewCodeHash(NewCodeHash {
+                    code_hash,
+                }),
+            );
 
             Ok(())
         }
 
+        /// Removes the ability to "upgrade" the contract via `self.set_code()`
+        ///
+        /// The set code role (`role_set_code`) must be set
+        /// Caller must have the set code role (`role_set_code`)
         #[ink(message)]
         fn disable_set_code(&mut self) -> Result<(), VaultError> {
             let caller = Self::env().caller();
@@ -470,7 +453,10 @@ mod vault {
 
             self.data.role_set_code = None;
 
-            Self::emit_event(Self::env(), Event::SetHashDisabled(SetHashDisabled {}));
+            Self::emit_event(
+                Self::env(),
+                Event::SetCodeDisabled(SetCodeDisabled {}),
+            );
 
             Ok(())
         }
@@ -503,33 +489,6 @@ mod vault {
                     new_fee,
                     virtual_shares: self.data.total_shares_virtual, // updated in update_fees()
                 }),
-            );
-
-            Ok(())
-        }
-
-        /// Update the compound incentive
-        ///
-        /// Caller must have the adjust fee role (`role_adjust_fee`)
-        #[ink(message)]
-        fn adjust_incentive(&mut self, new_incentive: u16) -> Result<(), VaultError> {
-            let caller = Self::env().caller();
-
-            if caller != self.data.role_adjust_fee {
-                return Err(VaultError::InvalidPermissions);
-            }
-            if self.data.incentive_percentage == new_incentive {
-                return Err(VaultError::NoChange);
-            }
-            if new_incentive >= BIPS {
-                return Err(VaultError::InvalidPercent);
-            }
-
-            self.data.incentive_percentage = new_incentive;
-
-            Self::emit_event(
-                Self::env(),
-                Event::IncentiveAdjusted(IncentiveAdjusted { new_incentive }),
             );
 
             Ok(())
@@ -600,6 +559,34 @@ mod vault {
             self.data.role_set_code
         }
 
+        /// Transfers set code role to a new account
+        ///
+        /// The set code role (`role_set_code`) must be set
+        /// Caller must have the set code role (`role_set_code`)
+        #[ink(message)]
+        fn transfer_role_set_code(&mut self, new_account: AccountId) -> Result<(), VaultError> {
+            let caller = Self::env().caller();
+            let role_set_code = self.data.role_set_code; // shadow
+
+            if role_set_code.is_none() || caller != role_set_code.unwrap() {
+                return Err(VaultError::InvalidPermissions);
+            }
+            if role_set_code.unwrap() == new_account {
+                return Err(VaultError::NoChange);
+            }
+
+            self.data.role_set_code = Some(new_account);
+
+            Self::emit_event(
+                Self::env(),
+                Event::RoleSetCodeTransferred(RoleSetCodeTransferred {
+                    new_account,
+                }),
+            );
+
+            Ok(())
+        }
+
         /// Returns the total amount of bonded AZERO
         #[ink(message)]
         fn get_total_pooled(&self) -> Balance {
@@ -625,12 +612,7 @@ mod vault {
         fn get_fee_percentage(&self) -> u16 {
             self.data.fee_percentage
         }
-
-        #[ink(message)]
-        fn get_incentive_percentage(&self) -> u16 {
-            self.data.incentive_percentage
-        }
-
+        
         #[ink(message)]
         fn get_share_token_contract(&self) -> AccountId {
             self.data.shares_contract
@@ -644,14 +626,14 @@ mod vault {
         /// Calculate the value of AZERO in terms of sA0 shares
         #[ink(message)]
         fn get_shares_from_azero(&self, azero: Balance) -> u128 {
-            let total_pooled_ = self.data.total_pooled; // shadow
-            if total_pooled_ == 0 {
+            let total_pooled = self.data.total_pooled; // shadow
+            let total_shares = self.get_total_shares(); // shadow
+            if total_pooled == 0 || total_shares == 0 {
                 // This happens upon initial stake
                 // Also known as 1:1 redemption ratio
                 azero
             } else {
-                self.data
-                    .pro_rata(azero, self.get_total_shares(), total_pooled_)
+                self.data.pro_rata(azero, total_shares, total_pooled)
             }
         }
 

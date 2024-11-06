@@ -93,6 +93,7 @@ mod tests {
         sess.upload(bytes_governance_nft())?;
         sess.upload(bytes_registry())?;
         sess.upload(bytes_share_token())?;
+        sess.upload(bytes_nominator())?;
         sess.upload(bytes_multisig())?;
         sess.upload(bytes_governance_staking())?;
         sess.upload(bytes_vesting())?;
@@ -122,7 +123,7 @@ mod tests {
         let vault = sess.deploy(
             bytes_vault(),
             "new",
-            &[hash_share_token(), hash_registry(), hash_nominator()],
+            &[hash_share_token(), hash_registry(), hash_nominator(), DAY.to_string()],
             vec![1],
             None,
             &transcoder_vault().unwrap(),
@@ -155,15 +156,15 @@ mod tests {
             existential_deposit: u128,
          */
         let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator2.clone(), 100e12 as u128, 500)?;
+            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator2.clone(), 100e12 as u128)?;
         let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator1.clone(), 100e12 as u128, 500)?;
+            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator1.clone(), 100e12 as u128)?;
         let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator3.clone(), 100e12 as u128, 500)?;
+            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator3.clone(), 100e12 as u128)?;
         let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator4.clone(), 100e12 as u128, 500)?;
+            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator4.clone(), 100e12 as u128)?;
         let (_new_agent, mut sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator5.clone(), 100e12 as u128, 500)?;
+            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator5.clone(), 100e12 as u128)?;
         /**
         *    vault: AccountId,
            registry: AccountId,
