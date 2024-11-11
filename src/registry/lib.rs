@@ -10,7 +10,7 @@ pub mod registry {
     use crate::traits::IRegistry;
     use ink::{
         contract_ref,
-        env::Error as InkEnvError,
+        env::{debug_println, Error as InkEnvError},
         prelude::{format, vec::Vec},
         storage::Mapping,
         ToAccountId,
@@ -205,15 +205,11 @@ pub mod registry {
 
             let nomination_agent_counter = self.nomination_agent_counter; // shadow
 
-            let agent_ref = NominationAgentRef::new(
-                self.vault,
-                admin,
-                validator,
-            )
-            .endowment(nominator_bond)
-            .code_hash(self.nomination_agent_hash)
-            .salt_bytes(nomination_agent_counter.to_le_bytes())
-            .instantiate();
+            let agent_ref = NominationAgentRef::new(self.vault, admin, validator)
+                .endowment(nominator_bond)
+                .code_hash(self.nomination_agent_hash)
+                .salt_bytes(nomination_agent_counter.to_le_bytes())
+                .instantiate();
 
             let agent_address = NominationAgentRef::to_account_id(&agent_ref);
 
@@ -248,6 +244,7 @@ pub mod registry {
             }
 
             for update in weight_updates.iter() {
+                debug_println!("{:?}", update);
                 if let Some(index) = self.agents.iter().position(|a| a.address == update.agent) {
                     if self.agents[index].disabled {
                         return Err(RegistryError::AgentDisabled);

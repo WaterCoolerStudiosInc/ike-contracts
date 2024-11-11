@@ -8,10 +8,11 @@ mod helpers;
 mod tests {
     use crate::helpers;
     use crate::helpers::{
-        call_function, gov_token_transfer, query_allowance, query_governance_acceptance_threshold,
-        query_governance_execution_threshold, query_governance_rejection_threshold,
-        query_governance_vote_delay, query_governance_vote_period, query_owner,
-        query_token_balance, transfer_role_admin, update_days, CastType, Vote, DAY,
+        call_function, get_agents, gov_token_transfer, query_allowance,
+        query_governance_acceptance_threshold, query_governance_execution_threshold,
+        query_governance_rejection_threshold, query_governance_vote_delay,
+        query_governance_vote_period, query_owner, query_token_balance, transfer_role_admin,
+        update_days, CastType, Vote, DAY,
     };
     use crate::sources::*;
     use drink::{
@@ -28,6 +29,7 @@ mod tests {
         pub vote_weight: u128,
         pub stake_weight: u128,
     }
+
     pub const BIPS: u128 = 10000000;
     const TOTAL_SUPPLY: u128 = 100_000_000_000_000_000_u128;
     const ACC_THRESHOLD: u128 = TOTAL_SUPPLY / 20;
@@ -39,6 +41,7 @@ mod tests {
         sess: Session<MinimalRuntime>,
         gov_token: AccountId,
         gov_nft: AccountId,
+        registry: AccountId,
         stake_contract: AccountId,
         governance: AccountId,
         vault: AccountId,
@@ -76,7 +79,7 @@ mod tests {
         let validator4 = AccountId::new([104u8; 32]);
         let validator5 = AccountId::new([105u8; 32]);
         let validator6 = AccountId::new([106u8; 32]);
-        
+
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
 
         sess.chain_api()
@@ -123,7 +126,12 @@ mod tests {
         let vault = sess.deploy(
             bytes_vault(),
             "new",
-            &[hash_share_token(), hash_registry(), hash_nominator(), DAY.to_string()],
+            &[
+                hash_share_token(),
+                hash_registry(),
+                hash_nominator(),
+                DAY.to_string(),
+            ],
             vec![1],
             None,
             &transcoder_vault().unwrap(),
@@ -147,24 +155,54 @@ mod tests {
         println!("registry: {:?}", registry.to_string());
         sess.set_actor(bob.clone());
         /**
-         * sess: Session<MinimalRuntime>,
-            registry: AccountId,
-            sender: AccountId,
-            admin: AccountId,
-            validator: AccountId,
-            pool_create_amount: u128,
-            existential_deposit: u128,
-         */
-        let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator2.clone(), 100e12 as u128)?;
-        let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator1.clone(), 100e12 as u128)?;
-        let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator3.clone(), 100e12 as u128)?;
-        let (_new_agent, sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator4.clone(), 100e12 as u128)?;
-        let (_new_agent, mut sess) =
-            helpers::call_add_agent(sess, registry.clone(), bob.clone(), bob.clone(), validator5.clone(), 100e12 as u128)?;
+        * sess: Session<MinimalRuntime>,
+           registry: AccountId,
+           sender: AccountId,
+           admin: AccountId,
+           validator: AccountId,
+           pool_create_amount: u128,
+           existential_deposit: u128,
+        */
+        let (_new_agent, sess) = helpers::call_add_agent(
+            sess,
+            registry.clone(),
+            bob.clone(),
+            bob.clone(),
+            validator2.clone(),
+            100e12 as u128,
+        )?;
+        let (_new_agent, sess) = helpers::call_add_agent(
+            sess,
+            registry.clone(),
+            bob.clone(),
+            bob.clone(),
+            validator1.clone(),
+            100e12 as u128,
+        )?;
+        let (_new_agent, sess) = helpers::call_add_agent(
+            sess,
+            registry.clone(),
+            bob.clone(),
+            bob.clone(),
+            validator3.clone(),
+            100e12 as u128,
+        )?;
+        let (_new_agent, sess) = helpers::call_add_agent(
+            sess,
+            registry.clone(),
+            bob.clone(),
+            bob.clone(),
+            validator4.clone(),
+            100e12 as u128,
+        )?;
+        let (_new_agent, mut sess) = helpers::call_add_agent(
+            sess,
+            registry.clone(),
+            bob.clone(),
+            bob.clone(),
+            validator5.clone(),
+            100e12 as u128,
+        )?;
         /**
         *    vault: AccountId,
            registry: AccountId,
@@ -221,7 +259,7 @@ mod tests {
         .unwrap();
         let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
         let stake_contract = rr.unwrap();
-        let mut sess = helpers::transfer_role_admin(
+        let mut sess = helpers::transfer_role(
             sess,
             &registry,
             &bob,
@@ -262,8 +300,8 @@ mod tests {
         sess.set_transcoder(gov_nft.clone(), &transcoder_governance_nft().unwrap());
         println!("gov_nft: {:?}", gov_nft.to_string());
 
-        let sess = gov_token_transfer(sess, &gov_token, &bob, &stake_contract, TOTAL_SUPPLY / 50)?;
-        let sess = gov_token_transfer(sess, &gov_token, &bob, &governance, TOTAL_SUPPLY / 50)?;
+        let sess = gov_token_transfer(sess, &gov_token, &bob, &stake_contract, TOTAL_SUPPLY / 10)?;
+        let sess = gov_token_transfer(sess, &gov_token, &bob, &governance, TOTAL_SUPPLY / 10)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &alice, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &charlie, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &dave, USER_SUPPLY)?;
@@ -275,6 +313,7 @@ mod tests {
             sess,
             gov_token,
             gov_nft,
+            registry,
             stake_contract,
             governance,
             vault,
@@ -568,6 +607,7 @@ mod tests {
     #[test]
     fn test_mint_update() -> Result<(), Box<dyn Error>> {
         let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+
         // Bob approves Ed to transfer 1k sAZERO
         let mut sess = call_function(
             ctx.sess,
@@ -582,17 +622,21 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+      
         let cast = CastType::Direct(vec![
-            (ctx.validators[0].clone(), BIPS / 2),
-            (ctx.validators[1].clone(), BIPS / 2),
+            (agents[0].address.clone(), BIPS / 2),
+            (agents[1].address.clone(), BIPS / 2),
         ]);
+
+        println!("{}", cast.to_string());
         let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.bob,
             String::from("wrap_tokens"),
             Some(vec![
-                (TOTAL_SUPPLY / 10).to_string(),
+                (TOTAL_SUPPLY / 20).to_string(),
                 "None".to_string(),
                 cast.to_string(),
                 "None".to_string(),
@@ -615,11 +659,12 @@ mod tests {
         let rr: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
         let total_supply = rr.unwrap();
         println!("{:?}", total_supply);
+
         let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.bob,
-            String::from("add_token_value"),
+            String::from("add_stake_value"),
             Some(vec![5000_u128.to_string(), 1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
@@ -636,11 +681,11 @@ mod tests {
             transcoder_governance_nft(),
         )
         .unwrap();
-        let gdata: Result<GovernanceData, drink::errors::LangError> =
+        let gdata: Result<Option<GovernanceData>, drink::errors::LangError> =
             sess.last_call_return().unwrap();
-        println!("{:?}", gdata);
-        let expected = (TOTAL_SUPPLY / 10) + 5000;
-        assert_eq!(gdata.unwrap().vote_weight, expected);
+        //println!("{:?}", gdata.unwrap());
+        let expected = (TOTAL_SUPPLY / 20) + 5000;
+        assert_eq!(gdata.unwrap().unwrap().stake_weight, expected);
         Ok(())
     }
     #[test]

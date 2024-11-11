@@ -98,6 +98,32 @@ impl fmt::Display for PropType {
         }
     }
 }
+#[derive(Debug)]
+pub enum CastType {
+    Direct(Vec<(AccountId, u128)>),
+    Delegate(u128),
+}
+impl fmt::Display for CastType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CastType::Direct(validators) => {
+                let mut s = String::new();
+                for (i,v) in validators.into_iter().enumerate() {
+                    if i==validators.len()-1{
+                        let temp = format!("({},{})", v.0, v.1);
+                        s.push_str(&temp);
+                    }else{
+                        let temp = format!("({},{}),", v.0, v.1);
+                        s.push_str(&temp);
+                    }
+                  
+                }
+                write!(f, "Direct([{}])", s)
+            }
+            _ => write!(f, "{:?}", self),
+        }
+    }
+}
 fn sign(hash: [u8; 32], pk: &str) -> [u8; 65] {
     // Use Dan's seed
     // `subkey inspect //Dan --scheme Ecdsa --output-type json | jq .secretSeed`
@@ -162,22 +188,14 @@ pub enum RoleType {
     RemoveAgent,
     SetCodeHash,
 }
-#[derive(Debug)]
-pub enum CastType {
-    Direct(Vec<(AccountId, u128)>),
-    Delegate(u128),
-}
+
 #[derive(Debug, scale::Decode)]
 pub struct Agent {
     pub address: AccountId,
     pub weight: u128,
     pub disabled: bool,
 }
-impl fmt::Display for CastType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
+
 pub fn transfer_role_admin(
     sess: Session<MinimalRuntime>,
     registry: &AccountId,
@@ -203,6 +221,31 @@ pub fn transfer_role_admin(
     )?;
     Ok(sess)
 }
+pub fn transfer_role(
+    sess: Session<MinimalRuntime>,
+    registry: &AccountId,
+    sender: &AccountId,
+    role_type: &RoleType,
+    new_account: &AccountId,
+) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
+    let role_string = match role_type {
+        RoleType::AddAgent => "AddAgent",
+        RoleType::UpdateAgents => "UpdateAgents",
+        RoleType::DisableAgent => "DisableAgent",
+        RoleType::RemoveAgent => "RemoveAgent",
+        RoleType::SetCodeHash => "SetCodeHash",
+    };
+    let sess = call_function(
+        sess,
+        &registry,
+        &sender,
+        String::from("IRegistry::transfer_role"),
+        Some([role_string.to_string(), new_account.to_string()].to_vec()),
+        None,
+        transcoder_registry(),
+    )?;
+    Ok(sess)
+}
 pub fn call_add_agent(
     sess: Session<MinimalRuntime>,
     registry: AccountId,
@@ -216,10 +259,7 @@ pub fn call_add_agent(
         &registry,
         &sender,
         String::from("IRegistry::add_agent"),
-        Some([
-            admin.to_string(),
-            validator.to_string(),
-        ].to_vec()),
+        Some([admin.to_string(), validator.to_string()].to_vec()),
         Some(pool_create_amount),
         transcoder_registry(),
     )?;
@@ -234,7 +274,8 @@ pub fn get_agents(
 ) -> Result<(u128, Vec<Agent>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.call_with_address(registry.clone(), "IRegistry::get_agents", NO_ARGS, None)?;
 
-    let result: Result<(u128, Vec<Agent>), drink::errors::LangError> = sess.last_call_return().unwrap();
+    let result: Result<(u128, Vec<Agent>), drink::errors::LangError> =
+        sess.last_call_return().unwrap();
     let (total_weight, agents) = result.unwrap();
 
     Ok((total_weight, agents, sess))
