@@ -141,7 +141,7 @@ const main = async (validators: string[]) => {
     registry_instance,
     'iRegistry::update_agents',
     {},
-    [agents.map((a) => ({ agent: a.address, weight: 1000, increase: true }))],
+    [agents.map((a) => ({ agent: a.address, weight: 10000, increase: true }))],
   )
 
   console.log('===== Contract Locations =====')
