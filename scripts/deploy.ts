@@ -150,7 +150,7 @@ const main = async (validators: string[]) => {
     vault: vault.address,
     registry: registry.address,
     share_token: share_token.address,
-    ...agents.reduce((obj, a, i) => ({...obj, [`agent[${i}]`]: a.address}), {}),
+    ...agents.reduce((obj, a, i) => ({ ...obj, [`agent[${i}]`]: a.address }), {}),
   })
 
   console.log()
