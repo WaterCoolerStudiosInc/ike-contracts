@@ -41,7 +41,6 @@ mod governance_nft {
         pub block_created: u64,
         pub stake_weight: u128,
         pub vote_weight: u128,
-        
     }
 
     #[ink(storage)]
@@ -140,38 +139,39 @@ mod governance_nft {
             self.admin
         }
 
-        #[ink(message, selector = 88)]
-        pub fn increment_weight(&mut self, id: u128, weight: u128) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
-            let mut curr = self.token_governance_data.get(id).unwrap();
-            curr.vote_weight += weight;
-            debug_println!("VOTE WEIGHT {}", curr.vote_weight);
-            self.token_governance_data.insert(id, &curr);
-
-            Ok(())
-        }
         #[ink(message, selector = 89)]
-        pub fn increment_stake_weight(&mut self, id: u128, weight: u128) -> Result<(), PSP34Error> {
+        pub fn increment_weights(
+            &mut self,
+            id: u128,
+            vote_weight: u128,
+            stake_weight: u128,
+        ) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
             let mut curr = self.token_governance_data.get(id).unwrap();
-            curr.stake_weight += weight;
+            curr.stake_weight += stake_weight;
+            curr.vote_weight += vote_weight;
             debug_println!("VOTE WEIGHT {}", curr.vote_weight);
             self.token_governance_data.insert(id, &curr);
 
             Ok(())
         }
         #[ink(message, selector = 99)]
-        pub fn decrement_weight(&mut self, id: u128, weight: u128) -> Result<(), PSP34Error> {
+        pub fn decrement_vote_weight(
+            &mut self,
+            id: u128,
+            vote_weight: u128,
+            
+        ) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
             let mut curr = self.token_governance_data.get(id).unwrap();
-            assert!(curr.vote_weight >= weight);
-            curr.vote_weight -= weight;
+            assert!(curr.vote_weight >= vote_weight);
+            //assert!(curr.stake_weight >= vote_weight);
+            curr.vote_weight -= vote_weight;
+            //curr.stake_weight -= vote_weight;
             debug_println!("VOTE WEIGHT {}", curr.vote_weight);
             self.token_governance_data.insert(id, &curr);
             Ok(())
@@ -193,7 +193,6 @@ mod governance_nft {
                 block_created: self.env().block_timestamp(),
                 stake_weight: weight,
                 vote_weight: vote_weight,
-                
             };
 
             self.token_governance_data
@@ -211,7 +210,7 @@ mod governance_nft {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
-
+            self.token_governance_data.remove(id);
             let _id = Id::U128(id);
 
             let events = self.data.burn(account, self.env().caller(), _id)?;
