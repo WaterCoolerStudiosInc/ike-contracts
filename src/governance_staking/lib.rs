@@ -5,7 +5,7 @@ pub use crate::traits::Staking;
 
 #[ink::contract]
 mod staking {
-    use std::thread::current;
+    
 
     use ink::contract_ref;
 

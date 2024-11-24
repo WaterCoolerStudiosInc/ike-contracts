@@ -15,7 +15,7 @@ contracts=($(find $CONTRACTS_DIR -maxdepth 1 -type d -exec test -f {}/Cargo.toml
 for i in "${contracts[@]}"
 do
   echo -e "\nBuilding '$CONTRACTS_DIR/$i/Cargo.toml'…"
-  cargo +stable-2023-12-28 contract build --release --quiet --manifest-path $CONTRACTS_DIR/$i/Cargo.toml
+  cargo  contract build --release --quiet --manifest-path $CONTRACTS_DIR/$i/Cargo.toml
 
   echo "Copying build files to '$DEPLOYMENTS_DIR/development/$i'…"
   mkdir -p $DEPLOYMENTS_DIR/development/$i

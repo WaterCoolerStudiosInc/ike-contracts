@@ -27,7 +27,7 @@ mod validator_whitelist {
         validator: AccountId,
         admin: AccountId,
         stake: u128,
-        deposit:u128
+        deposit: u128,
     }
 
     #[ink(storage)]
@@ -77,9 +77,10 @@ mod validator_whitelist {
             }
             Ok(())
         }
+
         fn query_weight(&self, id: u128) -> u128 {
             let mut nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
-            let data = nft.get_governance_data(id);
+            let data = nft.get_governance_data(id).unwrap();
             data.vote_weight
         }
 
@@ -143,6 +144,7 @@ mod validator_whitelist {
                 max_applicants: 100_u16,
             }
         }
+
         #[ink(message)]
         pub fn update_deposits(
             &mut self,
@@ -161,6 +163,7 @@ mod validator_whitelist {
             }
             Ok(())
         }
+
         #[ink(message)]
         pub fn join_whitelist(
             &mut self,
@@ -170,8 +173,8 @@ mod validator_whitelist {
             let nft_weight = self.query_weight(id);
             let caller: ink::primitives::AccountId = Self::env().caller();
             let azero = Self::env().transferred_value();
-            if azero != self.create_deposit+self.existential_deposit{
-                return Err(WhitelistError::InvalidCreateDeposit)
+            if azero != self.create_deposit + self.existential_deposit {
+                return Err(WhitelistError::InvalidCreateDeposit);
             }
             if nft_weight < self.token_stake_amount {
                 return Err(WhitelistError::InvalidStake);
@@ -191,7 +194,7 @@ mod validator_whitelist {
                 validator: validator,
                 admin: caller,
                 stake: id,
-                deposit:azero
+                deposit: azero,
             });
             Ok(())
         }

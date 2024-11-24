@@ -15,8 +15,8 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
-sp-io = { version = "=34.0.0", default-features = false }
-sp-runtime = { version = "=35.0.0", default-features = false }
+sp-io = { version = "38.0.0", default-features = false }
+sp-runtime = { version = "39.0.0", default-features = false }
 
 [lib]
 name = "nomination_agent"

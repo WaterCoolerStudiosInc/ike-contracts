@@ -135,6 +135,7 @@ pub mod governance {
         pub vote_start: u64,
         pub vote_end: u64,
     }
+
     #[ink(storage)]
     pub struct Governance {
         pub gov_nft: AccountId,
@@ -211,7 +212,7 @@ pub mod governance {
         }
         fn query_weight(&self, id: u128) -> u128 {
             let mut nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
-            let data = nft.get_governance_data(id);
+            let data = nft.get_governance_data(id).unwrap();
             data.vote_weight
         }
         fn get_proposal_state(&self, prop: Proposal, current_time: u64) -> ProposalState {
@@ -401,6 +402,7 @@ pub mod governance {
          **/
 
         fn handle_pro_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
+            debug_println!("{},{},{}",self.execution_threshold ,"curr weight and update " ,weight);
             if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
                 match &self.proposals[index].prop_type {
                     PropType::TransferFunds(token, amount, to) => {
