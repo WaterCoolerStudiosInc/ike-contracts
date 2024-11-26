@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 ink = { version = "=4.3.0", default-features = false, features = ["call-runtime"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+scale = { package = "parity-scale-codec", version = "=3.6.12", default-features = false, features = [
     "derive",
 ] }
 scale-info = { version = "=2.11.2", default-features = false, features = [

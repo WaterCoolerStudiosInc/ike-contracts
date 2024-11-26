@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 drink = { version = "=0.5.4", features = ["session"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+scale = { package = "parity-scale-codec", version = "=3.6.12", default-features = false, features = [
     "derive",
 ] }
 serde = "1.0.193"
