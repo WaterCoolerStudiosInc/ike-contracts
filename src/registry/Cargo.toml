@@ -12,6 +12,7 @@ scale = { package = "parity-scale-codec", version = "=3.6.12", default-features 
 scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
+scale-derive = { package = "parity-scale-codec-derive", version = "=3.6.12" }
 nomination_agent = { path = "../nomination_agent", default-features = false, features = [
     "ink-as-dependency",
 ] }

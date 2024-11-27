@@ -1517,6 +1517,7 @@ version = "0.1.0"
 dependencies = [
  "ink",
  "parity-scale-codec",
+ "parity-scale-codec-derive",
  "scale-info",
  "sp-io",
  "sp-runtime",
@@ -1534,6 +1535,7 @@ version = "0.1.0"
 dependencies = [
  "ink",
  "parity-scale-codec",
+ "parity-scale-codec-derive",
  "scale-info",
  "sp-io",
  "sp-runtime",
@@ -1987,6 +1989,7 @@ dependencies = [
  "ink",
  "nomination_agent",
  "parity-scale-codec",
+ "parity-scale-codec-derive",
  "scale-info",
 ]
 
@@ -2348,6 +2351,7 @@ version = "0.1.0"
 dependencies = [
  "ink",
  "parity-scale-codec",
+ "parity-scale-codec-derive",
  "psp22",
  "scale-info",
 ]
@@ -3088,6 +3092,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "parity-scale-codec",
+ "parity-scale-codec-derive",
  "psp22",
  "registry",
  "scale-info",
