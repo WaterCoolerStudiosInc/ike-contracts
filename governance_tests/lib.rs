@@ -26,8 +26,8 @@ mod tests {
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     pub struct GovernanceData {
         pub block_created: u64,
-        pub vote_weight: u128,
         pub stake_weight: u128,
+        pub vote_weight: u128,
     }
 
     pub const BIPS: u128 = 10000000;
@@ -604,6 +604,379 @@ mod tests {
         let ctx = multi_sig_test_setup();
         Ok(())
     }
+    #[test]
+    fn vote_delegation() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
+        // Bob approves Ed to transfer 1k sAZERO
+        let mut sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.bob,
+            String::from("PSP22::approve"),
+            Some(vec![
+                ctx.stake_contract.to_string(),
+                TOTAL_SUPPLY.to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+
+        let cast = CastType::Direct(vec![
+            (agents[0].address.clone(), BIPS / 2),
+            (agents[1].address.clone(), BIPS / 2),
+        ]);
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("wrap_tokens"),
+            Some(vec![
+                (USER_SUPPLY / 3).to_string(),
+                "None".to_string(),
+                cast.to_string(),
+                "Some(2)".to_string(),
+            ]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("get_governance_data"),
+            Some(vec![6_u128.to_string()]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+        let gdata: Result<Option<GovernanceData>, drink::errors::LangError> =
+            sess.last_call_return().unwrap();
+        println!("{:?}", gdata.unwrap());
+        let mut sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("PSP34::total_supply"),
+            Some(vec![]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+        let rr: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let total_supply = rr.unwrap();
+        println!("{:?}", total_supply);
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("add_stake_value"),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("get_governance_data"),
+            Some(vec![6_u128.to_string()]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+        let gdata: Result<Option<GovernanceData>, drink::errors::LangError> =
+            sess.last_call_return().unwrap();
+
+        //println!("{:?}", gdata.unwrap());
+        assert_eq!(
+            gdata.unwrap().unwrap().stake_weight,
+            (USER_SUPPLY / 3) + 5000
+        );
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("get_governance_data"),
+            Some(vec![2_u128.to_string()]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+        let gdata2: Result<Option<GovernanceData>, drink::errors::LangError> =
+            sess.last_call_return().unwrap();
+        assert_eq!(
+            gdata2.unwrap().unwrap().vote_weight,
+            (USER_SUPPLY / 3) + (USER_SUPPLY / 2) + 5000
+        );
+        Ok(())
+    }
+    #[test]
+    fn update_vote_delegation() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
+        // Bob approves Ed to transfer 1k sAZERO
+        let mut sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.bob,
+            String::from("PSP22::approve"),
+            Some(vec![
+                ctx.stake_contract.to_string(),
+                TOTAL_SUPPLY.to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+
+        let cast = CastType::Direct(vec![
+            (agents[0].address.clone(), BIPS / 2),
+            (agents[1].address.clone(), BIPS / 2),
+        ]);
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("wrap_tokens"),
+            Some(vec![
+                (USER_SUPPLY / 3).to_string(),
+                "None".to_string(),
+                cast.to_string(),
+                "Some(2)".to_string(),
+            ]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("add_stake_value"),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("start_vote_redelegate"),
+            Some(vec![6_u128.to_string(), 3_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        let sess = update_days(sess, 14_u64);
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("complete_vote_redelegate"),
+            Some(vec![6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        let sess = call_function(
+            sess,
+            &ctx.gov_nft,
+            &ctx.bob,
+            String::from("get_governance_data"),
+            Some(vec![3_u128.to_string()]),
+            None,
+            transcoder_governance_nft(),
+        )
+        .unwrap();
+        let gdata2: Result<Option<GovernanceData>, drink::errors::LangError> =
+            sess.last_call_return().unwrap();
+        assert_eq!(
+            gdata2.unwrap().unwrap().vote_weight,
+            (USER_SUPPLY / 3) + (USER_SUPPLY / 2) + 5000
+        );
+        Ok(())
+    }
+    #[test]
+    fn completion_fails_when_called_twice() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
+        // Bob approves Ed to transfer 1k sAZERO
+        let mut sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.bob,
+            String::from("PSP22::approve"),
+            Some(vec![
+                ctx.stake_contract.to_string(),
+                TOTAL_SUPPLY.to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+
+        let cast = CastType::Direct(vec![
+            (agents[0].address.clone(), BIPS / 2),
+            (agents[1].address.clone(), BIPS / 2),
+        ]);
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("wrap_tokens"),
+            Some(vec![
+                (USER_SUPPLY / 3).to_string(),
+                "None".to_string(),
+                cast.to_string(),
+                "Some(2)".to_string(),
+            ]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("add_stake_value"),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("start_vote_redelegate"),
+            Some(vec![6_u128.to_string(), 3_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        let sess = update_days(sess, 14_u64);
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("complete_vote_redelegate"),
+            Some(vec![6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        match call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("complete_vote_redelegate"),
+            Some(vec![6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ) {
+            Ok(_) => panic!("Should panic because of a proposal resuse"),
+            Err(_) => (),
+        }
+
+        Ok(())
+    }
+    #[test]
+    fn completion_fails_before_interval() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
+        // Bob approves Ed to transfer 1k sAZERO
+        let mut sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.bob,
+            String::from("PSP22::approve"),
+            Some(vec![
+                ctx.stake_contract.to_string(),
+                TOTAL_SUPPLY.to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+
+        let cast = CastType::Direct(vec![
+            (agents[0].address.clone(), BIPS / 2),
+            (agents[1].address.clone(), BIPS / 2),
+        ]);
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("wrap_tokens"),
+            Some(vec![
+                (USER_SUPPLY / 3).to_string(),
+                "None".to_string(),
+                cast.to_string(),
+                "Some(2)".to_string(),
+            ]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("add_stake_value"),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("start_vote_redelegate"),
+            Some(vec![6_u128.to_string(), 3_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        let sess = update_days(sess, 7_u64);
+        
+        match call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.bob,
+            String::from("complete_vote_redelegate"),
+            Some(vec![6_u128.to_string()]),
+            None,
+            transcoder_governance_staking(),
+        ) {
+            Ok(_) => panic!("Should panic because of a proposal resuse"),
+            Err(_) => (),
+        }
+
+        Ok(())
+    }
+
 
     #[test]
     fn mint_update() -> Result<(), Box<dyn Error>> {

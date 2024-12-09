@@ -3,8 +3,6 @@ mod traits;
 pub use crate::multisig::MultiSigRef;
 pub use traits::MultiSig;
 
-
-
 #[ink::contract]
 mod multisig {
     use core::fmt::Error;
@@ -16,7 +14,7 @@ mod multisig {
             hash::{HashOutput, Sha2x256},
             hash_encoded,
         },
-        prelude::{string::String, vec::Vec,vec},
+        prelude::{string::String, vec, vec::Vec},
         reflect::ContractEventBase,
         storage::Mapping,
     };
@@ -98,6 +96,7 @@ mod multisig {
         UpdateValidators(WeightUpdate),
         AddValidator(AccountId),
         RemoveValidator(AccountId, bool),
+        CompleteRemoveValidator(AccountId),
     }
     #[ink(event)]
     pub struct ProposalCreated {
@@ -164,16 +163,19 @@ mod multisig {
             }
             Ok(())
         }
-       
+        fn complete_removal(&self, validator: AccountId) -> Result<(), MultiSigError> {
+            let mut registry: contract_ref!(IRegistry) = self.registry.into();
+            if let Err(_) = registry.remove_agent(validator) {
+                return Err(MultiSigError::VaultFailure);
+            }
+            Ok(())
+        }
         fn execute(&self, tx: Action) -> Result<(), MultiSigError> {
             match tx {
-                Action::UpdateValidators(weight_update) => {
-                   Ok(())
-                }
+                Action::UpdateValidators(weight_update) => Ok(()),
                 Action::AddValidator(validator) => self.execute_add(validator),
-                Action::RemoveValidator(validator, slash) => {
-                    self.execute_remove(validator, slash)
-                }
+                Action::RemoveValidator(validator, slash) => self.execute_remove(validator, slash),
+                Action::CompleteRemoveValidator(validator) => self.complete_removal(validator),
             }
         }
     }

@@ -149,10 +149,19 @@ mod governance_nft {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
+            debug_println!("NFT ID {}", &id);
             let mut curr = self.token_governance_data.get(id).unwrap();
-            curr.stake_weight += stake_weight;
-            curr.vote_weight += vote_weight;
-            debug_println!("VOTE WEIGHT {}", curr.vote_weight);
+            debug_println!("{:?}", curr);
+            if vote_weight > 0 {
+                debug_println!("VOTE WEIGHT UPDATE {}", &vote_weight);
+                curr.vote_weight += vote_weight;
+            }
+            if stake_weight > 0 {
+                debug_println!("STAKE WEIGHT UPDATE {}", &stake_weight);
+
+                curr.stake_weight += stake_weight;
+            }
+            debug_println!("{:?}", curr);
             self.token_governance_data.insert(id, &curr);
 
             Ok(())
@@ -162,7 +171,6 @@ mod governance_nft {
             &mut self,
             id: u128,
             vote_weight: u128,
-            
         ) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
