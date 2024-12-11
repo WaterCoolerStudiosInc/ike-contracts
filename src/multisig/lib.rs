@@ -7,6 +7,7 @@ pub use traits::MultiSig;
 mod multisig {
     use core::fmt::Error;
 
+    use governance_staking::traits::Staking;
     use ink::{
         codegen::EmitEvent,
         contract_ref,
@@ -19,7 +20,7 @@ mod multisig {
         storage::Mapping,
     };
     use registry::traits::IRegistry;
-    use validator_whitelist::ValidatorWhitelist;
+
     #[ink(storage)]
     pub struct MultiSig {
         pub admin: AccountId,
@@ -93,8 +94,6 @@ mod multisig {
         derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
     )]
     pub enum Action {
-        UpdateValidators(WeightUpdate),
-        AddValidator(AccountId),
         RemoveValidator(AccountId, bool),
         CompleteRemoveValidator(AccountId),
     }
@@ -119,46 +118,33 @@ mod multisig {
         {
             emitter.emit_event(event);
         }
-        fn hash_update(&self, update: WeightUpdate, nonce: String) -> [u8; 32] {
-            let encodable: (Vec<ink::primitives::AccountId>, Vec<u64>, String) =
-                (update.accounts, update.weights, nonce);
-            let mut output = <Sha2x256 as HashOutput>::Type::default();
-            hash_encoded::<Sha2x256, _>(&encodable, &mut output);
-            output
-        }
-        fn hash_addition(&self, validator: AccountId, nonce: String) -> [u8; 32] {
-            let encodable = (validator, nonce);
-            let mut output = <Sha2x256 as HashOutput>::Type::default();
-            hash_encoded::<Sha2x256, _>(&encodable, &mut output);
-            output
-        }
+
         fn hash_remove(&self, validator: AccountId, slash: bool, nonce: String) -> [u8; 32] {
             let encodable = (validator, slash, nonce);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
             output
         }
+        fn hash_complete(&self, validator: AccountId, nonce: String) -> [u8; 32] {
+            let encodable = (validator);
+            let mut output = <Sha2x256 as HashOutput>::Type::default();
+            hash_encoded::<Sha2x256, _>(&encodable, &mut output);
+            output
+        }
         fn hash_execution(&self, tx: Action, nonce: String) -> Result<[u8; 32], Error> {
             match tx {
-                Action::UpdateValidators(weight_update) => {
-                    Ok(self.hash_update(weight_update, nonce))
-                }
-                Action::AddValidator(validator) => Ok(self.hash_addition(validator, nonce)),
                 Action::RemoveValidator(validator, slash) => {
                     Ok(self.hash_remove(validator, slash, nonce))
                 }
+                Action::CompleteRemoveValidator(validator) => {
+                    Ok(self.hash_complete(validator, nonce))
+                }
             }
         }
-        fn execute_add(&self, validator: AccountId) -> Result<(), MultiSigError> {
-            let mut whitelist: contract_ref!(ValidatorWhitelist) = self.whitelist.into();
-            if let Err(_) = whitelist.init_add_validator(validator) {
-                return Err(MultiSigError::VaultFailure);
-            }
-            Ok(())
-        }
-        fn execute_remove(&self, validator: AccountId, slash: bool) -> Result<(), MultiSigError> {
-            let mut whitelist: contract_ref!(ValidatorWhitelist) = self.whitelist.into();
-            if let Err(_) = whitelist.remove_validator_by_agent(validator, slash) {
+
+        fn execute_disable(&self, validator: AccountId, slash: bool) -> Result<(), MultiSigError> {
+            let mut whitelist: contract_ref!(Staking) = self.whitelist.into();
+            if let Err(_) = whitelist.disable_validator(validator, slash) {
                 return Err(MultiSigError::VaultFailure);
             }
             Ok(())
@@ -172,9 +158,7 @@ mod multisig {
         }
         fn execute(&self, tx: Action) -> Result<(), MultiSigError> {
             match tx {
-                Action::UpdateValidators(weight_update) => Ok(()),
-                Action::AddValidator(validator) => self.execute_add(validator),
-                Action::RemoveValidator(validator, slash) => self.execute_remove(validator, slash),
+                Action::RemoveValidator(validator, slash) => self.execute_disable(validator, slash),
                 Action::CompleteRemoveValidator(validator) => self.complete_removal(validator),
             }
         }
@@ -273,10 +257,12 @@ mod multisig {
             Ok(())
         }
         #[ink(message, selector = 6)]
-        pub fn endorse_proposal(&mut self, action: Action) -> Result<(), MultiSigError> {
-            let hash = self
-                .hash_execution(action.clone(), String::from(""))
-                .unwrap();
+        pub fn endorse_proposal(
+            &mut self,
+            action: Action,
+            nonce: String,
+        ) -> Result<(), MultiSigError> {
+            let hash: [u8; 32] = self.hash_execution(action.clone(), nonce).unwrap();
             let caller = Self::env().caller();
             let existing = self.proposals.get(hash);
             let signers = self.signers.clone();
@@ -331,43 +317,6 @@ mod multisig {
                     }),
                 );
             }
-            Ok(())
-        }
-        #[ink(message, selector = 7)]
-        pub fn execute_transaction(
-            &mut self,
-            action: Action,
-            signatures: Vec<[u8; 65]>,
-            nonce: String,
-        ) -> Result<(), MultiSigError> {
-            if ((signatures.len() as u16) < self.threshold)
-                || (signatures.len() > self.signers.len())
-            {
-                return Err(MultiSigError::InvalidInput);
-            }
-            if self.used_nonces.get(&nonce).unwrap() {
-                return Err(MultiSigError::UsedNonce);
-            }
-            let mut _signers = self.signers.clone();
-            let action_hash = self.hash_execution(action.clone(), nonce.clone()).unwrap();
-            for signature in signatures {
-                let _signer = self.recover_signer(&action_hash, signature);
-                if !_signers.contains(&_signer) {
-                    return Err(MultiSigError::InvalidInput);
-                }
-                _signers.retain(|&x| x != _signer);
-            }
-            self.used_nonces.insert(nonce, &true);
-            self.execute(action.clone())?;
-            Self::emit_event(
-                Self::env(),
-                Event::ProposalExecuted(ProposalExecuted {
-                    proposal: Proposal {
-                        action,
-                        proposers: _signers,
-                    },
-                }),
-            );
             Ok(())
         }
     }

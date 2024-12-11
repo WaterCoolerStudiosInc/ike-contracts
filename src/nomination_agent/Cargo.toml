@@ -9,14 +9,15 @@ ink = { version = "=4.3.0", default-features = false, features = [
     "call-runtime",
     "ink-debug"
 ] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+scale = { package = "parity-scale-codec", version = "=3.6.12", default-features = false, features = [
     "derive",
 ] }
 scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
-sp-io = { version = "38.0.0", default-features = false }
-sp-runtime = { version = "39.0.0", default-features = false }
+scale-derive = { package = "parity-scale-codec-derive", version = "=3.6.12" }
+sp-io = { version = "=34.0.0", default-features = false }
+sp-runtime = { version = "=35.0.0", default-features = false }
 
 [lib]
 name = "nomination_agent"

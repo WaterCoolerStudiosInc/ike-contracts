@@ -5,13 +5,14 @@ authors = ["jjj <jjj17@protonmail.com"]
 edition = "2021"
 
 [dependencies]
-ink = { version = "=4.3.0", default-features = false,features = ["ink-debug"] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+ink = { version = "=4.3.0", default-features = false, features = ["ink-debug"] }
+scale = { package = "parity-scale-codec", version = "=3.6.12", default-features = false, features = [
     "derive",
 ] }
 scale-info = { version = "=2.11.2", default-features = false, features = [
     "derive",
 ], optional = true }
+scale-derive = { package = "parity-scale-codec-derive", version = "=3.6.12" }
 psp22 = { version = "=0.2.1", default-features = false }
 
 [lib]

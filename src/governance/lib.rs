@@ -362,47 +362,46 @@ pub mod governance {
             Ok(())
         }
         /**
-         // Transfer Azero from governance
-        TransferFunds(TokenTransfer),
-        // Transfer psp22 token from governance
-        NativeTokenTransfer(u128),
-        // update tokens per second for staker in staking contract
-         // change  governance proposal acceptance weight requirement
-        AcceptanceWeightUpdate(u128),
-        // update rejection proposals
-        UpdateRejectThreshhold(u128),
-        // upddate execution threshhold for proposals
-        UpdateExecThreshhold(u128),
-         // change vote periodi delay
-        VoteDelayUpdate(u64),
-        // update voting perioud
-        VotePeriodUpdate(u64),
+            // Transfer Azero from governance
+           TransferFunds(TokenTransfer),
+           // Transfer psp22 token from governance
+           NativeTokenTransfer(u128),
+           // update tokens per second for staker in staking contract
+           // change  governance proposal acceptance weight requirement
+           AcceptanceWeightUpdate(u128),
+           // update rejection proposals
+           UpdateRejectThreshhold(u128),
+           // upddate execution threshhold for proposals
+           UpdateExecThreshhold(u128),
+           // change vote periodi delay
+           VoteDelayUpdate(u64),
+           // update voting perioud
+           VotePeriodUpdate(u64),
 
 
-         // Add to multisig
-        AddCouncilMember(AccountId),
-        // remove then add to multisig
-        ReplaceCouncilMember(AccountId,AccountId),
-        // remove from multisig
-        RemoveCouncilMember(AccountId),
-        // change threshold for multisig acceptance
-        ChangeMultiSigThreshold(u16),
+           // Add to multisig
+           AddCouncilMember(AccountId),
+           // remove then add to multisig
+           ReplaceCouncilMember(AccountId,AccountId),
+           // remove from multisig
+           RemoveCouncilMember(AccountId),
+           // change threshold for multisig acceptance
+           ChangeMultiSigThreshold(u16),
 
-        // change vault fee
-        FeeChange(u16),
-        // change vault compound acceptance
-        CompoundIncentiveChange(u16),
-
-
-
-
-
-
+           // change vault fee
+           FeeChange(u16),
+           // change vault compound acceptance
+           CompoundIncentiveChange(u16),
            ChangeStakingRewardRate(u128),
-         **/
+        **/
 
         fn handle_pro_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
-            debug_println!("{},{},{}",self.execution_threshold ,"curr weight and update " ,weight);
+            debug_println!(
+                "{},{},{}",
+                self.execution_threshold,
+                "curr weight and update ",
+                weight
+            );
             if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
                 match &self.proposals[index].prop_type {
                     PropType::TransferFunds(token, amount, to) => {
@@ -534,6 +533,7 @@ pub mod governance {
                 Self::env().account_id(),
                 nft_ref.clone(),
                 interest_rate,
+                MultiSigRef::to_account_id(&multisig_ref),
             )
             .endowment(0)
             .code_hash(staking_hash)
@@ -610,6 +610,7 @@ pub mod governance {
                 .into_iter()
                 .find(|p| p.creator_id == id)
         }
+
         #[ink(message, selector = 33)]
         pub fn get_active_proposal_status_by_nft(&self, id: u128) -> bool {
             let current_time = Self::env().block_timestamp();
@@ -740,7 +741,6 @@ pub mod governance {
                     pro_vote: pro,
                 }),
             );
-
             Ok(())
         }
         #[ink(message)]
