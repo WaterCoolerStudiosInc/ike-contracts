@@ -429,7 +429,7 @@ pub mod staking {
                 .returns::<Result<AccountId, RuntimeError>>()
                 .invoke()
         }
-        fn call_remove_validator(&self, agent: AccountId) -> Result<(), StakingError> {
+        fn call_disable_validator(&self, agent: AccountId) -> Result<(), StakingError> {
             let mut registry: contract_ref!(IRegistry) = self.registry.into();
             if let Err(_) = registry.disable_agent(agent) {
                 return Err(StakingError::RegistryError);
@@ -750,22 +750,25 @@ pub mod staking {
             self.unstake_requests.remove(token_id);
             Ok(())
         }
-        #[ink(message, selector = 10)]
-        pub fn onboard_validator(
-            &mut self,
-            id: u128,
-            validator: AccountId,
-        ) -> Result<(), StakingError> {
-            let data = self.nft.get_governance_data(id).unwrap();
+        #[ink(message, payable, selector = 10)]
+        pub fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError> {
+            //let data = self.nft.get_governance_data(id).unwrap();
+            let now = Self::env().block_timestamp();
             let caller: ink::primitives::AccountId = Self::env().caller();
-            let nft_weight = data.stake_weight;
-            if nft_weight < self.token_stake_amount {
-                return Err(StakingError::InvalidStake);
-            }
 
-            self.transfer_psp34(&caller, &Self::env().account_id(), id)?;
-
+            self.transfer_psp22_from(&caller, &Self::env().account_id(), self.token_stake_amount)?;
+            self.update_stake_accumulation(now)?;
+            self.staked_token_balance += self.token_stake_amount;
+            ///self.transfer_psp34(&caller, &Self::env().account_id(), id)?;
+            let minted_nft = self
+                .mint_psp34(
+                    Self::env().account_id(),
+                    self.token_stake_amount,
+                    self.token_stake_amount,
+                )
+                .unwrap();
             let azero = Self::env().transferred_value();
+
             if azero != self.create_deposit + self.existential_deposit {
                 return Err(StakingError::InvalidCreateDeposit);
             }
@@ -790,21 +793,18 @@ pub mod staking {
                 .unwrap();
 
             // Cast NFT Weight to new agent
-            let current_cast = self.cast_distribution.get(id);
-            if let Some(curr) = current_cast {
-                self.remove_cast_distribution(curr, data.stake_weight)?;
-            }
 
             let weights = vec![(new_agent, BIPS)];
-            self.cast_distribution.insert(id, &weights);
-            self.update_registry_weights(weights, data.stake_weight, true)?;
+            self.cast_distribution.insert(minted_nft, &weights);
+            self.update_registry_weights(weights, self.token_stake_amount, true)?;
 
             self.deployed_validators.push(Validator {
                 validator: validator,
                 agent: new_agent,
                 admin: caller,
-                nft_id: id,
+                nft_id: minted_nft,
             });
+
             Ok(())
         }
         //Validator addition flow
@@ -827,19 +827,20 @@ pub mod staking {
             if caller != self.multisig {
                 return Err(StakingError::InvalidPermissions);
             }
+
             let validator_info = self
                 .deployed_validators
                 .clone()
                 .into_iter()
                 .find(|p| p.agent == agent)
                 .unwrap();
+            self.call_disable_validator(agent)?;
 
-            self.call_remove_validator(agent)?;
             let recipient;
             if slash {
                 recipient = self.treasury;
             } else {
-                recipient = Self::env().account_id();
+                recipient = validator_info.admin;
             }
             self.transfer_psp34(&Self::env().account_id(), &recipient, validator_info.nft_id)?;
             let filtered: Vec<Validator> = self

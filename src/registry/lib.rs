@@ -306,7 +306,7 @@ pub mod registry {
             } else {
                 return Err(RegistryError::AgentNotFound);
             }
-
+            
             Ok(())
         }
 

@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-mod traits;
+pub mod traits;
+pub use crate::governance_nft::GovernanceNFT;
 pub use crate::governance_nft::GovernanceNFTRef;
-pub use traits::GovernanceNFT;
 
 //pub use psp34::{Id, PSP34Data, PSP34Event};
 //pub use psp34::PSP34Error;
@@ -48,6 +48,7 @@ mod governance_nft {
         data: PSP34Data, // (1)
         metadata: metadata::Data,
         admin: AccountId,
+        governance: AccountId,
         mint_count: u128,
         token_governance_data: Mapping<u128, GovernanceData>,
         lock_transfer: bool,
@@ -55,11 +56,12 @@ mod governance_nft {
 
     impl GovernanceNFT {
         #[ink(constructor)]
-        pub fn new(_admin: AccountId) -> Self {
+        pub fn new(governance: AccountId) -> Self {
             Self {
                 data: PSP34Data::new(), // (2)
                 metadata: metadata::Data::default(),
-                admin: _admin,
+                admin: governance,
+                governance: governance,
                 mint_count: 0_u128,
                 token_governance_data: Mapping::default(), // (8)
                 lock_transfer: true,
@@ -93,18 +95,18 @@ mod governance_nft {
             }
         }
 
-        #[ink(message)]
+        #[ink(message, selector = 91)]
         pub fn lock_transfer(&mut self) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
+            if self.env().caller() != self.governance {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
             self.lock_transfer = true;
             Ok(())
         }
 
-        #[ink(message)]
+        #[ink(message, selector = 47)]
         pub fn unlock_transfer(&mut self) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
+            if self.env().caller() != self.governance {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
             self.lock_transfer = false;
@@ -125,7 +127,7 @@ mod governance_nft {
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
             let events = self.data.transfer(from, to, id, data)?;
-            if self.lock_transfer == true {
+            if self.lock_transfer == true && self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
             }
             self.emit_events(events);

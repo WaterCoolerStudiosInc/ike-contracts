@@ -66,6 +66,16 @@ pub enum PropType {
     UnlockTransfer(),
     LockTransfer(),
 }
+
+#[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
+#[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+)]
+pub enum Action {
+    RemoveValidator(AccountId, bool),
+    CompleteRemoveValidator(AccountId),
+}
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
 #[cfg_attr(
     feature = "std",
@@ -74,6 +84,18 @@ pub enum PropType {
 pub enum Vote {
     Pro,
     Con,
+}
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Action::RemoveValidator(agent, slash) => {
+                write!(f, "RemoveValidator({},{})", agent, slash)
+            }
+            Action::CompleteRemoveValidator(agent) => {
+                write!(f, "CompleteRemoveValidator({})", agent)
+            }
+        }
+    }
 }
 impl fmt::Display for Vote {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -108,15 +130,14 @@ impl fmt::Display for CastType {
         match self {
             CastType::Direct(validators) => {
                 let mut s = String::new();
-                for (i,v) in validators.into_iter().enumerate() {
-                    if i==validators.len()-1{
+                for (i, v) in validators.into_iter().enumerate() {
+                    if i == validators.len() - 1 {
                         let temp = format!("({},{})", v.0, v.1);
                         s.push_str(&temp);
-                    }else{
+                    } else {
                         let temp = format!("({},{}),", v.0, v.1);
                         s.push_str(&temp);
                     }
-                  
                 }
                 write!(f, "Direct([{}])", s)
             }

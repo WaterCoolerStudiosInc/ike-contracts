@@ -2,10 +2,11 @@
 
 #[ink::contract]
 pub mod governance {
-    use governance_nft::{GovernanceNFT, GovernanceNFTRef};
+    use governance_nft::traits::GovernanceNFT;
+    use governance_nft::GovernanceNFTRef;
     use governance_staking::{Staking, StakingRef};
     use ink::{
-        codegen::EmitEvent,
+        codegen::{EmitEvent, StaticEnv},
         contract_ref,
         env::{debug_println, Error as InkEnvError},
         prelude::{format, string::String, vec::Vec},
@@ -33,8 +34,9 @@ pub mod governance {
         MaxProposals,
         ExistingProposal,
         NonExistingProposal,
-        ProposalInactive,
+        ProposalVotingInactive,
         ProposalActive,
+        ProposalNotExecutable,
         DoubleVote,
         TransferError,
         NFTError,
@@ -99,6 +101,7 @@ pub mod governance {
     pub enum ProposalState {
         Created,
         Active,
+        Executable,
         Expired,
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
@@ -224,8 +227,19 @@ pub mod governance {
                 current_time if current_time >= prop.vote_start && current_time < prop.vote_end => {
                     ProposalState::Active
                 }
+                current_time
+                    if current_time >= prop.vote_end
+                        && self.is_executable(prop.pro_vote_count, prop.con_vote_count) =>
+                {
+                    ProposalState::Executable
+                }
+
                 _ => ProposalState::Expired,
             }
+        }
+
+        fn is_executable(&self, pro_votes: u128, con_votes: u128) -> bool {
+            ((pro_votes + con_votes) >= self.execution_threshold) && (pro_votes > con_votes)
         }
         // fn generate_proposal_id(&self, time_stamp: u64, creator_id: u128) -> String {
         //     let encodable = (time_stamp, creator_id);
@@ -331,6 +345,7 @@ pub mod governance {
             if gov_nft.is_collection_locked() == false {
                 return Err(GovernanceError::TransferAlreadyUnlocked);
             }
+
             if let Err(e) = gov_nft.unlock_transfer() {
                 return Err(GovernanceError::TransferLockError);
             }
@@ -354,10 +369,6 @@ pub mod governance {
                 .filter(|p| p.prop_id != prop_id)
                 .collect();
             self.proposals = update;
-            Self::emit_event(
-                Self::env(),
-                Event::ProposalCancelled(ProposalCancelled { id: prop_id }),
-            );
 
             Ok(())
         }
@@ -395,76 +406,54 @@ pub mod governance {
            ChangeStakingRewardRate(u128),
         **/
 
-        fn handle_pro_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
-            debug_println!(
-                "{},{},{}",
-                self.execution_threshold,
-                "curr weight and update ",
-                weight
+        fn execute_proposal(&mut self, proposal: Proposal) -> Result<(), GovernanceError> {
+            match proposal.prop_type {
+                PropType::TransferFunds(token, amount, to) => {
+                    self.transfer_psp22_from(token, &Self::env().account_id(), &to, amount)?
+                }
+                PropType::NativeTokenTransfer(to, funds) => {
+                    self.transfer_native_funds(to, funds)?
+                }
+                PropType::AcceptanceWeightUpdate(update) => {
+                    self.update_acceptance_threshold(update)
+                }
+                PropType::UpdateRejectThreshhold(update) => self.update_reject_threshold(update),
+                PropType::UpdateExecThreshhold(update) => self.update_execution_threshold(update),
+                PropType::VoteDelayUpdate(update) => {
+                    debug_println!("{}{}", "executing delay update ", update);
+                    self.voting_delay = update
+                }
+                PropType::VotePeriodUpdate(update) => self.voting_period = update,
+
+                PropType::AddCouncilMember(member) => self.add_council_member(&member)?,
+                PropType::ReplaceCouncilMember(member, replacement) => {
+                    self.replace_council_member(&member, replacement)?
+                }
+                PropType::RemoveCouncilMember(member) => self.remove_council_member(&member)?,
+                PropType::ChangeMultiSigThreshold(update) => {
+                    self.change_multisig_threshold(update)?
+                }
+
+                PropType::CompoundIncentiveChange(update) => self.update_incentive(&update)?,
+                PropType::FeeChange(new_fee) => self.update_vault_fee(&new_fee)?,
+
+                PropType::ChangeStakingRewardRate(new_rate) => {
+                    debug_println!("{}{}", "executing stakign update ", new_rate);
+                    self.update_staking_rewards(new_rate)?
+                }
+                PropType::SetCodeHash(code_hash) => self.set_code_internal(code_hash)?,
+
+                PropType::UnlockTransfer() => self.unlock_transfer()?,
+
+                PropType::LockTransfer() => self.lock_transfer()?,
+            };
+            Self::emit_event(
+                Self::env(),
+                Event::ProposlExecuted(ProposlExecuted { proposal: proposal }),
             );
-            if self.proposals[index].pro_vote_count + weight >= self.execution_threshold {
-                match &self.proposals[index].prop_type {
-                    PropType::TransferFunds(token, amount, to) => {
-                        self.transfer_psp22_from(*token, &Self::env().account_id(), to, *amount)?
-                    }
-                    PropType::NativeTokenTransfer(to, funds) => {
-                        self.transfer_native_funds(*to, *funds)?
-                    }
-                    PropType::AcceptanceWeightUpdate(update) => {
-                        self.update_acceptance_threshold(*update)
-                    }
-                    PropType::UpdateRejectThreshhold(update) => {
-                        self.update_reject_threshold(*update)
-                    }
-                    PropType::UpdateExecThreshhold(update) => {
-                        self.update_execution_threshold(*update)
-                    }
-                    PropType::VoteDelayUpdate(update) => {
-                        debug_println!("{}{}", "executing delay update ", update);
-                        self.voting_delay = *update
-                    }
-                    PropType::VotePeriodUpdate(update) => self.voting_period = *update,
-
-                    PropType::AddCouncilMember(member) => self.add_council_member(member)?,
-                    PropType::ReplaceCouncilMember(member, replacement) => {
-                        self.replace_council_member(member, *replacement)?
-                    }
-                    PropType::RemoveCouncilMember(member) => self.remove_council_member(member)?,
-                    PropType::ChangeMultiSigThreshold(update) => {
-                        self.change_multisig_threshold(*update)?
-                    }
-
-                    PropType::CompoundIncentiveChange(update) => self.update_incentive(update)?,
-                    PropType::FeeChange(new_fee) => self.update_vault_fee(new_fee)?,
-
-                    PropType::ChangeStakingRewardRate(new_rate) => {
-                        debug_println!("{}{}", "executing stakign update ", new_rate);
-                        self.update_staking_rewards(*new_rate)?
-                    }
-                    PropType::SetCodeHash(code_hash) => self.set_code_internal(*code_hash)?,
-
-                    PropType::UnlockTransfer() => self.unlock_transfer()?,
-
-                    PropType::LockTransfer() => self.lock_transfer()?,
-                };
-                Self::emit_event(
-                    Self::env(),
-                    Event::ProposlExecuted(ProposlExecuted {
-                        proposal: self.proposals[index].clone(),
-                    }),
-                );
-                self.proposals.swap_remove(index);
-            } else {
-                debug_println!("{}{}", "updateing with weight ", weight);
-                self.proposals[index].pro_vote_count += weight;
-                debug_println!(
-                    "{}{}",
-                    "new vote count ",
-                    self.proposals[index].pro_vote_count
-                );
-            }
             Ok(())
         }
+
         fn handle_con_vote(&mut self, index: usize, weight: u128) -> Result<(), GovernanceError> {
             if self.proposals[index].con_vote_count + weight >= self.rejection_threshold {
                 Self::emit_event(
@@ -500,6 +489,8 @@ pub mod governance {
             }
             Ok(())
         }
+    }
+    impl Governance {
         #[ink(constructor)]
         pub fn new(
             vault: AccountId,
@@ -512,14 +503,16 @@ pub mod governance {
             reject_threshold: u128,
             acc_threshold: u128,
             interest_rate: u128,
+            signers: Vec<AccountId>,
         ) -> Self {
-            let caller = Self::env().caller();
+            let caller: ink::primitives::AccountId = Self::env().caller();
 
-            let multisig_ref = MultiSigRef::new(Self::env().account_id(), registry, vault)
-                .endowment(0)
-                .code_hash(multisig_hash)
-                .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
-                .instantiate();
+            let mut multisig_ref =
+                MultiSigRef::new(Self::env().account_id(), registry, vault, signers)
+                    .endowment(0)
+                    .code_hash(multisig_hash)
+                    .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                    .instantiate();
 
             let mut nft_ref: GovernanceNFTRef = GovernanceNFTRef::new(Self::env().account_id())
                 .endowment(0)
@@ -543,6 +536,9 @@ pub mod governance {
             //    return Err(GovernanceError::MultiSigError);
             //}
             //
+            multisig_ref
+                .set_whitelist(StakingRef::to_account_id(&staking_ref))
+                .unwrap();
             nft_ref
                 .set_admin(StakingRef::to_account_id(&staking_ref))
                 .unwrap();
@@ -721,7 +717,7 @@ pub mod governance {
                     self.get_proposal_state(proposal, current_time),
                     "ProposalState"
                 );
-                return Err(GovernanceError::ProposalInactive);
+                return Err(GovernanceError::ProposalVotingInactive);
             }
 
             if self.voted.get((prop_id.clone(), nft_id)).unwrap_or(false) {
@@ -729,8 +725,8 @@ pub mod governance {
             }
             self.voted.insert((prop_id.clone(), nft_id), &true);
             match pro {
-                Vote::Pro => self.handle_pro_vote(index, weight)?,
-                Vote::Con => self.handle_con_vote(index, weight)?,
+                Vote::Pro => self.proposals[index].pro_vote_count += weight,
+                Vote::Con => self.proposals[index].con_vote_count += weight,
             };
 
             Self::emit_event(
@@ -741,6 +737,28 @@ pub mod governance {
                     pro_vote: pro,
                 }),
             );
+            Ok(())
+        }
+        #[ink(message)]
+        pub fn complete_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
+            let current_time = Self::env().block_timestamp();
+
+            if let Some(proposal) = self
+                .proposals
+                .clone()
+                .into_iter()
+                .find(|p| p.prop_id == prop_id)
+            {
+                let state = self.get_proposal_state(proposal.clone(), current_time);
+                if state == ProposalState::Executable {
+                    self.execute_proposal(proposal)?;
+                    self.remove_proposal(prop_id).unwrap();
+                } else {
+                    return Err(GovernanceError::NonExistingProposal);
+                }
+            } else {
+                return Err(GovernanceError::NonExistingProposal);
+            }
             Ok(())
         }
         #[ink(message)]
@@ -760,10 +778,14 @@ pub mod governance {
                 match state {
                     ProposalState::Created => {
                         self.remove_proposal(prop_id).unwrap();
+                        Self::emit_event(
+                            Self::env(),
+                            Event::ProposalCancelled(ProposalCancelled { id: prop_id }),
+                        );
                         return Ok(());
                     }
                     ProposalState::Active => return Err(GovernanceError::NonExistingProposal),
-                    ProposalState::Expired => {
+                    _ => {
                         self.remove_expired_proposals(current_time);
                         return Ok(());
                     }

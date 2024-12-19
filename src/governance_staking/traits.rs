@@ -5,7 +5,7 @@ pub trait Staking {
     #[ink(message, selector = 1)]
     fn update_rewards_rate(&mut self, new_rate: u128) -> Result<(), StakingError>;
     #[ink(message, selector = 10)]
-    fn onboard_validator(&mut self, id: u128, validator: AccountId) -> Result<(), StakingError>;
+    fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError>;
     #[ink(message, selector = 11)]
     fn disable_validator(&mut self, agent: AccountId, slash: bool) -> Result<(), StakingError>;
 }
