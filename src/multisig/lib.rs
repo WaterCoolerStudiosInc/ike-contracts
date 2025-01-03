@@ -1,18 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-mod traits;
+pub mod traits;
 pub use crate::multisig::MultiSigRef;
-pub use traits::MultiSig;
+pub use crate::traits::IMultiSig;
 
 #[ink::contract]
 mod multisig {
+    use crate::IMultiSig;
     use core::fmt::Error;
     use ink::{
         codegen::EmitEvent,
         contract_ref,
         env::{
+            debug_println,
             hash::{HashOutput, Sha2x256},
             hash_encoded,
-            debug_println,
         },
         prelude::{string::String, string::ToString, vec, vec::Vec},
         reflect::ContractEventBase,
@@ -33,7 +34,6 @@ mod multisig {
         pub creation_time: u64,
         pub used_nonces: Mapping<u128, bool>,
         pub proposals: Mapping<[u8; 32], Proposal>,
-        proposal_created: u128,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -90,7 +90,6 @@ mod multisig {
     pub struct Proposal {
         action: Action,
         proposers: Vec<AccountId>,
-        nonce: u128,
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
@@ -184,12 +183,12 @@ mod multisig {
                 creation_time: Self::env().block_timestamp(),
                 used_nonces: Mapping::new(),
                 proposals: Mapping::new(),
-                proposal_created: 0,
             }
         }
-
+    }
+    impl IMultiSig for MultiSig {
         #[ink(message, selector = 1)]
-        pub fn add_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
+        fn add_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
@@ -202,7 +201,7 @@ mod multisig {
             Ok(())
         }
         #[ink(message, selector = 2)]
-        pub fn remove_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
+        fn remove_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
@@ -220,7 +219,7 @@ mod multisig {
         }
 
         #[ink(message, selector = 3)]
-        pub fn update_threshold(&mut self, new_threshold: u16) -> Result<(), MultiSigError> {
+        fn update_threshold(&mut self, new_threshold: u16) -> Result<(), MultiSigError> {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
@@ -230,7 +229,7 @@ mod multisig {
         }
 
         #[ink(message, selector = 4)]
-        pub fn replace_signer(
+        fn replace_signer(
             &mut self,
             signer_old: AccountId,
             signer_new: AccountId,
@@ -256,13 +255,9 @@ mod multisig {
         }
 
         #[ink(message, selector = 7)]
-        pub fn endorse_proposal(
-            &mut self,
-            action: Action,
-            nonce: u128,
-        ) -> Result<(), MultiSigError> {
+        fn endorse_proposal(&mut self, action: Action) -> Result<(), MultiSigError> {
             let hash: [u8; 32] = self
-                .hash_execution(action.clone(), &nonce.to_string())
+                .hash_execution(action.clone(), &"42069".to_string())
                 .unwrap();
             let caller = Self::env().caller();
             let existing = self.proposals.get(hash);
@@ -281,7 +276,7 @@ mod multisig {
                 curr_proposers.retain(|&x| signers.contains(&x));
 
                 if curr_proposers.len() as u16 + 1_u16 == self.threshold {
-                    debug_println!("{}","executing");
+                    debug_println!("{}", "executing");
                     Self::emit_event(
                         Self::env(),
                         Event::ProposalExecuted(ProposalExecuted {
@@ -302,17 +297,13 @@ mod multisig {
                     self.proposals.insert(hash, &existing);
                 }
             } else {
-                debug_println!("{}","add new proposal");
-                let used_nonce = self.used_nonces.get(&nonce);
-                if used_nonce.is_some() {
-                    return Err(MultiSigError::UsedNonce);
-                }
+                debug_println!("{}", "add new proposal");
+
                 self.proposals.insert(
                     hash,
                     &Proposal {
                         action: action.clone(),
                         proposers: vec![caller],
-                        nonce: nonce.clone(),
                     },
                 );
                 Self::emit_event(
@@ -321,7 +312,6 @@ mod multisig {
                         proposal: Proposal {
                             action,
                             proposers: vec![caller],
-                            nonce: nonce,
                         },
                     }),
                 );
@@ -330,11 +320,11 @@ mod multisig {
         }
 
         #[ink(message, selector = 8)]
-        pub fn get_signers(&self) -> Vec<AccountId> {
+        fn get_signers(&self) -> Vec<AccountId> {
             self.signers.clone()
         }
         #[ink(message, selector = 9)]
-        pub fn set_whitelist(&mut self, new_list: AccountId) -> Result<(), MultiSigError> {
+        fn set_whitelist(&mut self, new_list: AccountId) -> Result<(), MultiSigError> {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);

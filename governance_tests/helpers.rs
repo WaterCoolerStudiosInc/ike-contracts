@@ -340,7 +340,7 @@ pub fn query_owner(
     );
     sess.call_with_address(
         governance_nft.clone(),
-        "owner_of_id",
+        "IGovernanceNFT::owner_of_id",
         &[nft_id.to_string()],
         None,
     )?;

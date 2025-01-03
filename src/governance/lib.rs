@@ -1,8 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
+pub mod traits;
 #[ink::contract]
 pub mod governance {
-    use governance_nft::traits::GovernanceNFT;
+    use governance_nft::traits::IGovernanceNFT as GovernanceNFT;
     use governance_nft::GovernanceNFTRef;
     use governance_staking::{Staking, StakingRef};
     use ink::{
@@ -16,8 +16,8 @@ pub mod governance {
     };
     use vault::traits::IVault;
 
-    use multisig::{MultiSig, MultiSigRef};
-
+    use multisig::traits::IMultiSig as MultiSig;
+    use multisig::MultiSigRef;
     use psp22::{PSP22Error, PSP22};
     use psp34::PSP34;
 
@@ -561,6 +561,7 @@ pub mod governance {
                 prop_nonce: 1_u128,
             }
         }
+
         #[ink(message)]
         pub fn get_multisig(&self) -> AccountId {
             self.multisig

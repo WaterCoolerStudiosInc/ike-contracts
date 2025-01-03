@@ -11,6 +11,8 @@ pub mod staking {
     use num_bigint::BigUint;
     use num_traits::cast::ToPrimitive;
 
+    use governance_nft::traits::IGovernanceNFT;
+    use governance_nft::GovernanceNFTRef;
     use ink::reflect::ContractEventBase;
     use ink::ToAccountId;
     use ink::{
@@ -26,8 +28,6 @@ pub mod staking {
     };
     use psp22::{PSP22Error, PSP22};
     use psp34::{Id, PSP34Error};
-
-    use governance_nft::{GovernanceNFT, GovernanceNFTRef};
     use registry::traits::IRegistry;
 
     pub const DAY: u64 = 86400 * 1000;

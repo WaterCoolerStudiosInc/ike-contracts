@@ -575,7 +575,7 @@ mod tests {
             sess,
             &ctx.gov_nft,
             &ctx.bob,
-            String::from("get_governance_data"),
+            String::from("IGovernanceNFT::get_governance_data"),
             Some(vec![6_u128.to_string()]),
             None,
             transcoder_governance_nft(),
@@ -613,7 +613,7 @@ mod tests {
             sess,
             &ctx.gov_nft,
             &ctx.bob,
-            String::from("get_governance_data"),
+            String::from("IGovernanceNFT::get_governance_data"),
             Some(vec![6_u128.to_string()]),
             None,
             transcoder_governance_nft(),
@@ -631,7 +631,7 @@ mod tests {
             sess,
             &ctx.gov_nft,
             &ctx.bob,
-            String::from("get_governance_data"),
+            String::from("IGovernanceNFT::get_governance_data"),
             Some(vec![2_u128.to_string()]),
             None,
             transcoder_governance_nft(),
@@ -722,7 +722,7 @@ mod tests {
             sess,
             &ctx.gov_nft,
             &ctx.bob,
-            String::from("get_governance_data"),
+            String::from("IGovernanceNFT::get_governance_data"),
             Some(vec![3_u128.to_string()]),
             None,
             transcoder_governance_nft(),
@@ -975,7 +975,7 @@ mod tests {
             sess,
             &ctx.gov_nft,
             &ctx.bob,
-            String::from("get_governance_data"),
+            String::from("IGovernanceNFT::get_governance_data"),
             Some(vec![1_u128.to_string()]),
             None,
             transcoder_governance_nft(),
@@ -996,7 +996,7 @@ mod tests {
             ctx.sess,
             &ctx.gov_nft,
             &ctx.alice,
-            String::from("get_governance_data"),
+            String::from("IGovernanceNFT::get_governance_data"),
             Some(vec![1_u128.to_string()]),
             None,
             transcoder_governance_nft(),
@@ -1062,9 +1062,10 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn earn_interest() -> Result<(), Box<dyn Error>> {
+    fn compound_without_burning() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
+        let sess = update_days(ctx.sess, 30);
 
         Ok(())
     }
@@ -1122,6 +1123,7 @@ mod tests {
 
         Ok(())
     }
+    // check that an nft can be unwrapped when a proposal has been created but expireds
     #[test]
     fn nft_unlocks_work_with_expired_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1176,6 +1178,8 @@ mod tests {
         );
         Ok(())
     }
+
+    // ToDo check for new interest rate proposal in governance staking
     #[test]
     fn change_interest_rate_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1219,6 +1223,7 @@ mod tests {
 
         Ok(())
     }
+    // Todo add check for removed proposal
     #[test]
     fn cancel_proposal_works() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1972,7 +1977,7 @@ mod tests {
             sess,
             &ctx.multisig,
             &ctx.bob,
-            String::from("get_signers"),
+            String::from("IMultiSig::get_signers"),
             None,
             None,
             transcoder_multisig(),
@@ -2217,7 +2222,7 @@ mod tests {
             ctx.sess,
             &ctx.gov_nft,
             &ctx.alice,
-            String::from("is_collection_locked"),
+            String::from("IGovernanceNFT::is_collection_locked"),
             Some(vec![]),
             None,
             transcoder_governance_nft(),
@@ -2274,7 +2279,7 @@ mod tests {
             sess,
             &ctx.gov_nft,
             &ctx.alice,
-            String::from("is_collection_locked"),
+            String::from("IGovernanceNFT::is_collection_locked"),
             Some(vec![]),
             None,
             transcoder_governance_nft(),
@@ -2816,8 +2821,12 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+        assert_eq!(agents.len(), 6);
         Ok(())
     }
+    
+    //Todo Query validator Status
     #[test]
     fn disable_validator() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -2852,11 +2861,12 @@ mod tests {
             sess,
             &ctx.multisig,
             &ctx.alice,
-            String::from("endorse_proposal"),
-            Some(vec![
-                helpers::Action::RemoveValidator(agents[5].address.clone(), false).to_string(),
-                2323.to_string(),
-            ]),
+            String::from("IMultiSig::endorse_proposal"),
+            Some(vec![helpers::Action::RemoveValidator(
+                agents[5].address.clone(),
+                false,
+            )
+            .to_string()]),
             None,
             transcoder_multisig(),
         )
@@ -2865,11 +2875,12 @@ mod tests {
             sess,
             &ctx.multisig,
             &ctx.bob,
-            String::from("endorse_proposal"),
-            Some(vec![
-                helpers::Action::RemoveValidator(agents[5].address.clone(), false).to_string(),
-                2323.to_string(),
-            ]),
+            String::from("IMultiSig::endorse_proposal"),
+            Some(vec![helpers::Action::RemoveValidator(
+                agents[5].address.clone(),
+                false,
+            )
+            .to_string()]),
             None,
             transcoder_multisig(),
         )
@@ -2878,11 +2889,89 @@ mod tests {
             sess,
             &ctx.multisig,
             &ctx.charlie,
-            String::from("endorse_proposal"),
+            String::from("IMultiSig::endorse_proposal"),
+            Some(vec![helpers::Action::RemoveValidator(
+                agents[5].address.clone(),
+                false,
+            )
+            .to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+
+        Ok(())
+    }
+      //Todo Query validator Status
+      //Todo Query NFT Status
+    #[test]
+    fn disable_validator_with_slashing() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let new_validator = AccountId::new([106u8; 32]);
+
+        let mut sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.alice,
+            String::from("PSP22::approve"),
             Some(vec![
-                helpers::Action::RemoveValidator(agents[5].address.clone(), false).to_string(),
-                2323.to_string(),
+                ctx.stake_contract.to_string(),
+                100_000_000_000_500_u128.to_string(),
             ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("onboard_validator"),
+            Some(vec![new_validator.to_string()]),
+            Some(100_000_000_000_500_u128),
+            transcoder_governance_staking(),
+        )
+        .unwrap();
+        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+        println!("{:?}", agents);
+        let mut sess = call_function(
+            sess,
+            &ctx.multisig,
+            &ctx.alice,
+            String::from("IMultiSig::endorse_proposal"),
+            Some(vec![helpers::Action::RemoveValidator(
+                agents[5].address.clone(),
+                true,
+            )
+            .to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &ctx.multisig,
+            &ctx.bob,
+            String::from("IMultiSig::endorse_proposal"),
+            Some(vec![helpers::Action::RemoveValidator(
+                agents[5].address.clone(),
+                true,
+            )
+            .to_string()]),
+            None,
+            transcoder_multisig(),
+        )
+        .unwrap();
+        let mut sess = call_function(
+            sess,
+            &ctx.multisig,
+            &ctx.charlie,
+            String::from("IMultiSig::endorse_proposal"),
+            Some(vec![helpers::Action::RemoveValidator(
+                agents[5].address.clone(),
+                true,
+            )
+            .to_string()]),
             None,
             transcoder_multisig(),
         )

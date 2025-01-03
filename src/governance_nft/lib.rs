@@ -29,6 +29,7 @@ mod governance_nft {
     };
     use psp34::{metadata, Id, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata, PSP34};
 
+    use crate::traits::IGovernanceNFT;
     #[cfg(feature = "enumerable")]
     use psp34::PSP34Enumerable;
 
@@ -94,9 +95,10 @@ mod governance_nft {
                 }
             }
         }
-
+    }
+    impl IGovernanceNFT for GovernanceNFT {
         #[ink(message, selector = 91)]
-        pub fn lock_transfer(&mut self) -> Result<(), PSP34Error> {
+        fn lock_transfer(&mut self) -> Result<(), PSP34Error> {
             if self.env().caller() != self.governance {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
@@ -105,7 +107,7 @@ mod governance_nft {
         }
 
         #[ink(message, selector = 47)]
-        pub fn unlock_transfer(&mut self) -> Result<(), PSP34Error> {
+        fn unlock_transfer(&mut self) -> Result<(), PSP34Error> {
             if self.env().caller() != self.governance {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
@@ -114,12 +116,12 @@ mod governance_nft {
         }
 
         #[ink(message, selector = 69)]
-        pub fn is_collection_locked(&self) -> bool {
+        fn is_collection_locked(&self) -> bool {
             self.lock_transfer
         }
 
-        #[ink(message, selector = 7)]
-        pub fn transfer_from(
+        #[ink(message, selector = 17)]
+        fn transfer_from(
             &mut self,
             from: AccountId,
             to: AccountId,
@@ -133,16 +135,17 @@ mod governance_nft {
             self.emit_events(events);
             Ok(())
         }
+        
         #[ink(message, selector = 31337)]
-        pub fn get_governance_data(&self, id: u128) -> Option<GovernanceData> {
+        fn get_governance_data(&self, id: u128) -> Option<GovernanceData> {
             self.token_governance_data.get(id)
         }
-        pub fn get_admin(&self) -> AccountId {
+        fn get_admin(&self) -> AccountId {
             self.admin
         }
 
         #[ink(message, selector = 89)]
-        pub fn increment_weights(
+        fn increment_weights(
             &mut self,
             id: u128,
             vote_weight: u128,
@@ -169,11 +172,7 @@ mod governance_nft {
             Ok(())
         }
         #[ink(message, selector = 99)]
-        pub fn decrement_vote_weight(
-            &mut self,
-            id: u128,
-            vote_weight: u128,
-        ) -> Result<(), PSP34Error> {
+        fn decrement_vote_weight(&mut self, id: u128, vote_weight: u128) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
@@ -187,7 +186,7 @@ mod governance_nft {
             Ok(())
         }
         #[ink(message, selector = 1337)]
-        pub fn mint(
+        fn mint(
             &mut self,
             to: AccountId,
             weight: u128,
@@ -215,7 +214,7 @@ mod governance_nft {
         }
 
         #[ink(message, selector = 8057)]
-        pub fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
+        fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
             // Add security, restrict usage of the message
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
@@ -228,7 +227,7 @@ mod governance_nft {
             Ok(())
         }
         #[ink(message, selector = 8888)]
-        pub fn set_admin(&mut self, new_admin: AccountId) -> Result<(), PSP34Error> {
+        fn set_admin(&mut self, new_admin: AccountId) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
@@ -236,7 +235,7 @@ mod governance_nft {
             Ok(())
         }
         #[ink(message)]
-        pub fn owner_of_id(&self, id: u128) -> Option<AccountId> {
+        fn owner_of_id(&self, id: u128) -> Option<AccountId> {
             self.data.owner_of(&Id::U128(id))
         }
     }
