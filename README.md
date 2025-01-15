@@ -7,6 +7,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 
 cargo install --version 3.2.0 --force --locked cargo-contract
+
+rustup toolchain install stable-2024-09-05
+rustup component add rust-src --toolchain stable-2024-09-05
 ```
 
 
