@@ -265,7 +265,7 @@ pub mod governance {
                 .proposals
                 .clone()
                 .into_iter()
-                .partition(|p| p.vote_end > current_time);
+                .partition(|p| self.get_proposal_state(p, current_time) == ProposalState::Expired);
             debug_println!("{}{:?}", "removed proposal", expired);
             debug_println!("{}{:?}", "active proposal", active);
             self.proposals = active;
