@@ -40,6 +40,7 @@ mod multisig {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum MultiSigError {
         SignerNotFound,
+        SignerAlreadyExists,
         VaultFailure,
         RegistryFailure,
         Unauthorized,
@@ -165,6 +166,10 @@ mod multisig {
                 Action::CompleteRemoveValidator(validator) => self.complete_removal(validator),
             }
         }
+    
+        fn is_signer(&self, acc: &AccountId) -> bool {
+            self.signers.iter().any(|a| a == acc)
+        }
     }
     impl MultiSig {
         #[ink(constructor)]
@@ -192,6 +197,9 @@ mod multisig {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
+            }
+            if self.is_signer(&_signer) {
+                return Err(MultiSigError::SignerAlreadyExists)
             }
             self.signers.push(_signer);
             Self::emit_event(
@@ -237,6 +245,9 @@ mod multisig {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
+            }
+            if self.is_signer(&signer_new) {
+                return Err(MultiSigError::SignerAlreadyExists);
             }
             if let Some(index) = self.signers.iter().position(|a| *a == signer_old) {
                 self.signers.remove(index);
