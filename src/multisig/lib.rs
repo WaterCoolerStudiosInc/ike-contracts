@@ -27,7 +27,7 @@ mod multisig {
     #[ink(storage)]
     pub struct MultiSig {
         pub admin: AccountId,
-        pub whitelist: AccountId,
+        pub gov_staking: AccountId,
         pub registry: AccountId,
         pub signers: Vec<AccountId>,
         pub threshold: u16,
@@ -147,8 +147,8 @@ mod multisig {
         }
 
         fn execute_disable(&self, validator: AccountId, slash: bool) -> Result<(), MultiSigError> {
-            let mut whitelist: contract_ref!(Staking) = self.whitelist.into();
-            if let Err(_) = whitelist.disable_validator(validator, slash) {
+            let mut gov_staking: contract_ref!(Staking) = self.gov_staking.into();
+            if let Err(_) = gov_staking.disable_validator(validator, slash) {
                 return Err(MultiSigError::VaultFailure);
             }
             Ok(())
@@ -176,13 +176,13 @@ mod multisig {
         pub fn new(
             _admin: AccountId,
             _registry: AccountId,
-            _whitelist: AccountId,
+            gov_staking: AccountId,
             initial_signers: Vec<AccountId>,
         ) -> Self {
             Self {
                 admin: _admin,
                 registry: _registry,
-                whitelist: _whitelist,
+                gov_staking,
                 signers: initial_signers,
                 threshold: 3,
                 creation_time: Self::env().block_timestamp(),
@@ -335,12 +335,12 @@ mod multisig {
             self.signers.clone()
         }
         #[ink(message, selector = 9)]
-        fn set_whitelist(&mut self, new_list: AccountId) -> Result<(), MultiSigError> {
+        fn set_gov_staking(&mut self, new_account: AccountId) -> Result<(), MultiSigError> {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
             }
-            self.whitelist = new_list;
+            self.gov_staking = new_account;
             Ok(())
         }
     }

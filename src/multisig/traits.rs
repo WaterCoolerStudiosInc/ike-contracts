@@ -21,5 +21,5 @@ pub trait IMultiSig {
     #[ink(message, selector = 8)]
     fn get_signers(&self) -> Vec<AccountId>;
     #[ink(message, selector = 9)]
-    fn set_whitelist(&mut self, new_list: AccountId) -> Result<(), MultiSigError>;
+    fn set_gov_staking(&mut self, new_account: AccountId) -> Result<(), MultiSigError>;
 }

@@ -533,7 +533,7 @@ pub mod governance {
             //}
             //
             multisig_ref
-                .set_whitelist(StakingRef::to_account_id(&staking_ref))
+                .set_gov_staking(StakingRef::to_account_id(&staking_ref))
                 .unwrap();
             nft_ref
                 .set_admin(StakingRef::to_account_id(&staking_ref))
