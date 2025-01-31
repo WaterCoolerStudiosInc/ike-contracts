@@ -309,7 +309,7 @@ pub mod staking {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<(), StakingError> {
-            if let Err(e) = self.nft.increment_weights(id, vote_weight, stake_weight) {
+            if let Err(e) = self.nft.increment_weights(id, stake_weight, vote_weight) {
                 return Err(StakingError::NFTError(e));
             }
             Ok(())

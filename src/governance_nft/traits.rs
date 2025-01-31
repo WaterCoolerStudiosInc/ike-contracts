@@ -6,7 +6,7 @@ use psp34::PSP34Error;
 #[ink::trait_definition]
 pub trait IGovernanceNFT {
     #[ink(message, selector = 1337)]
-    fn mint(&mut self, to: AccountId, weight: u128, vote_weight: u128) -> Result<u128, PSP34Error>;
+    fn mint(&mut self, to: AccountId, stake_weight: u128, vote_weight: u128) -> Result<u128, PSP34Error>;
     #[ink(message, selector = 31337)]
     fn get_governance_data(&self, id: u128) -> Option<GovernanceData>;
     #[ink(message, selector = 8057)]
@@ -15,8 +15,8 @@ pub trait IGovernanceNFT {
     fn increment_weights(
         &mut self,
         id: u128,
-        weight: u128,
         stake_weight: u128,
+        vote_weight: u128,
     ) -> Result<(), PSP34Error>;
     #[ink(message, selector = 99)]
     fn decrement_vote_weight(&mut self, id: u128, weight: u128) -> Result<(), PSP34Error>;
