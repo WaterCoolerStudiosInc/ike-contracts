@@ -30,8 +30,6 @@ mod governance_nft {
     use psp34::{metadata, Id, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata, PSP34};
 
     use crate::traits::IGovernanceNFT;
-    #[cfg(feature = "enumerable")]
-    use psp34::PSP34Enumerable;
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
