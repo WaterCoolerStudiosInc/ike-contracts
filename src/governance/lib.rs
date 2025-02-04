@@ -218,23 +218,19 @@ pub mod governance {
             let data = nft.get_governance_data(id).unwrap();
             data.vote_weight
         }
-        fn get_proposal_state(&self, prop: Proposal, current_time: u64) -> ProposalState {
+        fn get_proposal_state(&self, prop: &Proposal, current_time: u64) -> ProposalState {
             debug_println!("{}{}", prop.vote_end, "vote end");
             debug_println!("{}{}", prop.vote_start, "vote start");
             debug_println!("{}{}", current_time, "current time");
-            match current_time {
-                current_time if current_time < prop.vote_start => ProposalState::Created,
-                current_time if current_time >= prop.vote_start && current_time < prop.vote_end => {
-                    ProposalState::Active
-                }
-                current_time
-                    if current_time >= prop.vote_end
-                        && self.is_executable(prop.pro_vote_count, prop.con_vote_count) =>
-                {
-                    ProposalState::Executable
-                }
 
-                _ => ProposalState::Expired,
+            if current_time < prop.vote_start {
+                ProposalState::Created
+            } else if current_time < prop.vote_end {
+                ProposalState::Active
+            } else if self.is_executable(prop.pro_vote_count, prop.con_vote_count) {
+                ProposalState::Executable
+            } else {
+                ProposalState::Expired
             }
         }
 
@@ -269,7 +265,7 @@ pub mod governance {
                 .proposals
                 .clone()
                 .into_iter()
-                .partition(|p| p.vote_end > current_time);
+                .partition(|p| self.get_proposal_state(p, current_time) == ProposalState::Expired);
             debug_println!("{}{:?}", "removed proposal", expired);
             debug_println!("{}{:?}", "active proposal", active);
             self.proposals = active;
@@ -537,7 +533,7 @@ pub mod governance {
             //}
             //
             multisig_ref
-                .set_whitelist(StakingRef::to_account_id(&staking_ref))
+                .set_gov_staking(StakingRef::to_account_id(&staking_ref))
                 .unwrap();
             nft_ref
                 .set_admin(StakingRef::to_account_id(&staking_ref))
@@ -616,8 +612,8 @@ pub mod governance {
                 .clone()
                 .into_iter()
                 .find(|p| p.creator_id == id);
-            if prop.is_some() {
-                self.get_proposal_state(prop.unwrap(), current_time) != ProposalState::Expired
+            if let Some(prop) = prop {
+                self.get_proposal_state(&prop, current_time) != ProposalState::Expired
             } else {
                 false
             }
@@ -712,10 +708,10 @@ pub mod governance {
                 .unwrap();
             let proposal = self.proposals[index].clone();
 
-            if self.get_proposal_state(proposal.clone(), current_time) != ProposalState::Active {
+            if self.get_proposal_state(&proposal, current_time) != ProposalState::Active {
                 debug_println!(
                     "{:?}{}",
-                    self.get_proposal_state(proposal, current_time),
+                    self.get_proposal_state(&proposal, current_time),
                     "ProposalState"
                 );
                 return Err(GovernanceError::ProposalVotingInactive);
@@ -750,7 +746,7 @@ pub mod governance {
                 .into_iter()
                 .find(|p| p.prop_id == prop_id)
             {
-                let state = self.get_proposal_state(proposal.clone(), current_time);
+                let state = self.get_proposal_state(&proposal, current_time);
                 if state == ProposalState::Executable {
                     self.execute_proposal(proposal)?;
                     self.remove_proposal(prop_id).unwrap();
@@ -775,7 +771,7 @@ pub mod governance {
                 if self.check_ownership(proposal.creator_id, Self::env().caller()) != true {
                     return Err(GovernanceError::Unauthorized);
                 }
-                let state = self.get_proposal_state(proposal, current_time);
+                let state = self.get_proposal_state(&proposal, current_time);
                 match state {
                     ProposalState::Created => {
                         self.remove_proposal(prop_id).unwrap();

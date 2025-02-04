@@ -309,7 +309,7 @@ pub mod staking {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<(), StakingError> {
-            if let Err(e) = self.nft.increment_weights(id, vote_weight, stake_weight) {
+            if let Err(e) = self.nft.increment_weights(id, stake_weight, vote_weight) {
                 return Err(StakingError::NFTError(e));
             }
             Ok(())
@@ -421,9 +421,7 @@ pub mod staking {
                 .exec_input(
                     ExecutionInput::new(ADD_SELECTOR)
                         .push_arg(admin)
-                        .push_arg(validator)
-                        .push_arg(pool_create_amount)
-                        .push_arg(existential_deposit),
+                        .push_arg(validator),
                 )
                 .transferred_value(transfer_amount)
                 .returns::<Result<AccountId, RuntimeError>>()

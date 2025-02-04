@@ -30,8 +30,6 @@ mod governance_nft {
     use psp34::{metadata, Id, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata, PSP34};
 
     use crate::traits::IGovernanceNFT;
-    #[cfg(feature = "enumerable")]
-    use psp34::PSP34Enumerable;
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
@@ -148,8 +146,8 @@ mod governance_nft {
         fn increment_weights(
             &mut self,
             id: u128,
-            vote_weight: u128,
             stake_weight: u128,
+            vote_weight: u128,
         ) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
@@ -189,7 +187,7 @@ mod governance_nft {
         fn mint(
             &mut self,
             to: AccountId,
-            weight: u128,
+            stake_weight: u128,
             vote_weight: u128,
         ) -> Result<u128, PSP34Error> {
             if self.env().caller() != self.admin {
@@ -200,7 +198,7 @@ mod governance_nft {
             let curr_id = Id::U128(self.mint_count);
             let g_metadata = GovernanceData {
                 block_created: self.env().block_timestamp(),
-                stake_weight: weight,
+                stake_weight,
                 vote_weight: vote_weight,
             };
 

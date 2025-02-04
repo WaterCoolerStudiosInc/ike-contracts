@@ -27,7 +27,7 @@ mod multisig {
     #[ink(storage)]
     pub struct MultiSig {
         pub admin: AccountId,
-        pub whitelist: AccountId,
+        pub gov_staking: AccountId,
         pub registry: AccountId,
         pub signers: Vec<AccountId>,
         pub threshold: u16,
@@ -40,6 +40,7 @@ mod multisig {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum MultiSigError {
         SignerNotFound,
+        SignerAlreadyExists,
         VaultFailure,
         RegistryFailure,
         Unauthorized,
@@ -122,32 +123,32 @@ mod multisig {
             emitter.emit_event(event);
         }
 
-        fn hash_remove(&self, validator: AccountId, slash: bool, nonce: &String) -> [u8; 32] {
-            let encodable = (validator, slash, nonce);
+        fn hash_remove(&self, validator: AccountId, slash: bool) -> [u8; 32] {
+            let encodable = (validator, slash);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
             output
         }
-        fn hash_complete(&self, validator: AccountId, nonce: &String) -> [u8; 32] {
+        fn hash_complete(&self, validator: AccountId) -> [u8; 32] {
             let encodable = (validator);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
             output
         }
-        fn hash_execution(&self, tx: Action, nonce: &String) -> Result<[u8; 32], Error> {
+        fn hash_execution(&self, tx: Action) -> Result<[u8; 32], Error> {
             match tx {
                 Action::RemoveValidator(validator, slash) => {
-                    Ok(self.hash_remove(validator, slash, nonce))
+                    Ok(self.hash_remove(validator, slash))
                 }
                 Action::CompleteRemoveValidator(validator) => {
-                    Ok(self.hash_complete(validator, nonce))
+                    Ok(self.hash_complete(validator))
                 }
             }
         }
 
         fn execute_disable(&self, validator: AccountId, slash: bool) -> Result<(), MultiSigError> {
-            let mut whitelist: contract_ref!(Staking) = self.whitelist.into();
-            if let Err(_) = whitelist.disable_validator(validator, slash) {
+            let mut gov_staking: contract_ref!(Staking) = self.gov_staking.into();
+            if let Err(_) = gov_staking.disable_validator(validator, slash) {
                 return Err(MultiSigError::VaultFailure);
             }
             Ok(())
@@ -165,19 +166,23 @@ mod multisig {
                 Action::CompleteRemoveValidator(validator) => self.complete_removal(validator),
             }
         }
+    
+        fn is_signer(&self, acc: &AccountId) -> bool {
+            self.signers.iter().any(|a| a == acc)
+        }
     }
     impl MultiSig {
         #[ink(constructor)]
         pub fn new(
             _admin: AccountId,
             _registry: AccountId,
-            _whitelist: AccountId,
+            gov_staking: AccountId,
             initial_signers: Vec<AccountId>,
         ) -> Self {
             Self {
                 admin: _admin,
                 registry: _registry,
-                whitelist: _whitelist,
+                gov_staking,
                 signers: initial_signers,
                 threshold: 3,
                 creation_time: Self::env().block_timestamp(),
@@ -192,6 +197,9 @@ mod multisig {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
+            }
+            if self.is_signer(&_signer) {
+                return Err(MultiSigError::SignerAlreadyExists)
             }
             self.signers.push(_signer);
             Self::emit_event(
@@ -238,6 +246,9 @@ mod multisig {
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
             }
+            if self.is_signer(&signer_new) {
+                return Err(MultiSigError::SignerAlreadyExists);
+            }
             if let Some(index) = self.signers.iter().position(|a| *a == signer_old) {
                 self.signers.remove(index);
                 self.signers.push(signer_new);
@@ -257,7 +268,7 @@ mod multisig {
         #[ink(message, selector = 7)]
         fn endorse_proposal(&mut self, action: Action) -> Result<(), MultiSigError> {
             let hash: [u8; 32] = self
-                .hash_execution(action.clone(), &"42069".to_string())
+                .hash_execution(action.clone())
                 .unwrap();
             let caller = Self::env().caller();
             let existing = self.proposals.get(hash);
@@ -324,12 +335,12 @@ mod multisig {
             self.signers.clone()
         }
         #[ink(message, selector = 9)]
-        fn set_whitelist(&mut self, new_list: AccountId) -> Result<(), MultiSigError> {
+        fn set_gov_staking(&mut self, new_account: AccountId) -> Result<(), MultiSigError> {
             let caller = Self::env().caller();
             if caller != self.admin {
                 return Err(MultiSigError::Unauthorized);
             }
-            self.whitelist = new_list;
+            self.gov_staking = new_account;
             Ok(())
         }
     }
