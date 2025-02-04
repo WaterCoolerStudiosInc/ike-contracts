@@ -123,25 +123,25 @@ mod multisig {
             emitter.emit_event(event);
         }
 
-        fn hash_remove(&self, validator: AccountId, slash: bool, nonce: &String) -> [u8; 32] {
-            let encodable = (validator, slash, nonce);
+        fn hash_remove(&self, validator: AccountId, slash: bool) -> [u8; 32] {
+            let encodable = (validator, slash);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
             output
         }
-        fn hash_complete(&self, validator: AccountId, nonce: &String) -> [u8; 32] {
+        fn hash_complete(&self, validator: AccountId) -> [u8; 32] {
             let encodable = (validator);
             let mut output = <Sha2x256 as HashOutput>::Type::default();
             hash_encoded::<Sha2x256, _>(&encodable, &mut output);
             output
         }
-        fn hash_execution(&self, tx: Action, nonce: &String) -> Result<[u8; 32], Error> {
+        fn hash_execution(&self, tx: Action) -> Result<[u8; 32], Error> {
             match tx {
                 Action::RemoveValidator(validator, slash) => {
-                    Ok(self.hash_remove(validator, slash, nonce))
+                    Ok(self.hash_remove(validator, slash))
                 }
                 Action::CompleteRemoveValidator(validator) => {
-                    Ok(self.hash_complete(validator, nonce))
+                    Ok(self.hash_complete(validator))
                 }
             }
         }
@@ -268,7 +268,7 @@ mod multisig {
         #[ink(message, selector = 7)]
         fn endorse_proposal(&mut self, action: Action) -> Result<(), MultiSigError> {
             let hash: [u8; 32] = self
-                .hash_execution(action.clone(), &"42069".to_string())
+                .hash_execution(action.clone())
                 .unwrap();
             let caller = Self::env().caller();
             let existing = self.proposals.get(hash);
