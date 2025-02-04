@@ -5,7 +5,7 @@ use ink::{primitives::AccountId, prelude::vec::Vec};
 
 pub trait IGovernaance {
     #[ink(message)]
-    fn get_multisig(&self) -> AccountId;
+    fn get_council(&self) -> AccountId;
     #[ink(message)]
     fn get_staking(&self) -> AccountId;
     #[ink(message)]

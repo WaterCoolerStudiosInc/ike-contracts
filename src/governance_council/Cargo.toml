@@ -1,5 +1,5 @@
 [package]
-name = "multisig"
+name = "governance_council"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -23,7 +23,7 @@ governance_staking = { path = "../governance_staking", default-features = false,
 ] }
 psp22 = { version = "=0.2.1", default-features = false }
 [lib]
-name = "multisig"
+name = "governance_council"
 path = "lib.rs"
 
 [features]
