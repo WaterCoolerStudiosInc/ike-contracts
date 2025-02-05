@@ -157,14 +157,12 @@ pub mod governance {
         // add getter
         pub rejection_threshold: u128,
         // add getter
-        pub acceptance_threshold: u128, //
-        pub creation_time: u64,
+        pub acceptance_threshold: u128,
         // add getter
         pub voting_delay: u64,
         // add getter
         pub voting_period: u64,
         pub proposals: Vec<Proposal>,
-        pub last_proposal: Mapping<u128, u64>,
         pub voted: Mapping<(u128, u128), bool>,
         pub prop_nonce: u128,
     }
@@ -576,6 +574,7 @@ pub mod governance {
                 .unwrap();
 
             let _gov_nft = GovernanceNFTRef::to_account_id(&nft_ref);
+            
             Self {
                 gov_nft: _gov_nft,
                 vault: vault,
@@ -584,11 +583,9 @@ pub mod governance {
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
                 acceptance_threshold: acc_threshold,
-                creation_time: Self::env().block_timestamp(),
                 voting_delay: 2 * DAY,
                 voting_period: 7 * DAY,
                 proposals: Vec::new(),
-                last_proposal: Mapping::new(),
                 voted: Mapping::new(),
                 prop_nonce: 1_u128,
             }
