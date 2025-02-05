@@ -434,27 +434,18 @@ pub mod governance {
             Ok(())
         }
 
-        fn handle_con_vote(&mut self, index: usize, weight: Weight) -> Result<(), GovernanceError> {
-            if self.proposals[index].con_vote_count + weight >= self.rejection_threshold {
+        fn handle_proposal_rejection(&mut self, index: usize) {
+            if self.proposals[index].con_vote_count >= self.rejection_threshold {
+                debug_println!("removing at index {}", index);
+                self.proposals.swap_remove(index);
+
                 Self::emit_event(
                     Self::env(),
                     Event::ProposalRejected(ProposalRejected {
                         proposal: self.proposals[index].clone(),
                     }),
                 );
-                debug_println!("{}{}", "removing at index", index);
-                self.proposals.swap_remove(index);
-            } else {
-                debug_println!(
-                    "{}{}{}{}",
-                    "increment con vote count at ",
-                    index,
-                    " by ",
-                    weight
-                );
-                self.proposals[index].con_vote_count += weight;
             }
-            Ok(())
         }
 
         fn transfer_psp22_from(
@@ -703,7 +694,10 @@ pub mod governance {
             let weight = self.query_vote_weight(nft_id);
             match pro {
                 Vote::Pro => self.proposals[index].pro_vote_count += weight,
-                Vote::Con => self.proposals[index].con_vote_count += weight,
+                Vote::Con => {
+                    self.proposals[index].con_vote_count += weight;
+                    self.handle_proposal_rejection(index)
+                }
             };
 
             Self::emit_event(
