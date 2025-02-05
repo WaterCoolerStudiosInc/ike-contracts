@@ -163,7 +163,7 @@ pub mod governance {
         // add getter
         pub voting_period: u64,
         pub proposals: Vec<Proposal>,
-        pub voted: Mapping<(u128, u128), bool>,
+        pub voted: Mapping<(u128, u128), ()>,
         pub prop_nonce: u128,
     }
 
@@ -750,10 +750,10 @@ pub mod governance {
                 return Err(GovernanceError::ProposalVotingInactive);
             }
 
-            if self.voted.get((prop_id.clone(), nft_id)).unwrap_or(false) {
+            if self.voted.contains((prop_id, nft_id)) {
                 return Err(GovernanceError::DoubleVote);
             }
-            self.voted.insert((prop_id.clone(), nft_id), &true);
+            self.voted.insert((prop_id, nft_id), &());
             match pro {
                 Vote::Pro => self.proposals[index].pro_vote_count += weight,
                 Vote::Con => self.proposals[index].con_vote_count += weight,
