@@ -165,7 +165,7 @@ pub mod governance {
     pub const MIN_VOTING_DELAY: u64 = 1 * DAY;
     pub const MAX_VOTING_DELAY: u64 = 7 * DAY;
     pub const MIN_VOTING_PERIOD: u64 = 5 * DAY;
-    pub const MAX_VOTING_PERIOD: u64 = 30 * DAY;
+    pub const MAX_VOTING_PERIOD: u64 = 14 * DAY;
 
     type Event = <Governance as ContractEventBase>::Type;
 
