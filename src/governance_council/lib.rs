@@ -29,8 +29,6 @@ mod governance_council {
         pub registry: AccountId,
         pub signers: Vec<AccountId>,
         pub threshold: u16,
-        pub creation_time: u64,
-        pub used_nonces: Mapping<u128, bool>,
         pub proposals: Mapping<[u8; 32], Proposal>,
     }
 
@@ -224,8 +222,6 @@ mod governance_council {
                 gov_staking,
                 signers: initial_signers,
                 threshold: 3,
-                creation_time: Self::env().block_timestamp(),
-                used_nonces: Mapping::new(),
                 proposals: Mapping::new(),
             }
         }
