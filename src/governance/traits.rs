@@ -2,7 +2,7 @@ use crate::governance::{GovernanceError, PropType, Proposal, Vote};
 use ink::{prelude::vec::Vec, primitives::AccountId};
 
 #[ink::trait_definition]
-pub trait IGovernaance {
+pub trait IGovernance {
     #[ink(message)]
     fn get_council(&self) -> AccountId;
 

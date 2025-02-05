@@ -12,6 +12,7 @@ pub mod governance {
         ToAccountId,
     };
 
+    use super::traits::IGovernance;
     use governance_council::traits::ICouncil as Council;
     use governance_council::CouncilRef;
     use governance_nft::traits::IGovernanceNFT as GovernanceNFT;
@@ -592,54 +593,56 @@ pub mod governance {
                 prop_nonce: 1_u128,
             }
         }
+    }
 
+    impl IGovernance for Governance {
         #[ink(message)]
-        pub fn get_council(&self) -> AccountId {
+        fn get_council(&self) -> AccountId {
             self.council
         }
 
         #[ink(message)]
-        pub fn get_staking(&self) -> AccountId {
+        fn get_staking(&self) -> AccountId {
             self.staking
         }
 
         #[ink(message)]
-        pub fn get_voting_delay(&self) -> u64 {
+        fn get_voting_delay(&self) -> u64 {
             self.voting_delay
         }
 
         #[ink(message)]
-        pub fn get_voting_period(&self) -> u64 {
+        fn get_voting_period(&self) -> u64 {
             self.voting_period
         }
 
         #[ink(message)]
-        pub fn get_execution_threshold(&self) -> u128 {
+        fn get_execution_threshold(&self) -> u128 {
             self.execution_threshold
         }
 
         #[ink(message)]
-        pub fn get_rejection_threshold(&self) -> u128 {
+        fn get_rejection_threshold(&self) -> u128 {
             self.rejection_threshold
         }
 
         #[ink(message)]
-        pub fn get_acceptance_threshold(&self) -> u128 {
+        fn get_acceptance_threshold(&self) -> u128 {
             self.acceptance_threshold
         }
 
         #[ink(message)]
-        pub fn get_proposal_by_id(&self, id: u128) -> Option<Proposal> {
+        fn get_proposal_by_id(&self, id: u128) -> Option<Proposal> {
             self.proposals.clone().into_iter().find(|p| p.prop_id == id)
         }
 
         #[ink(message)]
-        pub fn get_all_proposals(&self) -> Vec<Proposal> {
+        fn get_all_proposals(&self) -> Vec<Proposal> {
             self.proposals.clone()
         }
 
         #[ink(message)]
-        pub fn get_proposal_by_nft(&self, id: u128) -> Option<Proposal> {
+        fn get_proposal_by_nft(&self, id: u128) -> Option<Proposal> {
             self.proposals
                 .clone()
                 .into_iter()
@@ -647,7 +650,7 @@ pub mod governance {
         }
 
         #[ink(message, selector = 33)]
-        pub fn get_active_proposal_status_by_nft(&self, id: u128) -> bool {
+        fn get_active_proposal_status_by_nft(&self, id: u128) -> bool {
             let current_time = Self::env().block_timestamp();
             let prop = self
                 .proposals
@@ -662,11 +665,7 @@ pub mod governance {
         }
 
         #[ink(message)]
-        pub fn create_proposal(
-            &mut self,
-            prop: PropType,
-            nft_id: u128,
-        ) -> Result<(), GovernanceError> {
+        fn create_proposal(&mut self, prop: PropType, nft_id: u128) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
             let expired = self.remove_expired_proposals(current_time);
             if expired.len() > 1 {
@@ -730,12 +729,7 @@ pub mod governance {
         }
 
         #[ink(message)]
-        pub fn vote(
-            &mut self,
-            prop_id: u128,
-            nft_id: u128,
-            pro: Vote,
-        ) -> Result<(), GovernanceError> {
+        fn vote(&mut self, prop_id: u128, nft_id: u128, pro: Vote) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
             if self.check_ownership(nft_id, Self::env().caller()) != true {
                 return Err(GovernanceError::Unauthorized);
@@ -780,7 +774,7 @@ pub mod governance {
         }
 
         #[ink(message)]
-        pub fn complete_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
+        fn complete_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
 
             if let Some(proposal) = self
@@ -803,7 +797,7 @@ pub mod governance {
         }
 
         #[ink(message)]
-        pub fn cancel_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
+        fn cancel_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
 
             if let Some(proposal) = self
