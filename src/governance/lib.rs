@@ -92,9 +92,9 @@ pub mod governance {
         VotePeriodUpdate(Time),
         // update threshold proposals
         UpdateRejectThreshhold(Weight),
-        // upddate execution threshold for proposals
+        // update execution threshold for proposals
         UpdateExecThreshhold(Weight),
-
+        // update governance code logic
         SetCodeHash([u8; 32]),
         // Unlock Transfer for governance nft
         UnlockTransfer(),
@@ -157,15 +157,10 @@ pub mod governance {
         pub vault: AccountId,
         pub staking: AccountId,
         pub council: AccountId,
-        // add getter
         pub execution_threshold: Weight,
-        // add getter
         pub rejection_threshold: Weight,
-        // add getter
         pub acceptance_threshold: Weight,
-        // add getter
         pub voting_delay: Time,
-        // add getter
         pub voting_period: Time,
         pub proposals: Vec<Proposal>,
         pub voted: Mapping<(PropId, NftId), ()>,
@@ -281,6 +276,15 @@ pub mod governance {
             debug_println!("{}{:?}", "removed proposal", expired);
             debug_println!("{}{:?}", "active proposal", active);
             self.proposals = active;
+
+            if !expired.is_empty() {
+                Self::emit_event(
+                    Self::env(),
+                    Event::ProposalsExpired(ProposalsExpired {
+                        proposals: expired.clone(),
+                    }),
+                );
+            }
 
             expired
         }
@@ -600,14 +604,9 @@ pub mod governance {
             nft_id: NftId,
         ) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
-            
-            let expired = self.remove_expired_proposals(current_time);
-            if !expired.is_empty() {
-                Self::emit_event(
-                    Self::env(),
-                    Event::ProposalsExpired(ProposalsExpired { proposals: expired }),
-                );
-            }
+
+            // clean expired proposals
+            self.remove_expired_proposals(current_time);
 
             if !self.check_ownership(nft_id, Self::env().caller()) {
                 return Err(GovernanceError::Unauthorized);
@@ -618,7 +617,7 @@ pub mod governance {
             if self.proposals.len() == 100 {
                 return Err(GovernanceError::MaxProposals);
             }
-            
+
             let vote_update_check = match prop {
                 PropType::VoteDelayUpdate(update) => self.validate_vote_delay_update(update),
                 PropType::VotePeriodUpdate(update) => self.validate_vote_period_update(update),
@@ -627,7 +626,7 @@ pub mod governance {
             if !vote_update_check {
                 return Err(GovernanceError::InvalidVotePeriodUpdate);
             }
-            
+
             if self.proposals.iter().any(|p| p.creator_id == nft_id) {
                 debug_println!("found a duplicate");
                 return Err(GovernanceError::ExistingProposal);
@@ -636,7 +635,7 @@ pub mod governance {
             // Generate Unique ID for proposals
             let prop_id = self.prop_nonce;
             self.prop_nonce += 1;
-            
+
             let new_prop = Proposal {
                 creation_timestamp: current_time,
                 creator_id: nft_id,
@@ -648,7 +647,7 @@ pub mod governance {
                 vote_end: current_time + self.voting_delay + self.voting_period,
             };
             self.proposals.push(new_prop.clone());
-            
+
             debug_println!("{:?}{}", self.proposals.to_vec(), "Props");
             Self::emit_event(
                 Self::env(),

@@ -1,6 +1,6 @@
+use super::*;
 use crate::governance::{GovernanceError, PropType, Proposal, Vote};
 use ink::{prelude::vec::Vec, primitives::AccountId};
-use super::*;
 
 #[ink::trait_definition]
 pub trait IGovernance {
