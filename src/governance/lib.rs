@@ -663,7 +663,7 @@ pub mod governance {
         ) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
             let expired = self.remove_expired_proposals(current_time);
-            if expired.len() > 1 {
+            if !expired.is_empty() {
                 Self::emit_event(
                     Self::env(),
                     Event::ProposalsExpired(ProposalsExpired { proposals: expired }),
