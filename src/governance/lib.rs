@@ -181,7 +181,7 @@ pub mod governance {
     type Event = <Governance as ContractEventBase>::Type;
 
     #[ink(event)]
-    pub struct ProposlCreated {
+    pub struct ProposalCreated {
         proposal: Proposal,
     }
 
@@ -198,12 +198,12 @@ pub mod governance {
     }
 
     #[ink(event)]
-    pub struct ProposlRejected {
+    pub struct ProposalRejected {
         proposal: Proposal,
     }
 
     #[ink(event)]
-    pub struct ProposlExecuted {
+    pub struct ProposalExecuted {
         proposal: Proposal,
     }
 
@@ -220,24 +220,22 @@ pub mod governance {
             emitter.emit_event(event);
         }
 
-        fn validate_vote_delay_update(&mut self, update: Time) -> bool {
+        fn validate_vote_delay_update(&self, update: Time) -> bool {
             update > MIN_VOTING_DELAY && update < MAX_VOTING_DELAY
         }
 
-        fn validate_vote_period_update(&mut self, update: Time) -> bool {
+        fn validate_vote_period_update(&self, update: Time) -> bool {
             update > MIN_VOTING_PERIOD && update < MAX_VOTING_PERIOD
         }
 
         fn check_ownership(&self, id: NftId, user: AccountId) -> bool {
             let nft: contract_ref!(PSP34) = self.gov_nft.into();
-            let owner = nft.owner_of(psp34::Id::U128(id)).unwrap();
-            owner == user
+            nft.owner_of(psp34::Id::U128(id)) == Some(user)
         }
 
-        fn query_weight(&self, id: NftId) -> Weight {
-            let mut nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
-            let data = nft.get_governance_data(id).unwrap();
-            data.vote_weight
+        fn query_vote_weight(&self, id: NftId) -> Weight {
+            let nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
+            nft.get_governance_data(id).unwrap().vote_weight
         }
 
         fn get_proposal_state(&self, prop: &Proposal, current_time: Time) -> ProposalState {
@@ -269,10 +267,9 @@ pub mod governance {
 
         fn update_vault_fee(&self, new_fee: &u16) -> Result<(), GovernanceError> {
             let mut vault: contract_ref!(IVault) = self.vault.into();
-            if let Err(_) = vault.adjust_fee(*new_fee) {
-                return Err(GovernanceError::VaultFailure);
-            }
-            Ok(())
+            vault
+                .adjust_fee(*new_fee)
+                .map_err(|_| GovernanceError::VaultFailure)
         }
 
         fn remove_expired_proposals(&mut self, current_time: Time) -> Vec<Proposal> {
@@ -290,26 +287,23 @@ pub mod governance {
 
         fn remove_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut council: contract_ref!(Council) = self.council.into();
-            if let Err(_) = council.remove_signer(*member) {
-                return Err(GovernanceError::CouncilError);
-            }
-            Ok(())
+            council
+                .remove_signer(*member)
+                .map_err(|_| GovernanceError::CouncilError)
         }
 
         fn add_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut council: contract_ref!(Council) = self.council.into();
-            if let Err(_) = council.add_signer(*member) {
-                return Err(GovernanceError::CouncilError);
-            }
-            Ok(())
+            council
+                .add_signer(*member)
+                .map_err(|_| GovernanceError::CouncilError)
         }
 
         fn change_council_threshold(&self, update: u16) -> Result<(), GovernanceError> {
             let mut council: contract_ref!(Council) = self.council.into();
-            if let Err(_) = council.update_threshold(update) {
-                return Err(GovernanceError::CouncilError);
-            }
-            Ok(())
+            council
+                .update_threshold(update)
+                .map_err(|_| GovernanceError::CouncilError)
         }
 
         fn replace_council_member(
@@ -318,18 +312,16 @@ pub mod governance {
             new_member: AccountId,
         ) -> Result<(), GovernanceError> {
             let mut council: contract_ref!(Council) = self.council.into();
-            if let Err(_) = council.replace_signer(*member, new_member) {
-                return Err(GovernanceError::CouncilError);
-            }
-            Ok(())
+            council
+                .replace_signer(*member, new_member)
+                .map_err(|_| GovernanceError::CouncilError)
         }
 
         fn update_staking_rewards(&self, new_reward: u128) -> Result<(), GovernanceError> {
             let mut staking: contract_ref!(Staking) = self.staking.into();
-            if let Err(_) = staking.update_rewards_rate(new_reward) {
-                return Err(GovernanceError::StakingError);
-            }
-            Ok(())
+            staking
+                .update_rewards_rate(new_reward)
+                .map_err(|_| GovernanceError::CouncilError)
         }
 
         fn update_reject_threshold(&mut self, update: Weight) {
@@ -344,15 +336,22 @@ pub mod governance {
             self.acceptance_threshold = update;
         }
 
+        fn update_voting_period(&mut self, update: Time) {
+            self.voting_period = update;
+        }
+
+        fn update_voting_delay(&mut self, update: Time) {
+            self.voting_delay = update;
+        }
+
         fn transfer_native_funds(
             &self,
             to: AccountId,
             amount: Balance,
         ) -> Result<(), GovernanceError> {
-            if let Err(_) = Self::env().transfer(to, amount) {
-                return Err(GovernanceError::TransferError);
-            }
-            Ok(())
+            Self::env()
+                .transfer(to, amount)
+                .map_err(|_| GovernanceError::TransferError)
         }
 
         fn set_code_internal(&mut self, code_hash: [u8; 32]) -> Result<(), GovernanceError> {
@@ -362,72 +361,35 @@ pub mod governance {
 
         fn unlock_transfer(&self) -> Result<(), GovernanceError> {
             let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
-            if gov_nft.is_collection_locked() == false {
+            if !gov_nft.is_collection_locked() {
                 return Err(GovernanceError::TransferAlreadyUnlocked);
             }
-
-            if let Err(e) = gov_nft.unlock_transfer() {
-                return Err(GovernanceError::TransferLockError);
-            }
-            Ok(())
+            gov_nft
+                .unlock_transfer()
+                .map_err(|_| GovernanceError::TransferLockError)
         }
 
         fn lock_transfer(&self) -> Result<(), GovernanceError> {
             let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
-            if gov_nft.is_collection_locked() == true {
+            if gov_nft.is_collection_locked() {
                 return Err(GovernanceError::TransferAlreadyLocked);
             }
-            if let Err(e) = gov_nft.lock_transfer() {
-                return Err(GovernanceError::TransferLockError);
-            }
-            Ok(())
+            gov_nft
+                .lock_transfer()
+                .map_err(|_| GovernanceError::TransferLockError)
         }
 
         fn remove_proposal(&mut self, prop_id: PropId) -> Result<(), GovernanceError> {
             let update = self
                 .proposals
-                .clone()
-                .into_iter()
+                .iter()
                 .filter(|p| p.prop_id != prop_id)
+                .cloned()
                 .collect();
             self.proposals = update;
 
             Ok(())
         }
-
-        /**
-            // Transfer Azero from governance
-           TransferFunds(TokenTransfer),
-           // Transfer psp22 token from governance
-           NativeTokenTransfer(u128),
-           // update tokens per second for staker in staking contract
-           // change  governance proposal acceptance weight requirement
-           AcceptanceWeightUpdate(u128),
-           // update rejection proposals
-           UpdateRejectThreshhold(u128),
-           // upddate execution threshhold for proposals
-           UpdateExecThreshhold(u128),
-           // change vote periodi delay
-           VoteDelayUpdate(u64),
-           // update voting perioud
-           VotePeriodUpdate(u64),
-
-
-           // Add to multisig
-           AddCouncilMember(AccountId),
-           // remove then add to multisig
-           ReplaceCouncilMember(AccountId,AccountId),
-           // remove from multisig
-           RemoveCouncilMember(AccountId),
-           // change threshold for multisig acceptance
-           ChangeMultiSigThreshold(u16),
-
-           // change vault fee
-           FeeChange(u16),
-           // change vault compound acceptance
-           CompoundIncentiveChange(u16),
-           ChangeStakingRewardRate(u128),
-        **/
 
         fn execute_proposal(&mut self, proposal: Proposal) -> Result<(), GovernanceError> {
             match proposal.prop_type {
@@ -443,11 +405,10 @@ pub mod governance {
                 PropType::UpdateRejectThreshhold(update) => self.update_reject_threshold(update),
                 PropType::UpdateExecThreshhold(update) => self.update_execution_threshold(update),
                 PropType::VoteDelayUpdate(update) => {
-                    debug_println!("{}{}", "executing delay update ", update);
-                    self.voting_delay = update
+                    debug_println!("executing delay update {}", update);
+                    self.update_voting_delay(update)
                 }
-                PropType::VotePeriodUpdate(update) => self.voting_period = update,
-
+                PropType::VotePeriodUpdate(update) => self.update_voting_period(update),
                 PropType::AddCouncilMember(member) => self.add_council_member(&member)?,
                 PropType::ReplaceCouncilMember(member, replacement) => {
                     self.replace_council_member(&member, replacement)?
@@ -456,22 +417,19 @@ pub mod governance {
                 PropType::ChangeCouncilThreshold(update) => {
                     self.change_council_threshold(update)?
                 }
-
                 PropType::FeeChange(new_fee) => self.update_vault_fee(&new_fee)?,
-
                 PropType::ChangeStakingRewardRate(new_rate) => {
-                    debug_println!("{}{}", "executing stakign update ", new_rate);
+                    debug_println!("executing staking update {}", new_rate);
                     self.update_staking_rewards(new_rate)?
                 }
                 PropType::SetCodeHash(code_hash) => self.set_code_internal(code_hash)?,
-
                 PropType::UnlockTransfer() => self.unlock_transfer()?,
-
                 PropType::LockTransfer() => self.lock_transfer()?,
             };
+
             Self::emit_event(
                 Self::env(),
-                Event::ProposlExecuted(ProposlExecuted { proposal: proposal }),
+                Event::ProposalExecuted(ProposalExecuted { proposal }),
             );
             Ok(())
         }
@@ -480,7 +438,7 @@ pub mod governance {
             if self.proposals[index].con_vote_count + weight >= self.rejection_threshold {
                 Self::emit_event(
                     Self::env(),
-                    Event::ProposlRejected(ProposlRejected {
+                    Event::ProposalRejected(ProposalRejected {
                         proposal: self.proposals[index].clone(),
                     }),
                 );
@@ -507,10 +465,9 @@ pub mod governance {
             amount: Balance,
         ) -> Result<(), GovernanceError> {
             let mut token: contract_ref!(PSP22) = contract.into();
-            if let Err(e) = token.transfer_from(*from, *to, amount, Vec::new()) {
-                return Err(GovernanceError::TokenError(e));
-            }
-            Ok(())
+            token
+                .transfer_from(*from, *to, amount, Vec::new())
+                .map_err(GovernanceError::TokenError)
         }
     }
 
@@ -529,16 +486,16 @@ pub mod governance {
             interest_rate: u128,
             signers: Vec<AccountId>,
         ) -> Self {
-            let caller: ink::primitives::AccountId = Self::env().caller();
+            let caller = Self::env().caller();
+            let governor = Self::env().account_id();
 
-            let mut council_ref =
-                CouncilRef::new(Self::env().account_id(), registry, vault, signers)
-                    .endowment(0)
-                    .code_hash(council_hash)
-                    .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
-                    .instantiate();
+            let mut council_ref = CouncilRef::new(governor, registry, vault, signers)
+                .endowment(0)
+                .code_hash(council_hash)
+                .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
+                .instantiate();
 
-            let mut nft_ref: GovernanceNFTRef = GovernanceNFTRef::new(Self::env().account_id())
+            let mut nft_ref: GovernanceNFTRef = GovernanceNFTRef::new(governor)
                 .endowment(0)
                 .code_hash(gov_nft_hash)
                 .salt_bytes(&[7_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
@@ -547,7 +504,7 @@ pub mod governance {
             let staking_ref = StakingRef::new(
                 governance_token,
                 registry,
-                Self::env().account_id(),
+                governor,
                 nft_ref.clone(),
                 interest_rate,
                 CouncilRef::to_account_id(&council_ref),
@@ -556,24 +513,21 @@ pub mod governance {
             .code_hash(staking_hash)
             .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
             .instantiate();
+
+            let staking_address = StakingRef::to_account_id(&staking_ref);
+
             //if let Err(e) = council.remove_signer(*member) {
             //    return Err(GovernanceError::CouncilError);
             //}
-            //
-            council_ref
-                .set_gov_staking(StakingRef::to_account_id(&staking_ref))
-                .unwrap();
-            nft_ref
-                .set_admin(StakingRef::to_account_id(&staking_ref))
-                .unwrap();
 
-            let _gov_nft = GovernanceNFTRef::to_account_id(&nft_ref);
-            
+            council_ref.set_gov_staking(staking_address).unwrap();
+            nft_ref.set_admin(staking_address).unwrap();
+
             Self {
-                gov_nft: _gov_nft,
-                vault: vault,
+                gov_nft: GovernanceNFTRef::to_account_id(&nft_ref),
+                vault,
                 council: CouncilRef::to_account_id(&council_ref),
-                staking: StakingRef::to_account_id(&staking_ref),
+                staking: staking_address,
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
                 acceptance_threshold: acc_threshold,
@@ -624,7 +578,7 @@ pub mod governance {
 
         #[ink(message)]
         fn get_proposal_by_id(&self, id: PropId) -> Option<Proposal> {
-            self.proposals.clone().into_iter().find(|p| p.prop_id == id)
+            self.proposals.iter().find(|p| p.prop_id == id).cloned()
         }
 
         #[ink(message)]
@@ -634,24 +588,17 @@ pub mod governance {
 
         #[ink(message)]
         fn get_proposal_by_nft(&self, id: NftId) -> Option<Proposal> {
-            self.proposals
-                .clone()
-                .into_iter()
-                .find(|p| p.creator_id == id)
+            self.proposals.iter().find(|p| p.creator_id == id).cloned()
         }
 
         #[ink(message, selector = 33)]
         fn get_active_proposal_status_by_nft(&self, id: NftId) -> bool {
             let current_time = Self::env().block_timestamp();
-            let prop = self
-                .proposals
-                .clone()
-                .into_iter()
-                .find(|p| p.creator_id == id);
-            if let Some(prop) = prop {
-                self.get_proposal_state(&prop, current_time) != ProposalState::Expired
-            } else {
-                false
+            let prop = self.proposals.iter().find(|p| p.creator_id == id);
+
+            match prop {
+                None => false,
+                Some(prop) => self.get_proposal_state(prop, current_time) != ProposalState::Expired,
             }
         }
 
@@ -662,6 +609,7 @@ pub mod governance {
             nft_id: NftId,
         ) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
+            
             let expired = self.remove_expired_proposals(current_time);
             if !expired.is_empty() {
                 Self::emit_event(
@@ -670,15 +618,16 @@ pub mod governance {
                 );
             }
 
-            if self.check_ownership(nft_id, Self::env().caller()) != true {
+            if !self.check_ownership(nft_id, Self::env().caller()) {
                 return Err(GovernanceError::Unauthorized);
             }
-            if self.query_weight(nft_id) < self.acceptance_threshold {
+            if self.query_vote_weight(nft_id) < self.acceptance_threshold {
                 return Err(GovernanceError::InvalidVoteWeight);
             }
             if self.proposals.len() == 100 {
                 return Err(GovernanceError::MaxProposals);
             }
+            
             let vote_update_check = match prop {
                 PropType::VoteDelayUpdate(update) => self.validate_vote_delay_update(update),
                 PropType::VotePeriodUpdate(update) => self.validate_vote_period_update(update),
@@ -687,37 +636,32 @@ pub mod governance {
             if !vote_update_check {
                 return Err(GovernanceError::InvalidVotePeriodUpdate);
             }
-            if self
-                .proposals
-                .clone()
-                .into_iter()
-                .find(|p| p.creator_id == nft_id)
-                .is_some()
-            {
+            
+            if self.proposals.iter().any(|p| p.creator_id == nft_id) {
                 debug_println!("found a duplicate");
                 return Err(GovernanceError::ExistingProposal);
             }
 
             // Generate Unique ID for proposals
-
-            // encode as hex string
-            let key = self.prop_nonce;
+            let prop_id = self.prop_nonce;
             self.prop_nonce += 1;
+            
             let new_prop = Proposal {
-                creation_timestamp: Self::env().block_timestamp(),
+                creation_timestamp: current_time,
                 creator_id: nft_id,
                 prop_type: prop,
-                prop_id: key,
+                prop_id,
                 pro_vote_count: 0u128,
                 con_vote_count: 0u128,
-                vote_start: Self::env().block_timestamp() + self.voting_delay,
-                vote_end: Self::env().block_timestamp() + self.voting_delay + self.voting_period,
+                vote_start: current_time + self.voting_delay,
+                vote_end: current_time + self.voting_delay + self.voting_period,
             };
             self.proposals.push(new_prop.clone());
+            
             debug_println!("{:?}{}", self.proposals.to_vec(), "Props");
             Self::emit_event(
                 Self::env(),
-                Event::ProposlCreated(ProposlCreated { proposal: new_prop }),
+                Event::ProposalCreated(ProposalCreated { proposal: new_prop }),
             );
 
             Ok(())
@@ -731,23 +675,21 @@ pub mod governance {
             pro: Vote,
         ) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
-            if self.check_ownership(nft_id, Self::env().caller()) != true {
+            if !self.check_ownership(nft_id, Self::env().caller()) {
                 return Err(GovernanceError::Unauthorized);
             }
 
-            let weight = self.query_weight(nft_id);
             let index = self
                 .proposals
-                .clone()
-                .into_iter()
+                .iter()
                 .position(|p| p.prop_id == prop_id)
-                .unwrap();
-            let proposal = self.proposals[index].clone();
+                .ok_or(GovernanceError::NonExistingProposal)?;
+            let proposal = &self.proposals[index];
 
-            if self.get_proposal_state(&proposal, current_time) != ProposalState::Active {
+            if self.get_proposal_state(proposal, current_time) != ProposalState::Active {
                 debug_println!(
                     "{:?}{}",
-                    self.get_proposal_state(&proposal, current_time),
+                    self.get_proposal_state(proposal, current_time),
                     "ProposalState"
                 );
                 return Err(GovernanceError::ProposalVotingInactive);
@@ -756,7 +698,9 @@ pub mod governance {
             if self.voted.contains((prop_id, nft_id)) {
                 return Err(GovernanceError::DoubleVote);
             }
+
             self.voted.insert((prop_id, nft_id), &());
+            let weight = self.query_vote_weight(nft_id);
             match pro {
                 Vote::Pro => self.proposals[index].pro_vote_count += weight,
                 Vote::Con => self.proposals[index].con_vote_count += weight,
@@ -777,59 +721,46 @@ pub mod governance {
         fn complete_proposal(&mut self, prop_id: PropId) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
 
-            if let Some(proposal) = self
-                .proposals
-                .clone()
-                .into_iter()
-                .find(|p| p.prop_id == prop_id)
-            {
-                let state = self.get_proposal_state(&proposal, current_time);
-                if state == ProposalState::Executable {
+            let proposal = self
+                .get_proposal_by_id(prop_id)
+                .ok_or(GovernanceError::NonExistingProposal)?;
+
+            match self.get_proposal_state(&proposal, current_time) {
+                ProposalState::Executable => {
                     self.execute_proposal(proposal)?;
-                    self.remove_proposal(prop_id).unwrap();
-                } else {
-                    return Err(GovernanceError::NonExistingProposal);
+                    self.remove_proposal(prop_id)
                 }
-            } else {
-                return Err(GovernanceError::NonExistingProposal);
+                _ => Err(GovernanceError::ProposalNotExecutable),
             }
-            Ok(())
         }
 
         #[ink(message)]
         fn cancel_proposal(&mut self, prop_id: PropId) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
 
-            if let Some(proposal) = self
-                .proposals
-                .clone()
-                .into_iter()
-                .find(|p| p.prop_id == prop_id)
-            {
-                if self.check_ownership(proposal.creator_id, Self::env().caller()) != true {
-                    return Err(GovernanceError::Unauthorized);
-                }
-                let state = self.get_proposal_state(&proposal, current_time);
-                match state {
-                    ProposalState::Created => {
-                        self.remove_proposal(prop_id).unwrap();
-                        Self::emit_event(
-                            Self::env(),
-                            Event::ProposalCancelled(ProposalCancelled { id: prop_id }),
-                        );
-                        return Ok(());
-                    }
-                    ProposalState::Active => return Err(GovernanceError::NonExistingProposal),
-                    _ => {
-                        self.remove_expired_proposals(current_time);
-                        return Ok(());
-                    }
-                }
-            } else {
-                return Err(GovernanceError::NonExistingProposal);
+            let proposal = self
+                .get_proposal_by_id(prop_id)
+                .ok_or(GovernanceError::NonExistingProposal)?;
+
+            if !self.check_ownership(proposal.creator_id, Self::env().caller()) {
+                return Err(GovernanceError::Unauthorized);
             }
 
-            Ok(())
+            match self.get_proposal_state(&proposal, current_time) {
+                ProposalState::Created => {
+                    self.remove_proposal(prop_id)?;
+                    Self::emit_event(
+                        Self::env(),
+                        Event::ProposalCancelled(ProposalCancelled { id: prop_id }),
+                    );
+                    Ok(())
+                }
+                ProposalState::Active => Err(GovernanceError::ProposalActive),
+                _ => {
+                    self.remove_expired_proposals(current_time);
+                    Ok(())
+                }
+            }
         }
     }
 }
