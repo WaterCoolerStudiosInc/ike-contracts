@@ -114,9 +114,9 @@ pub fn hash_nominator() -> String {
     let artifact: Artifact = from_str(&json).expect("Should extract hash from mock_nominator.json");
     artifact.source.hash
 }
-pub fn hash_multisig() -> String {
-    let json = read_to_string("../deployments/development/multisig/multisig.json").unwrap();
-    let artifact: Artifact = from_str(&json).expect("Should extract hash from multisig.json");
+pub fn hash_governance_staking() -> String {
+    let json = read_to_string("../deployments/development/governance_staking/governance_staking.json").unwrap();
+    let artifact: Artifact = from_str(&json).expect("Should extract hash from governance_staking.json");
     artifact.source.hash
 }
 
@@ -160,10 +160,10 @@ pub fn transcoder_nominator() -> Option<Rc<ContractMessageTranscoder>> {
             .expect("Failed to create transcoder"),
     ))
 }
-pub fn transcoder_multisig() -> Option<Rc<ContractMessageTranscoder>> {
+pub fn transcoder_governance_staking() -> Option<Rc<ContractMessageTranscoder>> {
     Some(Rc::new(
         ContractMessageTranscoder::load(PathBuf::from(
-            "../deployments/development/multisig/multisig.json",
+            "../deployments/development/governance_staking/governance_staking.json",
         ))
             .expect("Failed to create transcoder"),
     ))
@@ -177,8 +177,8 @@ pub fn transcoder_vesting() -> Option<Rc<ContractMessageTranscoder>> {
     ))
 }
 // Bytes for instantiating contracts
-pub fn bytes_multisig() -> Vec<u8> {
-    read("../deployments/development/multisig/multisig.wasm")
+pub fn bytes_governance_staking() -> Vec<u8> {
+    read("../deployments/development/governance_staking/governance_staking.wasm")
         .expect("Failed to find or read contract file")
 }
 pub fn bytes_registry() -> Vec<u8> {

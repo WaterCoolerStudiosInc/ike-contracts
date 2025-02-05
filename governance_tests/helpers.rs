@@ -54,7 +54,7 @@ pub enum PropType {
     AddCouncilMember(AccountId),
     ReplaceCouncilMember(AccountId, AccountId),
     RemoveCouncilMember(AccountId),
-    ChangeMultiSigThreshold(u16),
+    ChangeCouncilThreshold(u16),
     FeeChange(u16),
     CompoundIncentiveChange(u16),
     AcceptanceWeightUpdate(u128),

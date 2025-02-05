@@ -32,11 +32,11 @@ async function main() {
     "new",
     []
   );
-  const multisig = await getDeploymentData("multisig");
+  const council = await getDeploymentData("governance_council");
   const gov_staking = await getDeploymentData("governance_staking");
   const gov_nft = await getDeploymentData("governance_nft");
-  console.log("===== MultiSig Deploy Hash =====");
-  let sig_hash = await uploadCode(api, account, multisig.contract);
+  console.log("===== Council Deploy Hash =====");
+  let sig_hash = await uploadCode(api, account, council.contract);
   console.log("===== Staking Deploy Hash =====");
   let gov_hash = await uploadCode(
     api,
@@ -64,7 +64,7 @@ async function main() {
       vault.address,
       registry.address,
       gtoken.address,
-      multisig.abi.source.hash,
+      council.abi.source.hash,
       gov_nft.abi.source.hash,
       gov_staking.abi.source.hash,
       exec_threshold,
