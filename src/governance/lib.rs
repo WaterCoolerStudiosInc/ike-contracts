@@ -2,9 +2,6 @@
 pub mod traits;
 #[ink::contract]
 pub mod governance {
-    use governance_nft::traits::IGovernanceNFT as GovernanceNFT;
-    use governance_nft::GovernanceNFTRef;
-    use governance_staking::{Staking, StakingRef};
     use ink::{
         codegen::{EmitEvent, StaticEnv},
         contract_ref,
@@ -14,12 +11,15 @@ pub mod governance {
         storage::Mapping,
         ToAccountId,
     };
-    use vault::traits::IVault;
 
     use governance_council::traits::ICouncil as Council;
     use governance_council::CouncilRef;
+    use governance_nft::traits::IGovernanceNFT as GovernanceNFT;
+    use governance_nft::GovernanceNFTRef;
+    use governance_staking::{Staking, StakingRef};
     use psp22::{PSP22Error, PSP22};
     use psp34::PSP34;
+    use vault::traits::IVault;
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -47,11 +47,13 @@ pub mod governance {
         TransferAlreadyUnlocked,
         TransferAlreadyLocked,
     }
+
     impl From<InkEnvError> for GovernanceError {
         fn from(e: InkEnvError) -> Self {
             GovernanceError::InkEnvError(format!("{:?}", e))
         }
     }
+
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -93,6 +95,7 @@ pub mod governance {
         // Lock Transfer for governance nft
         LockTransfer(),
     }
+
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -104,6 +107,7 @@ pub mod governance {
         Executable,
         Expired,
     }
+
     #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -113,6 +117,7 @@ pub mod governance {
         Pro,
         Con,
     }
+
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -123,6 +128,7 @@ pub mod governance {
         amount: u128,
         to: AccountId,
     }
+
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -161,6 +167,7 @@ pub mod governance {
         pub voted: Mapping<(u128, u128), bool>,
         pub prop_nonce: u128,
     }
+
     pub const DAY: u64 = 86400 * 1000;
     pub const MIN_VOTING_DELAY: u64 = 1 * DAY;
     pub const MAX_VOTING_DELAY: u64 = 7 * DAY;
@@ -173,28 +180,34 @@ pub mod governance {
     pub struct ProposlCreated {
         proposal: Proposal,
     }
+
     #[ink(event)]
     pub struct ProposalCancelled {
         id: u128,
     }
+
     #[ink(event)]
     pub struct VoteSubmitted {
         proposal_id: u128,
         nft_id: u128,
         pro_vote: Vote,
     }
+
     #[ink(event)]
     pub struct ProposlRejected {
         proposal: Proposal,
     }
+
     #[ink(event)]
     pub struct ProposlExecuted {
         proposal: Proposal,
     }
+
     #[ink(event)]
     pub struct ProposalsExpired {
         proposals: Vec<Proposal>,
     }
+
     impl Governance {
         fn emit_event<EE>(emitter: EE, event: Event)
         where
@@ -202,22 +215,27 @@ pub mod governance {
         {
             emitter.emit_event(event);
         }
+
         fn validate_vote_delay_update(&mut self, update: u64) -> bool {
             update > MIN_VOTING_DELAY && update < MAX_VOTING_DELAY
         }
+
         fn validate_vote_period_update(&mut self, update: u64) -> bool {
             update > MIN_VOTING_PERIOD && update < MAX_VOTING_PERIOD
         }
+
         fn check_ownership(&self, id: u128, user: AccountId) -> bool {
             let nft: contract_ref!(PSP34) = self.gov_nft.into();
             let owner = nft.owner_of(psp34::Id::U128(id)).unwrap();
             owner == user
         }
+
         fn query_weight(&self, id: u128) -> u128 {
             let mut nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
             let data = nft.get_governance_data(id).unwrap();
             data.vote_weight
         }
+
         fn get_proposal_state(&self, prop: &Proposal, current_time: u64) -> ProposalState {
             debug_println!("{}{}", prop.vote_end, "vote end");
             debug_println!("{}{}", prop.vote_start, "vote start");
@@ -237,12 +255,14 @@ pub mod governance {
         fn is_executable(&self, pro_votes: u128, con_votes: u128) -> bool {
             ((pro_votes + con_votes) >= self.execution_threshold) && (pro_votes > con_votes)
         }
+
         // fn generate_proposal_id(&self, time_stamp: u64, creator_id: u128) -> String {
         //     let encodable = (time_stamp, creator_id);
         //     let mut output = <Sha2x256 as HashOutput>::Type::default();
         //     hash_encoded::<Sha2x256, _>(&encodable, &mut output);
         //     String::from_utf8(output.to_vec()).unwrap()
         // }
+
         fn update_vault_fee(&self, new_fee: &u16) -> Result<(), GovernanceError> {
             let mut vault: contract_ref!(IVault) = self.vault.into();
             if let Err(_) = vault.adjust_fee(*new_fee) {
@@ -250,6 +270,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn update_incentive(&self, new_incentive: &u16) -> Result<(), GovernanceError> {
             debug_println!("{}{:?}", "updating incentive", new_incentive);
             // let mut vault: contract_ref!(IVault) = self.vault.into();
@@ -259,19 +280,20 @@ pub mod governance {
             */
             Ok(())
         }
+
         fn remove_expired_proposals(&mut self, current_time: u64) -> Vec<Proposal> {
             debug_println!("{}", current_time);
-            let (active, expired) = self
-                .proposals
-                .clone()
-                .into_iter()
-                .partition(|p| self.get_proposal_state(p, current_time) == ProposalState::Expired);
+            let (active, expired) =
+                self.proposals.clone().into_iter().partition(|p| {
+                    self.get_proposal_state(p, current_time) == ProposalState::Expired
+                });
             debug_println!("{}{:?}", "removed proposal", expired);
             debug_println!("{}{:?}", "active proposal", active);
             self.proposals = active;
 
             expired
         }
+
         fn remove_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut council: contract_ref!(Council) = self.council.into();
             if let Err(_) = council.remove_signer(*member) {
@@ -279,6 +301,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn add_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
             let mut council: contract_ref!(Council) = self.council.into();
             if let Err(_) = council.add_signer(*member) {
@@ -294,6 +317,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn replace_council_member(
             &self,
             member: &AccountId,
@@ -305,6 +329,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn update_staking_rewards(&self, new_reward: u128) -> Result<(), GovernanceError> {
             let mut staking: contract_ref!(Staking) = self.staking.into();
             if let Err(_) = staking.update_rewards_rate(new_reward) {
@@ -312,15 +337,19 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn update_reject_threshold(&mut self, update: u128) {
             self.rejection_threshold = update;
         }
+
         fn update_execution_threshold(&mut self, update: u128) {
             self.execution_threshold = update;
         }
+
         fn update_acceptance_threshold(&mut self, update: u128) {
             self.acceptance_threshold = update;
         }
+
         fn transfer_native_funds(
             &self,
             to: AccountId,
@@ -331,6 +360,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn set_code_internal(&mut self, code_hash: [u8; 32]) -> Result<(), GovernanceError> {
             ink::env::set_code_hash(&code_hash)?;
             Ok(())
@@ -347,6 +377,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn lock_transfer(&self) -> Result<(), GovernanceError> {
             let mut gov_nft: contract_ref!(GovernanceNFT) = self.gov_nft.into();
             if gov_nft.is_collection_locked() == true {
@@ -357,6 +388,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn remove_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
             let update = self
                 .proposals
@@ -368,6 +400,7 @@ pub mod governance {
 
             Ok(())
         }
+
         /**
             // Transfer Azero from governance
            TransferFunds(TokenTransfer),
@@ -472,6 +505,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         fn transfer_psp22_from(
             &self,
             contract: AccountId,
@@ -486,6 +520,7 @@ pub mod governance {
             Ok(())
         }
     }
+
     impl Governance {
         #[ink(constructor)]
         pub fn new(
@@ -562,18 +597,22 @@ pub mod governance {
         pub fn get_council(&self) -> AccountId {
             self.council
         }
+
         #[ink(message)]
         pub fn get_staking(&self) -> AccountId {
             self.staking
         }
+
         #[ink(message)]
         pub fn get_voting_delay(&self) -> u64 {
             self.voting_delay
         }
+
         #[ink(message)]
         pub fn get_voting_period(&self) -> u64 {
             self.voting_period
         }
+
         #[ink(message)]
         pub fn get_execution_threshold(&self) -> u128 {
             self.execution_threshold
@@ -588,14 +627,17 @@ pub mod governance {
         pub fn get_acceptance_threshold(&self) -> u128 {
             self.acceptance_threshold
         }
+
         #[ink(message)]
         pub fn get_proposal_by_id(&self, id: u128) -> Option<Proposal> {
             self.proposals.clone().into_iter().find(|p| p.prop_id == id)
         }
+
         #[ink(message)]
         pub fn get_all_proposals(&self) -> Vec<Proposal> {
             self.proposals.clone()
         }
+
         #[ink(message)]
         pub fn get_proposal_by_nft(&self, id: u128) -> Option<Proposal> {
             self.proposals
@@ -736,6 +778,7 @@ pub mod governance {
             );
             Ok(())
         }
+
         #[ink(message)]
         pub fn complete_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
@@ -758,6 +801,7 @@ pub mod governance {
             }
             Ok(())
         }
+
         #[ink(message)]
         pub fn cancel_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError> {
             let current_time = Self::env().block_timestamp();
