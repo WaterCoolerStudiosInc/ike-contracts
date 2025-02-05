@@ -77,8 +77,6 @@ pub mod governance {
         ChangeCouncilThreshold(u16),
         // change vault fee
         FeeChange(u16),
-        // change vault compound acceptance
-        CompoundIncentiveChange(u16),
         // change  governance proposal acceptance weight requirement
         AcceptanceWeightUpdate(u128),
         // change vote periodi delay
@@ -270,16 +268,6 @@ pub mod governance {
             Ok(())
         }
 
-        fn update_incentive(&self, new_incentive: &u16) -> Result<(), GovernanceError> {
-            debug_println!("{}{:?}", "updating incentive", new_incentive);
-            // let mut vault: contract_ref!(IVault) = self.vault.into();
-            /*if let Err(_) = vault.adjust_incentive(*new_incentive) {
-                return Err(GovernanceError::VaultFailure);
-            }
-            */
-            Ok(())
-        }
-
         fn remove_expired_proposals(&mut self, current_time: u64) -> Vec<Proposal> {
             debug_println!("{}", current_time);
             let (active, expired) =
@@ -462,7 +450,6 @@ pub mod governance {
                     self.change_council_threshold(update)?
                 }
 
-                PropType::CompoundIncentiveChange(update) => self.update_incentive(&update)?,
                 PropType::FeeChange(new_fee) => self.update_vault_fee(&new_fee)?,
 
                 PropType::ChangeStakingRewardRate(new_rate) => {
