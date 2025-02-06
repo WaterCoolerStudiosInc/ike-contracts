@@ -1,11 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 pub mod traits;
-pub use crate::multisig::MultiSigRef;
-pub use crate::traits::IMultiSig;
+pub use governance_council::CouncilRef;
+pub use traits::ICouncil;
 
 #[ink::contract]
-mod multisig {
-    use crate::IMultiSig;
+mod governance_council {
+    use super::ICouncil;
     use core::fmt::Error;
     use ink::{
         codegen::EmitEvent,
@@ -25,7 +25,7 @@ mod multisig {
     use registry::traits::IRegistry;
 
     #[ink(storage)]
-    pub struct MultiSig {
+    pub struct Council {
         pub admin: AccountId,
         pub gov_staking: AccountId,
         pub registry: AccountId,
@@ -38,7 +38,7 @@ mod multisig {
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-    pub enum MultiSigError {
+    pub enum CouncilError {
         SignerNotFound,
         SignerAlreadyExists,
         VaultFailure,
@@ -113,12 +113,12 @@ mod multisig {
     pub struct ProposalExecuted {
         proposal: Proposal,
     }
-    type Event = <MultiSig as ContractEventBase>::Type;
+    type Event = <Council as ContractEventBase>::Type;
     // internal calls
-    impl MultiSig {
+    impl Council {
         fn emit_event<EE>(emitter: EE, event: Event)
         where
-            EE: EmitEvent<MultiSig>,
+            EE: EmitEvent<Council>,
         {
             emitter.emit_event(event);
         }
@@ -146,21 +146,21 @@ mod multisig {
             }
         }
 
-        fn execute_disable(&self, validator: AccountId, slash: bool) -> Result<(), MultiSigError> {
+        fn execute_disable(&self, validator: AccountId, slash: bool) -> Result<(), CouncilError> {
             let mut gov_staking: contract_ref!(Staking) = self.gov_staking.into();
             if let Err(_) = gov_staking.disable_validator(validator, slash) {
-                return Err(MultiSigError::VaultFailure);
+                return Err(CouncilError::VaultFailure);
             }
             Ok(())
         }
-        fn complete_removal(&self, validator: AccountId) -> Result<(), MultiSigError> {
+        fn complete_removal(&self, validator: AccountId) -> Result<(), CouncilError> {
             let mut registry: contract_ref!(IRegistry) = self.registry.into();
             if let Err(_) = registry.remove_agent(validator) {
-                return Err(MultiSigError::VaultFailure);
+                return Err(CouncilError::VaultFailure);
             }
             Ok(())
         }
-        fn execute(&self, tx: Action) -> Result<(), MultiSigError> {
+        fn execute(&self, tx: Action) -> Result<(), CouncilError> {
             match tx {
                 Action::RemoveValidator(validator, slash) => self.execute_disable(validator, slash),
                 Action::CompleteRemoveValidator(validator) => self.complete_removal(validator),
@@ -171,7 +171,7 @@ mod multisig {
             self.signers.iter().any(|a| a == acc)
         }
     }
-    impl MultiSig {
+    impl Council {
         #[ink(constructor)]
         pub fn new(
             _admin: AccountId,
@@ -191,15 +191,15 @@ mod multisig {
             }
         }
     }
-    impl IMultiSig for MultiSig {
+    impl ICouncil for Council {
         #[ink(message, selector = 1)]
-        fn add_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
+        fn add_signer(&mut self, _signer: AccountId) -> Result<(), CouncilError> {
             let caller = Self::env().caller();
             if caller != self.admin {
-                return Err(MultiSigError::Unauthorized);
+                return Err(CouncilError::Unauthorized);
             }
             if self.is_signer(&_signer) {
-                return Err(MultiSigError::SignerAlreadyExists)
+                return Err(CouncilError::SignerAlreadyExists)
             }
             self.signers.push(_signer);
             Self::emit_event(
@@ -209,10 +209,10 @@ mod multisig {
             Ok(())
         }
         #[ink(message, selector = 2)]
-        fn remove_signer(&mut self, _signer: AccountId) -> Result<(), MultiSigError> {
+        fn remove_signer(&mut self, _signer: AccountId) -> Result<(), CouncilError> {
             let caller = Self::env().caller();
             if caller != self.admin {
-                return Err(MultiSigError::Unauthorized);
+                return Err(CouncilError::Unauthorized);
             }
             if let Some(index) = self.signers.iter().position(|a| *a == _signer) {
                 self.signers.remove(index);
@@ -221,16 +221,16 @@ mod multisig {
                     Event::SignerRemoved(SignerRemoved { signer: _signer }),
                 );
             } else {
-                return Err(MultiSigError::SignerNotFound);
+                return Err(CouncilError::SignerNotFound);
             }
             Ok(())
         }
 
         #[ink(message, selector = 3)]
-        fn update_threshold(&mut self, new_threshold: u16) -> Result<(), MultiSigError> {
+        fn update_threshold(&mut self, new_threshold: u16) -> Result<(), CouncilError> {
             let caller = Self::env().caller();
             if caller != self.admin {
-                return Err(MultiSigError::Unauthorized);
+                return Err(CouncilError::Unauthorized);
             }
             self.threshold = new_threshold;
             Ok(())
@@ -241,13 +241,13 @@ mod multisig {
             &mut self,
             signer_old: AccountId,
             signer_new: AccountId,
-        ) -> Result<(), MultiSigError> {
+        ) -> Result<(), CouncilError> {
             let caller = Self::env().caller();
             if caller != self.admin {
-                return Err(MultiSigError::Unauthorized);
+                return Err(CouncilError::Unauthorized);
             }
             if self.is_signer(&signer_new) {
-                return Err(MultiSigError::SignerAlreadyExists);
+                return Err(CouncilError::SignerAlreadyExists);
             }
             if let Some(index) = self.signers.iter().position(|a| *a == signer_old) {
                 self.signers.remove(index);
@@ -260,13 +260,13 @@ mod multisig {
                     }),
                 );
             } else {
-                return Err(MultiSigError::SignerNotFound);
+                return Err(CouncilError::SignerNotFound);
             }
             Ok(())
         }
 
         #[ink(message, selector = 7)]
-        fn endorse_proposal(&mut self, action: Action) -> Result<(), MultiSigError> {
+        fn endorse_proposal(&mut self, action: Action) -> Result<(), CouncilError> {
             let hash: [u8; 32] = self
                 .hash_execution(action.clone())
                 .unwrap();
@@ -275,13 +275,13 @@ mod multisig {
             let signers = self.signers.clone();
 
             if !signers.contains(&caller) {
-                return Err(MultiSigError::Unauthorized);
+                return Err(CouncilError::Unauthorized);
             }
             if let Some(mut existing) = existing {
                 let mut curr_proposers = existing.proposers.clone();
 
                 if curr_proposers.contains(&caller) {
-                    return Err(MultiSigError::Unauthorized);
+                    return Err(CouncilError::Unauthorized);
                 }
                 // remove booted signers from the proposers
                 curr_proposers.retain(|&x| signers.contains(&x));
@@ -335,10 +335,10 @@ mod multisig {
             self.signers.clone()
         }
         #[ink(message, selector = 9)]
-        fn set_gov_staking(&mut self, new_account: AccountId) -> Result<(), MultiSigError> {
+        fn set_gov_staking(&mut self, new_account: AccountId) -> Result<(), CouncilError> {
             let caller = Self::env().caller();
             if caller != self.admin {
-                return Err(MultiSigError::Unauthorized);
+                return Err(CouncilError::Unauthorized);
             }
             self.gov_staking = new_account;
             Ok(())

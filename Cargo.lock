@@ -984,17 +984,30 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 name = "governance"
 version = "0.1.0"
 dependencies = [
+ "governance_council",
  "governance_nft",
  "governance_staking",
  "hex",
  "ink",
- "multisig",
  "parity-scale-codec",
  "parity-scale-codec-derive",
  "psp22",
  "psp34",
  "scale-info",
  "vault",
+]
+
+[[package]]
+name = "governance_council"
+version = "0.1.0"
+dependencies = [
+ "governance_staking",
+ "ink",
+ "parity-scale-codec",
+ "parity-scale-codec-derive",
+ "psp22",
+ "registry",
+ "scale-info",
 ]
 
 [[package]]
@@ -1576,19 +1589,6 @@ dependencies = [
  "scale-info",
  "sp-io",
  "sp-runtime",
-]
-
-[[package]]
-name = "multisig"
-version = "0.1.0"
-dependencies = [
- "governance_staking",
- "ink",
- "parity-scale-codec",
- "parity-scale-codec-derive",
- "psp22",
- "registry",
- "scale-info",
 ]
 
 [[package]]

@@ -71,7 +71,7 @@ pub mod staking {
         reward_stake_accumulation: u128,
         accumulated_rewards: u128,
         lst_accumulation_update: u64,
-        multisig: AccountId,
+        governance_council: AccountId,
         governance_token: AccountId,
         nft: GovernanceNFTRef,
         cast_distribution: Mapping<u128, Vec<(AccountId, u128)>>,
@@ -443,7 +443,7 @@ pub mod staking {
             governor: AccountId,
             governance_nft: GovernanceNFTRef,
             interest_rate: u128,
-            multisig: AccountId,
+            governance_council: AccountId,
         ) -> Self {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
@@ -458,7 +458,7 @@ pub mod staking {
                 reward_stake_accumulation: 0,
                 accumulated_rewards: 0,
                 lst_accumulation_update: now,
-                multisig: multisig,
+                governance_council: governance_council,
                 governance_token: governance_token,
                 nft: governance_nft,
                 cast_distribution: Mapping::new(),
@@ -471,7 +471,7 @@ pub mod staking {
                 token_stake_amount: 100000_u128,
                 create_deposit: 100_000_000_000_000_u128,
                 existential_deposit: 500_u128,
-                treasury: multisig,
+                treasury: governance_council,
             }
         }
         #[ink(message)]
@@ -822,7 +822,7 @@ pub mod staking {
             slash: bool,
         ) -> Result<(), StakingError> {
             let caller: ink::primitives::AccountId = Self::env().caller();
-            if caller != self.multisig {
+            if caller != self.governance_council {
                 return Err(StakingError::InvalidPermissions);
             }
 

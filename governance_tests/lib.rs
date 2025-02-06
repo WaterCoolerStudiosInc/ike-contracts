@@ -45,7 +45,7 @@ mod tests {
         stake_contract: AccountId,
         governance: AccountId,
         vault: AccountId,
-        multisig: AccountId,
+        council: AccountId,
         vesting: AccountId,
         alice: AccountId,
         bob: AccountId,
@@ -54,10 +54,10 @@ mod tests {
         ed: AccountId,
         validators: Vec<AccountId>,
     }
-    struct MultiSigCTX {
+    struct CouncilCTX {
         sess: Session<MinimalRuntime>,
         registry: AccountId,
-        multisig: AccountId,
+        council: AccountId,
         alice: AccountId,
         bob: AccountId,
         charlie: AccountId,
@@ -98,7 +98,7 @@ mod tests {
         sess.upload(bytes_registry())?;
         sess.upload(bytes_share_token())?;
         sess.upload(bytes_nominator())?;
-        sess.upload(bytes_multisig())?;
+        sess.upload(bytes_governance_council())?;
         sess.upload(bytes_governance_staking())?;
         sess.upload(bytes_vesting())?;
 
@@ -208,7 +208,7 @@ mod tests {
         *    vault: AccountId,
            registry: AccountId,
            governance_token: AccountId,
-           multisig_hash: Hash,
+           council_hash: Hash,
            gov_nft_hash: Hash,
            staking_hash: Hash,
            exec_threshold: u128,
@@ -234,7 +234,7 @@ mod tests {
                 vault.to_string(),
                 registry.to_string(),
                 gov_token.to_string(),
-                hash_multisig(),
+                hash_governance_council(),
                 hash_governance_nft(),
                 hash_governance_staking(),
                 exec_threshold.to_string(),
@@ -284,14 +284,14 @@ mod tests {
             sess,
             &governance,
             &bob,
-            String::from("get_multisig"),
+            String::from("get_council"),
             None,
             None,
             transcoder_governance(),
         )
         .unwrap();
         let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
-        let multisig = rr.unwrap();
+        let council = rr.unwrap();
         let mut sess = helpers::transfer_role(
             sess,
             &registry,
@@ -331,16 +331,16 @@ mod tests {
             sess,
             &governance,
             &bob,
-            String::from("get_multisig"),
+            String::from("get_council"),
             None,
             None,
             transcoder_governance(),
         )
         .unwrap();
         let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
-        let multisig = rr.unwrap();
-        sess.set_transcoder(multisig.clone(), &transcoder_multisig().unwrap());
-        println!("multisig: {:?}", multisig.to_string());
+        let council = rr.unwrap();
+        sess.set_transcoder(council.clone(), &transcoder_governance_council().unwrap());
+        println!("council: {:?}", council.to_string());
 
         let mut sess = call_function(
             sess,
@@ -375,7 +375,7 @@ mod tests {
             governance,
             vault,
             vesting,
-            multisig,
+            council,
             alice,
             bob,
             charlie,
@@ -1975,12 +1975,12 @@ mod tests {
         .unwrap();
         let sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.bob,
-            String::from("IMultiSig::get_signers"),
+            String::from("ICouncil::get_signers"),
             None,
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
         let proposal: Result<Vec<AccountId>, drink::errors::LangError> =
@@ -2859,44 +2859,44 @@ mod tests {
         println!("{:?}", agents);
         let mut sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.alice,
-            String::from("IMultiSig::endorse_proposal"),
+            String::from("ICouncil::endorse_proposal"),
             Some(vec![helpers::Action::RemoveValidator(
                 agents[5].address.clone(),
                 false,
             )
             .to_string()]),
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
         let mut sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.bob,
-            String::from("IMultiSig::endorse_proposal"),
+            String::from("ICouncil::endorse_proposal"),
             Some(vec![helpers::Action::RemoveValidator(
                 agents[5].address.clone(),
                 false,
             )
             .to_string()]),
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
         let mut sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.charlie,
-            String::from("IMultiSig::endorse_proposal"),
+            String::from("ICouncil::endorse_proposal"),
             Some(vec![helpers::Action::RemoveValidator(
                 agents[5].address.clone(),
                 false,
             )
             .to_string()]),
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
 
@@ -2936,44 +2936,44 @@ mod tests {
         println!("{:?}", agents);
         let mut sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.alice,
-            String::from("IMultiSig::endorse_proposal"),
+            String::from("ICouncil::endorse_proposal"),
             Some(vec![helpers::Action::RemoveValidator(
                 agents[5].address.clone(),
                 true,
             )
             .to_string()]),
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
         let mut sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.bob,
-            String::from("IMultiSig::endorse_proposal"),
+            String::from("ICouncil::endorse_proposal"),
             Some(vec![helpers::Action::RemoveValidator(
                 agents[5].address.clone(),
                 true,
             )
             .to_string()]),
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
         let mut sess = call_function(
             sess,
-            &ctx.multisig,
+            &ctx.council,
             &ctx.charlie,
-            String::from("IMultiSig::endorse_proposal"),
+            String::from("ICouncil::endorse_proposal"),
             Some(vec![helpers::Action::RemoveValidator(
                 agents[5].address.clone(),
                 true,
             )
             .to_string()]),
             None,
-            transcoder_multisig(),
+            transcoder_governance_council(),
         )
         .unwrap();
 

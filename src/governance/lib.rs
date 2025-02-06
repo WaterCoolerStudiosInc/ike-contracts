@@ -16,8 +16,8 @@ pub mod governance {
     };
     use vault::traits::IVault;
 
-    use multisig::traits::IMultiSig as MultiSig;
-    use multisig::MultiSigRef;
+    use governance_council::traits::ICouncil as Council;
+    use governance_council::CouncilRef;
     use psp22::{PSP22Error, PSP22};
     use psp34::PSP34;
 
@@ -25,7 +25,7 @@ pub mod governance {
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum GovernanceError {
         RegistryFailure,
-        MultiSigError,
+        CouncilError,
         VaultFailure,
         Unauthorized,
         InvalidInput,
@@ -64,14 +64,14 @@ pub mod governance {
         NativeTokenTransfer(AccountId, u128),
         // update tokens per second for staker in staking contract
         ChangeStakingRewardRate(u128),
-        // Add to multisig
+        // Add to council
         AddCouncilMember(AccountId),
-        // remove then add to multisig
+        // remove then add to council
         ReplaceCouncilMember(AccountId, AccountId),
-        // remove from multisig
+        // remove from council
         RemoveCouncilMember(AccountId),
-        // change threshold for multisig acceptance
-        ChangeMultiSigThreshold(u16),
+        // change threshold for council acceptance
+        ChangeCouncilThreshold(u16),
         // change vault fee
         FeeChange(u16),
         // change vault compound acceptance
@@ -144,7 +144,7 @@ pub mod governance {
         pub gov_nft: AccountId,
         pub vault: AccountId,
         pub staking: AccountId,
-        pub multisig: AccountId,
+        pub council: AccountId,
         // add getter
         pub execution_threshold: u128,
         // add getter
@@ -273,24 +273,24 @@ pub mod governance {
             expired
         }
         fn remove_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
-            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(_) = multisig.remove_signer(*member) {
-                return Err(GovernanceError::MultiSigError);
+            let mut council: contract_ref!(Council) = self.council.into();
+            if let Err(_) = council.remove_signer(*member) {
+                return Err(GovernanceError::CouncilError);
             }
             Ok(())
         }
         fn add_council_member(&self, member: &AccountId) -> Result<(), GovernanceError> {
-            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(_) = multisig.add_signer(*member) {
-                return Err(GovernanceError::MultiSigError);
+            let mut council: contract_ref!(Council) = self.council.into();
+            if let Err(_) = council.add_signer(*member) {
+                return Err(GovernanceError::CouncilError);
             }
             Ok(())
         }
 
-        fn change_multisig_threshold(&self, update: u16) -> Result<(), GovernanceError> {
-            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(_) = multisig.update_threshold(update) {
-                return Err(GovernanceError::MultiSigError);
+        fn change_council_threshold(&self, update: u16) -> Result<(), GovernanceError> {
+            let mut council: contract_ref!(Council) = self.council.into();
+            if let Err(_) = council.update_threshold(update) {
+                return Err(GovernanceError::CouncilError);
             }
             Ok(())
         }
@@ -299,9 +299,9 @@ pub mod governance {
             member: &AccountId,
             new_member: AccountId,
         ) -> Result<(), GovernanceError> {
-            let mut multisig: contract_ref!(MultiSig) = self.multisig.into();
-            if let Err(_) = multisig.replace_signer(*member, new_member) {
-                return Err(GovernanceError::MultiSigError);
+            let mut council: contract_ref!(Council) = self.council.into();
+            if let Err(_) = council.replace_signer(*member, new_member) {
+                return Err(GovernanceError::CouncilError);
             }
             Ok(())
         }
@@ -426,8 +426,8 @@ pub mod governance {
                     self.replace_council_member(&member, replacement)?
                 }
                 PropType::RemoveCouncilMember(member) => self.remove_council_member(&member)?,
-                PropType::ChangeMultiSigThreshold(update) => {
-                    self.change_multisig_threshold(update)?
+                PropType::ChangeCouncilThreshold(update) => {
+                    self.change_council_threshold(update)?
                 }
 
                 PropType::CompoundIncentiveChange(update) => self.update_incentive(&update)?,
@@ -492,7 +492,7 @@ pub mod governance {
             vault: AccountId,
             registry: AccountId,
             governance_token: AccountId,
-            multisig_hash: Hash,
+            council_hash: Hash,
             gov_nft_hash: Hash,
             staking_hash: Hash,
             exec_threshold: u128,
@@ -503,10 +503,10 @@ pub mod governance {
         ) -> Self {
             let caller: ink::primitives::AccountId = Self::env().caller();
 
-            let mut multisig_ref =
-                MultiSigRef::new(Self::env().account_id(), registry, vault, signers)
+            let mut council_ref =
+                CouncilRef::new(Self::env().account_id(), registry, vault, signers)
                     .endowment(0)
-                    .code_hash(multisig_hash)
+                    .code_hash(council_hash)
                     .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
                     .instantiate();
 
@@ -522,17 +522,17 @@ pub mod governance {
                 Self::env().account_id(),
                 nft_ref.clone(),
                 interest_rate,
-                MultiSigRef::to_account_id(&multisig_ref),
+                CouncilRef::to_account_id(&council_ref),
             )
             .endowment(0)
             .code_hash(staking_hash)
             .salt_bytes(&[9_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
             .instantiate();
-            //if let Err(e) = multisig.remove_signer(*member) {
-            //    return Err(GovernanceError::MultiSigError);
+            //if let Err(e) = council.remove_signer(*member) {
+            //    return Err(GovernanceError::CouncilError);
             //}
             //
-            multisig_ref
+            council_ref
                 .set_gov_staking(StakingRef::to_account_id(&staking_ref))
                 .unwrap();
             nft_ref
@@ -543,7 +543,7 @@ pub mod governance {
             Self {
                 gov_nft: _gov_nft,
                 vault: vault,
-                multisig: MultiSigRef::to_account_id(&multisig_ref),
+                council: CouncilRef::to_account_id(&council_ref),
                 staking: StakingRef::to_account_id(&staking_ref),
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
@@ -559,8 +559,8 @@ pub mod governance {
         }
 
         #[ink(message)]
-        pub fn get_multisig(&self) -> AccountId {
-            self.multisig
+        pub fn get_council(&self) -> AccountId {
+            self.council
         }
         #[ink(message)]
         pub fn get_staking(&self) -> AccountId {
