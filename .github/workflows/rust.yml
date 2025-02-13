@@ -1,0 +1,36 @@
+name: Rust
+
+on: [pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - contract build
+          - test
+    env:
+      CONTRACTS: "governance governance_council governance_nft governance_staking governance_token
+                  mock_nominator nomination_agent registry share_token vault vesting"
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2.2.0
+    - run: rustup default stable-2024-09-05
+    - name: Install rust-src
+      run: rustup component add rust-src
+    - name: Install dylint-link
+      run: cargo install dylint-link
+    - name: Install Cargo Contract
+      run: cargo install cargo-contract --force --locked --version 3.2.0
+    - name: Run ${{ matrix.job }}
+      run: |
+        for contract in ${CONTRACTS}; do
+          echo "Processing contract: $contract";
+          cargo ${{ matrix.job }} --manifest-path=src/$contract/Cargo.toml;
+        done
