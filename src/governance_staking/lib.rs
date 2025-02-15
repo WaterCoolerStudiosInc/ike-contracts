@@ -76,7 +76,7 @@ pub mod staking {
         nft: GovernanceNFTRef,
         cast_distribution: Mapping<u128, Vec<(AccountId, u128)>>,
         voting_delegations: Mapping<u128, (u128, u128)>,
-        redelegate_requests: Mapping<u128, (u64, u128)>,
+        redelegate_requests: Mapping<u128, (u64, u128, u128)>,
         governance_nfts: Mapping<AccountId, Vec<u128>>,
         unstake_requests: Mapping<u128, UnstakeRequest>,
         last_reward_claim: Mapping<u128, u64>,
@@ -609,12 +609,18 @@ pub mod staking {
             let data = self.nft.get_governance_data(nft_id).unwrap();
             debug_println!("Current NFT Governance DATA {:?}", &data);
             let current = self.voting_delegations.get(nft_id);
+            let mut vote_weight = 0;
             if let Some(curr) = current {
                 debug_println!("Current delegation values being updated {:?}", curr);
                 self.decrease_vote_weight(curr.0, curr.1)?;
                 self.voting_delegations.remove(nft_id);
+                vote_weight += curr.1;
             }
-            self.redelegate_requests.insert(nft_id, &(now, delegatee));
+            if data.vote_weight != 0 {
+                self.decrease_vote_weight(nft_id, data.vote_weight)?;
+                vote_weight += data.vote_weight;
+            }
+            self.redelegate_requests.insert(nft_id, &(now, delegatee, vote_weight));
 
             Ok(())
         }
@@ -633,15 +639,13 @@ pub mod staking {
             if now - req.0 < 14 * DAY {
                 return Err(StakingError::InvalidInput);
             }
-            let data = self.nft.get_governance_data(nft_id).unwrap();
 
-            debug_println!("Current NFT Governance DATA {:?}", &data);
             //let current = self.voting_delegations.get(nft_id);
 
-            self.call_increment_weights(req.1, 0, data.stake_weight)?;
+            self.call_increment_weights(req.1, 0, req.2)?;
             if nft_id != req.1 {
                 self.voting_delegations
-                    .insert(nft_id, &(req.1, data.stake_weight));
+                    .insert(nft_id, &(req.1, req.2));
             }
 
             Ok(())
