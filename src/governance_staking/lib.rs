@@ -684,16 +684,19 @@ pub mod staking {
                 .last_reward_claim
                 .get(token_id)
                 .unwrap_or(data.block_created);
-            let reward = self.calculate_reward_share(now, last_claim, data.vote_weight);
+            let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
             let current_cast = self.cast_distribution.get(token_id).unwrap();
             self.update_registry_weights(current_cast, reward, true)?;
             self.last_reward_claim.insert(token_id, &now);
             if let Some(vote_delegation) = self.voting_delegations.get(token_id) {
-                self.call_increment_weights(vote_delegation.0, 0, vote_delegation.1)?;
+                self.call_increment_weights(vote_delegation.0, 0, reward)?;
                 self.call_increment_weights(token_id, reward, 0)?;
             } else {
                 self.call_increment_weights(token_id, reward, reward)?;
             }
+
+            self.staked_token_balance += reward;
+            self.reward_stake_accumulation += reward;
 
             Ok(())
         }
