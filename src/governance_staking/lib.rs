@@ -705,12 +705,16 @@ pub mod staking {
         pub fn create_unwrap_request(&mut self, token_id: u128) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
+            if self.nft.owner_of_id(token_id) != Some(caller) {
+                return Err(StakingError::Unauthorized);
+            }
             let data = self.nft.get_governance_data(token_id).unwrap();
             if self.query_nft_proposal_lock(self.governor, token_id) {
                 return Err(StakingError::NftLocked);
             }
             let delegations = self.voting_delegations.get(token_id);
             if let Some(d) = delegations {
+                self.voting_delegations.remove(token_id);
                 self.decrease_vote_weight(d.0, d.1)?
             }
             self.update_stake_accumulation(now)?;
@@ -722,17 +726,18 @@ pub mod staking {
                 .get(token_id)
                 .unwrap_or(data.block_created);
 
-            let reward = self.calculate_reward_share(now, last_claim, data.vote_weight);
+            let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
             debug_println!("{}{:?}", "reward earned ", reward);
-            self.staked_token_balance -= data.vote_weight;
+            self.staked_token_balance -= data.stake_weight;
             self.unstake_requests.insert(
                 token_id,
                 &UnstakeRequest {
                     time: now,
-                    token_value: data.vote_weight + reward,
+                    token_value: data.stake_weight + reward,
                     owner: caller,
                 },
             );
+            self.last_reward_claim.insert(token_id, &now);
             self.burn_psp34(caller, token_id)?;
             Ok(())
         }
