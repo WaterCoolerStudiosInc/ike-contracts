@@ -660,6 +660,7 @@ pub mod staking {
             let now = Self::env().block_timestamp();
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
             self.update_stake_accumulation(now)?;
+            self.claim_staking_rewards(nft_id)?; // should come before `update_registry_weights` call
             self.staked_token_balance += token_value;
             let current_cast = self.cast_distribution.get(nft_id).unwrap();
             self.update_registry_weights(current_cast, token_value, true)?;
