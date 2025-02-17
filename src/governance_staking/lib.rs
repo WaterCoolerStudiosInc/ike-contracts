@@ -178,7 +178,7 @@ pub mod staking {
         pub fn update_registry_weights(
             &mut self,
             agents: Vec<(AccountId, u128)>,
-            value: u128,
+            mut value: u128,
             increase: bool,
         ) -> Result<(), StakingError> {
             let mut sum: u128 = 0;
@@ -188,7 +188,7 @@ pub mod staking {
                 return Err(StakingError::InvalidInput);
             }
 
-            for agent in agents.into_iter() {
+            for agent in agents.iter() {
                 sum += agent.1;
 
                 let amt = self.pro_rata(value, agent.1 as u128, BIPS);
@@ -197,10 +197,15 @@ pub mod staking {
                     weight: amt,
                     increase: increase,
                 });
+                value -= amt;
             }
             if sum != BIPS {
                 return Err(StakingError::InvalidInput);
             }
+
+            // Add remaining (dust) value to the 1st agent from the `agents` list
+            update_list[0].weight += value;
+            
             debug_println!("{:?}", update_list);
             if let Err(e) = self.call_registry_update(update_list) {
                 return Err(StakingError::InternalError(e));
@@ -210,7 +215,7 @@ pub mod staking {
         pub fn safe_update_registry_weights(
             &mut self,
             agents: Vec<(AccountId, u128)>,
-            value: u128,
+            mut value: u128,
             increase: bool,
         ) -> Result<(), StakingError> {
             let mut sum: u128 = 0;
@@ -220,7 +225,7 @@ pub mod staking {
                 return Err(StakingError::InvalidInput);
             }
             let current_agents = self.get_agents().unwrap();
-            for agent in agents.into_iter() {
+            for agent in agents.iter() {
                 sum += agent.1;
 
                 let amt = self.pro_rata(value, agent.1 as u128, BIPS);
@@ -230,11 +235,18 @@ pub mod staking {
                         weight: amt,
                         increase: increase,
                     });
+                    value -= amt;
                 }
             }
             if sum != BIPS {
                 return Err(StakingError::InvalidInput);
             }
+
+            // Add remaining (dust) value to the 1st agent from the `agents` list if it isn't disabled
+            match update_list.first() {
+                Some(WeightUpdate { agent, .. }) if agent == &agents[0].0 => update_list[0].weight += value,
+                _ => {},
+            };
 
             if let Err(e) = self.call_registry_update(update_list) {
                 return Err(StakingError::InternalError(e));
@@ -245,7 +257,7 @@ pub mod staking {
         pub fn remove_cast_distribution(
             &mut self,
             existing: Vec<(AccountId, u128)>,
-            value: u128,
+            mut value: u128,
         ) -> Result<(), StakingError> {
             let mut sum: u128 = 0;
             let mut update_list = Vec::new();
@@ -254,7 +266,7 @@ pub mod staking {
                 return Err(StakingError::InvalidInput);
             }
             let current_agents = self.get_agents().unwrap();
-            for agent in existing.into_iter() {
+            for agent in existing.iter() {
                 sum += agent.1;
 
                 let amt = self.pro_rata(value, agent.1 as u128, BIPS);
@@ -264,11 +276,19 @@ pub mod staking {
                         weight: amt,
                         increase: false,
                     });
+                    value -= amt;
                 }
             }
             if sum != BIPS {
                 return Err(StakingError::InvalidInput);
             }
+
+            // Add remaining (dust) value to the 1st agent from the `agents` list if it isn't disabled
+            match update_list.first() {
+                Some(WeightUpdate { agent, .. }) if agent == &existing[0].0 => update_list[0].weight += value,
+                _ => {},
+            };
+
             debug_println!("{:?}", update_list);
             if let Err(e) = self.call_registry_update(update_list) {
                 return Err(StakingError::InternalError(e));
