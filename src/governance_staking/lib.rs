@@ -520,17 +520,13 @@ pub mod staking {
                 recipient = caller;
             }
 
-            let minted_nft;
-            if vote_delegation.is_some() {
-                minted_nft = self.mint_psp34(recipient, token_value, 0).unwrap();
-                self.call_increment_weights(vote_delegation.unwrap(), 0, token_value)?;
+            let minted_nft = self.mint_psp34(recipient, token_value, 0).unwrap();
+            let vote_delegation = vote_delegation.unwrap_or(minted_nft);
+            self.call_increment_weights(vote_delegation, 0, token_value)?;
+
+            if vote_delegation != minted_nft {
                 self.voting_delegations
-                    .insert(minted_nft, &(vote_delegation.unwrap(), token_value));
-            } else {
-                debug_println!("MINTING HERE {}", token_value);
-                minted_nft = self
-                    .mint_psp34(recipient, token_value, token_value)
-                    .unwrap();
+                    .insert(minted_nft, &(vote_delegation, token_value));
             }
 
             match validator_cast {
