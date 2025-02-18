@@ -1,4 +1,4 @@
-use crate::governance_nft::GovernanceData;
+pub use crate::governance_nft::GovernanceData;
 use ink::primitives::AccountId;
 use psp34::Id;
 use psp34::PSP34Error;
