@@ -80,7 +80,7 @@ pub mod staking {
         governance_token: AccountId,
         nft: GovernanceNFTRef,
         cast_distribution: Mapping<u128, Vec<(AccountId, u128)>>,
-        voting_delegations: Mapping<u128, (u128, u128, u128)>, // (delegatee, amount, nonce)
+        voting_delegations: Mapping<u128, (u128, u128)>, // (delegatee, nonce)
         redelegate_requests: Mapping<u128, (u64, u128)>,
         voting_delegations_nonce: Mapping<u128, u128>,
         governance_nfts: Mapping<AccountId, Vec<u128>>,
@@ -534,7 +534,7 @@ pub mod staking {
         }
 
         #[ink(message)]
-        pub fn get_voting_delegation(&self, nft_id: u128) -> Option<(u128, u128, u128)> {
+        pub fn get_voting_delegation(&self, nft_id: u128) -> Option<(u128, u128)> {
             self.voting_delegations.get(nft_id)
         }
 
@@ -576,7 +576,7 @@ pub mod staking {
                 }
                 let nonce = self.get_voting_delegation_nonce(vote_delegation);
                 self.voting_delegations
-                    .insert(minted_nft, &(vote_delegation, token_value, nonce));
+                    .insert(minted_nft, &(vote_delegation, nonce));
             }
             self.call_increment_weights(vote_delegation, 0, token_value)?;
             self.new_cast_distribution(minted_nft, token_value, validator_cast)?;
@@ -626,12 +626,12 @@ pub mod staking {
             }
 
             let current_delegation = self.voting_delegations.get(nft_id);
-            if let Some((current_delegatee, vote_weight, nonce)) = current_delegation {
+            if let Some((current_delegatee, nonce)) = current_delegation {
                 if new_delegatee == current_delegatee {
                     return Err(StakingError::NoChange);
                 }
                 if self.is_still_same_pool(current_delegatee, nonce) {
-                    self.decrease_vote_weight(current_delegatee, vote_weight)?;
+                    self.decrease_vote_weight(current_delegatee, data.vote_weight)?;
                 }
                 self.voting_delegations.remove(nft_id);
             } else if new_delegatee == nft_id {
@@ -687,8 +687,7 @@ pub mod staking {
                 }
 
                 let nonce = self.get_voting_delegation_nonce(delegatee);
-                self.voting_delegations
-                    .insert(nft_id, &(delegatee, data.stake_weight, nonce));
+                self.voting_delegations.insert(nft_id, &(delegatee, nonce));
             }
             self.call_increment_weights(delegatee, 0, data.stake_weight)?;
 
@@ -712,13 +711,12 @@ pub mod staking {
 
             self.add_cast_distribution(nft_id, token_value)?;
 
-            if let Some((delegatee, vote_weight, nonce)) = self.voting_delegations.get(nft_id) {
+            if let Some((delegatee, nonce)) = self.voting_delegations.get(nft_id) {
                 if self.is_still_same_pool(delegatee, nonce) {
                     self.call_increment_weights(delegatee, 0, token_value)?;
                 }
                 self.call_increment_weights(nft_id, token_value, 0)?;
-                self.voting_delegations
-                    .insert(nft_id, &(delegatee, vote_weight + token_value, nonce));
+                self.voting_delegations.insert(nft_id, &(delegatee, nonce));
             } else if self.redelegate_requests.contains(nft_id) {
                 // To avoid breaking 1-role-1-representative constraint and double-voting;
                 // new voting_weight is activated alongside redelegation-completion
@@ -747,13 +745,12 @@ pub mod staking {
 
             self.add_cast_distribution(nft_id, reward)?;
 
-            if let Some((delegatee, vote_weight, nonce)) = self.voting_delegations.get(nft_id) {
+            if let Some((delegatee, nonce)) = self.voting_delegations.get(nft_id) {
                 if self.is_still_same_pool(delegatee, nonce) {
                     self.call_increment_weights(delegatee, 0, reward)?;
                 }
                 self.call_increment_weights(nft_id, reward, 0)?;
-                self.voting_delegations
-                    .insert(nft_id, &(delegatee, vote_weight + reward, nonce));
+                self.voting_delegations.insert(nft_id, &(delegatee, nonce));
             } else if self.redelegate_requests.contains(nft_id) {
                 // To avoid breaking 1-role-1-representative constraint and double-voting;
                 // new voting_weight is activated alongside redelegation-completion
@@ -787,9 +784,9 @@ pub mod staking {
             let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
 
             let delegations = self.voting_delegations.get(nft_id);
-            if let Some((delegatee, vote_weight, nonce)) = delegations {
+            if let Some((delegatee, nonce)) = delegations {
                 if self.is_still_same_pool(delegatee, nonce) {
-                    self.decrease_vote_weight(delegatee, vote_weight)?
+                    self.decrease_vote_weight(delegatee, data.vote_weight)?
                 }
                 self.voting_delegations.remove(nft_id); // optional-housekeeping
             }
