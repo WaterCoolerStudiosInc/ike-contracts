@@ -22,9 +22,8 @@ pub mod staking {
     use num_bigint::BigUint;
     use num_traits::cast::ToPrimitive;
 
-    use governance_nft::traits::IGovernanceNFT;
+    use governance_nft::traits::{GovernanceData, IGovernanceNFT};
     use governance_nft::GovernanceNFTRef;
-    use governance_nft::traits::GovernanceData;
     use psp22::{PSP22Error, PSP22};
     use psp34::{Id, PSP34Error};
     use registry::traits::IRegistry;
@@ -76,7 +75,7 @@ pub mod staking {
         rewards_per_second: u128,
         reward_stake_accumulation: u128,
         accumulated_rewards: u128,
-        lst_accumulation_update: u64,
+        last_accumulation_update: u64,
         governance_council: AccountId,
         governance_token: AccountId,
         nft: GovernanceNFTRef,
@@ -178,16 +177,17 @@ pub mod staking {
 
     type Event = <Staking as ContractEventBase>::Type;
 
+    #[ink(impl)]
     impl Staking {
         pub fn pro_rata(&self, a: u128, b: u128, c: u128) -> u128 {
             let result = BigUint::from(a) * BigUint::from(b) / BigUint::from(c);
             BigUint::to_u128(&result).unwrap()
         }
 
-        pub fn query_nft_proposal_lock(&self, governance: AccountId, id: u128) -> bool {
+        pub fn query_nft_proposal_lock(&self, nft_id: u128) -> bool {
             build_call::<DefaultEnvironment>()
-                .call(governance)
-                .exec_input(ExecutionInput::new(Selector::new([0, 0, 0, 33])).push_arg(id))
+                .call(self.governor)
+                .exec_input(ExecutionInput::new(Selector::new([0, 0, 0, 33])).push_arg(nft_id))
                 .transferred_value(0)
                 .returns::<bool>()
                 .invoke()
@@ -268,7 +268,10 @@ pub mod staking {
             nft_id: u128,
             value: u128,
         ) -> Result<(), StakingError> {
-            let cast = self.cast_distribution.get(nft_id).ok_or(StakingError::InvalidInput)?;
+            let cast = self
+                .cast_distribution
+                .get(nft_id)
+                .ok_or(StakingError::InvalidInput)?;
             self.update_registry_weights(&cast, value, true, true)
         }
 
@@ -277,7 +280,10 @@ pub mod staking {
             nft_id: u128,
             value: u128,
         ) -> Result<(), StakingError> {
-            let cast = self.cast_distribution.get(nft_id).ok_or(StakingError::InvalidInput)?;
+            let cast = self
+                .cast_distribution
+                .get(nft_id)
+                .ok_or(StakingError::InvalidInput)?;
             self.update_registry_weights(&cast, value, false, true)
         }
 
@@ -301,28 +307,22 @@ pub mod staking {
             Ok(())
         }
 
-        fn burn_psp34(&mut self, from: AccountId, id: u128) -> Result<(), StakingError> {
-            if let Err(e) = self.nft.burn(from, id) {
+        fn burn_psp34(&mut self, from: AccountId, nft_id: u128) -> Result<(), StakingError> {
+            if let Err(e) = self.nft.burn(from, nft_id) {
                 return Err(StakingError::NFTError(e));
             }
             Ok(())
-        }
-
-        fn check_ownership(&self, id: u128, user: AccountId) -> bool {
-            let owner = self.nft.owner_of_id(id);
-            owner == Some(user)
         }
 
         fn call_increment_weights(
             &mut self,
-            id: u128,
+            nft_id: u128,
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<(), StakingError> {
-            if let Err(e) = self.nft.increment_weights(id, stake_weight, vote_weight) {
-                return Err(StakingError::NFTError(e));
-            }
-            Ok(())
+            self.nft
+                .increment_weights(nft_id, stake_weight, vote_weight)
+                .map_err(StakingError::NFTError)
         }
 
         fn call_registry_update(&mut self, values: Vec<WeightUpdate>) -> Result<(), RuntimeError> {
@@ -374,10 +374,10 @@ pub mod staking {
 
         fn update_stake_accumulation(&mut self, curr_time: u64) -> Result<(), StakingError> {
             self.accumulated_rewards +=
-                ((curr_time - self.lst_accumulation_update) as u128) * self.rewards_per_second;
+                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
             self.reward_stake_accumulation +=
-                self.staked_token_balance * ((curr_time - self.lst_accumulation_update) as u128);
-            self.lst_accumulation_update = curr_time;
+                self.staked_token_balance * ((curr_time - self.last_accumulation_update) as u128);
+            self.last_accumulation_update = curr_time;
             Ok(())
         }
 
@@ -393,29 +393,24 @@ pub mod staking {
             debug_println!("{}{}", self.accumulated_rewards, " ACCUMULATED");
             debug_println!("{}{}", self.reward_stake_accumulation, " REWARD");
             let user_stake_weight = stake_balance * ((curr_time - last_update) as u128);
-            (self.accumulated_rewards * user_stake_weight) / self.reward_stake_accumulation
-            //0_u128
+            self.pro_rata(
+                self.accumulated_rewards,
+                user_stake_weight,
+                self.reward_stake_accumulation,
+            )
         }
 
         fn transfer_psp34(
             &mut self,
             from: &AccountId,
             to: &AccountId,
-            id: Balance,
+            nft_id: Balance,
         ) -> Result<(), StakingError> {
-            if let Err(e) = self.nft.transfer_from(*from, *to, Id::U128(id), Vec::new()) {
-                return Err(StakingError::NFTError(e));
-            }
-            Ok(())
+            self.nft
+                .transfer_from(*from, *to, Id::U128(nft_id), Vec::new())
+                .map_err(StakingError::NFTError)
         }
 
-        /**
-        * admin: AccountId,
-           validator: AccountId,
-           pool_id: u32,
-           pool_create_amount: Balance,
-           existential_deposit: Balance,
-        */
         fn call_add_agent(
             &self,
             admin: AccountId,
@@ -439,17 +434,17 @@ pub mod staking {
 
         fn call_disable_validator(&self, agent: AccountId) -> Result<(), StakingError> {
             let mut registry: contract_ref!(IRegistry) = self.registry.into();
-            if let Err(_) = registry.disable_agent(agent) {
+            if registry.disable_agent(agent).is_err() {
                 return Err(StakingError::RegistryError);
             }
             Ok(())
         }
 
-        fn is_self_delegator(&self, token_id: u128) -> bool {
-            if self.voting_delegations.contains(token_id) {
+        fn is_self_delegator(&self, nft_id: u128) -> bool {
+            if self.voting_delegations.contains(nft_id) {
                 return false;
             }
-            let Some(data) = self.nft.get_governance_data(token_id) else {
+            let Some(data) = self.nft.get_governance_data(nft_id) else {
                 return false;
             };
 
@@ -458,15 +453,28 @@ pub mod staking {
 
         fn is_still_same_pool(&self, delegatee: u128, nonce: u128) -> bool {
             // Check the self-delegator nonce matches the record
-            let latest_nonce = self
-                .voting_delegations_nonce
-                .get(delegatee)
-                .unwrap_or_default();
+            let latest_nonce = self.get_voting_delegation_nonce(delegatee);
             latest_nonce == nonce
         }
 
+        fn get_voting_delegation_nonce(&self, nft_id: u128) -> u128 {
+            self.voting_delegations_nonce
+                .get(nft_id)
+                .unwrap_or_default()
+        }
+
         fn get_governance_data(&self, nft_id: u128) -> Result<GovernanceData, StakingError> {
-            self.nft.get_governance_data(nft_id).ok_or(StakingError::NotFound)
+            self.nft
+                .get_governance_data(nft_id)
+                .ok_or(StakingError::NotFound)
+        }
+
+        fn only_token_owner(&self, nft_id: u128) -> Result<(), StakingError> {
+            let caller = self.env().caller();
+            match self.nft.owner_of_id(nft_id) == Some(caller) {
+                true => Ok(()),
+                false => Err(StakingError::Unauthorized),
+            }
         }
     }
 
@@ -491,7 +499,7 @@ pub mod staking {
                 rewards_per_second: interest_rate,
                 reward_stake_accumulation: 0,
                 accumulated_rewards: 0,
-                lst_accumulation_update: now,
+                last_accumulation_update: now,
                 governance_council,
                 governance_token,
                 nft: governance_nft,
@@ -562,10 +570,7 @@ pub mod staking {
                 if !self.is_self_delegator(vote_delegation) {
                     return Err(StakingError::InvalidRepresentative);
                 }
-                let nonce = self
-                    .voting_delegations_nonce
-                    .get(vote_delegation)
-                    .unwrap_or_default();
+                let nonce = self.get_voting_delegation_nonce(vote_delegation);
                 self.voting_delegations
                     .insert(minted_nft, &(vote_delegation, token_value, nonce));
             }
@@ -589,11 +594,8 @@ pub mod staking {
             nft_id: u128,
             validator_cast: CastType,
         ) -> Result<(), StakingError> {
-            let caller = Self::env().caller();
+            self.only_token_owner(nft_id)?;
 
-            if !self.check_ownership(nft_id, caller) {
-                return Err(StakingError::Unauthorized);
-            }
             let data = self.get_governance_data(nft_id)?;
             // deallocate current cast weights
             self.remove_cast_distribution(nft_id, data.stake_weight)?;
@@ -606,12 +608,10 @@ pub mod staking {
             nft_id: u128,
             delegatee: u128,
         ) -> Result<(), StakingError> {
-            let caller = Self::env().caller();
+            self.only_token_owner(nft_id)?;
             let now = Self::env().block_timestamp();
-            if !self.check_ownership(nft_id, caller) {
-                return Err(StakingError::Unauthorized);
-            }
-            if self.query_nft_proposal_lock(self.governor, nft_id) {
+
+            if self.query_nft_proposal_lock(nft_id) {
                 return Err(StakingError::NftLocked);
             }
             if self.redelegate_requests.contains(nft_id) {
@@ -637,10 +637,7 @@ pub mod staking {
             }
             self.redelegate_requests.insert(nft_id, &(now, delegatee));
 
-            let prev_nonce = self
-                .voting_delegations_nonce
-                .get(nft_id)
-                .unwrap_or_default();
+            let prev_nonce = self.get_voting_delegation_nonce(nft_id);
             self.voting_delegations_nonce
                 .insert(nft_id, &(prev_nonce + 1));
 
@@ -653,10 +650,7 @@ pub mod staking {
             nft_id: u128,
             new_delegatee: u128,
         ) -> Result<(), StakingError> {
-            let caller = self.env().caller();
-            if !self.check_ownership(nft_id, caller) {
-                return Err(StakingError::Unauthorized);
-            }
+            self.only_token_owner(nft_id)?;
 
             let Some((time, _)) = self.redelegate_requests.get(nft_id) else {
                 return Err(StakingError::InvalidRequest);
@@ -669,14 +663,16 @@ pub mod staking {
 
         #[ink(message, selector = 5)]
         pub fn complete_vote_redelegate(&mut self, nft_id: u128) -> Result<(), StakingError> {
-            let caller = Self::env().caller();
-            if !self.check_ownership(nft_id, caller) {
-                return Err(StakingError::Unauthorized);
-            }
-            if self.query_nft_proposal_lock(self.governor, nft_id) {
+            self.only_token_owner(nft_id)?;
+
+            if self.query_nft_proposal_lock(nft_id) {
                 return Err(StakingError::NftLocked);
             }
-            let req = self.redelegate_requests.get(nft_id).ok_or(StakingError::InvalidRequest)?;
+
+            let req = self
+                .redelegate_requests
+                .get(nft_id)
+                .ok_or(StakingError::InvalidRequest)?;
             self.redelegate_requests.remove(nft_id);
             let now = Self::env().block_timestamp();
             if now - req.0 < 14 * DAY {
@@ -692,7 +688,7 @@ pub mod staking {
                     return Err(StakingError::InvalidRepresentative);
                 }
 
-                let nonce = self.voting_delegations_nonce.get(req.1).unwrap_or_default();
+                let nonce = self.get_voting_delegation_nonce(req.1);
                 self.voting_delegations
                     .insert(nft_id, &(req.1, data.stake_weight, nonce));
             }
@@ -739,36 +735,36 @@ pub mod staking {
         }
 
         #[ink(message, selector = 7)]
-        pub fn claim_staking_rewards(&mut self, token_id: u128) -> Result<(), StakingError> {
+        pub fn claim_staking_rewards(&mut self, nft_id: u128) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
-            let data = self.get_governance_data(token_id)?;
+            let data = self.get_governance_data(nft_id)?;
             let last_claim = self
                 .last_reward_claim
-                .get(token_id)
+                .get(nft_id)
                 .unwrap_or(data.block_created);
             let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
-            self.add_cast_distribution(token_id, reward)?;
-            self.last_reward_claim.insert(token_id, &now);
-            if let Some(vote_delegation) = self.voting_delegations.get(token_id) {
+            self.add_cast_distribution(nft_id, reward)?;
+            self.last_reward_claim.insert(nft_id, &now);
+            if let Some(vote_delegation) = self.voting_delegations.get(nft_id) {
                 if self.is_still_same_pool(vote_delegation.0, vote_delegation.2) {
                     self.call_increment_weights(vote_delegation.0, 0, reward)?;
                 }
-                self.call_increment_weights(token_id, reward, 0)?;
+                self.call_increment_weights(nft_id, reward, 0)?;
                 self.voting_delegations.insert(
-                    token_id,
+                    nft_id,
                     &(
                         vote_delegation.0,
                         vote_delegation.1 + reward,
                         vote_delegation.2,
                     ),
                 );
-            } else if self.redelegate_requests.contains(token_id) {
+            } else if self.redelegate_requests.contains(nft_id) {
                 // To avoid breaking 1-role-1-representative constraint and double-voting;
                 // new voting_weight is activated alongside redelegation-completion
-                self.call_increment_weights(token_id, reward, 0)?;
+                self.call_increment_weights(nft_id, reward, 0)?;
             } else {
-                self.call_increment_weights(token_id, reward, reward)?;
+                self.call_increment_weights(nft_id, reward, reward)?;
             }
 
             self.staked_token_balance += reward;
@@ -778,70 +774,72 @@ pub mod staking {
         }
 
         #[ink(message, selector = 8)]
-        pub fn create_unwrap_request(&mut self, token_id: u128) -> Result<(), StakingError> {
+        pub fn create_unwrap_request(&mut self, nft_id: u128) -> Result<(), StakingError> {
+            self.only_token_owner(nft_id)?;
+
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
-            if self.nft.owner_of_id(token_id) != Some(caller) {
-                return Err(StakingError::Unauthorized);
-            }
-            let data = self.get_governance_data(token_id)?;
-            if self.query_nft_proposal_lock(self.governor, token_id) {
+            let data = self.get_governance_data(nft_id)?;
+            if self.query_nft_proposal_lock(nft_id) {
                 return Err(StakingError::NftLocked);
             }
-            let delegations = self.voting_delegations.get(token_id);
+            let delegations = self.voting_delegations.get(nft_id);
             if let Some(d) = delegations {
-                self.voting_delegations.remove(token_id); // optional-housekeeping
+                self.voting_delegations.remove(nft_id); // optional-housekeeping
                 if self.is_still_same_pool(d.0, d.2) {
                     self.decrease_vote_weight(d.0, d.1)?
                 }
             }
             self.update_stake_accumulation(now)?;
-            self.remove_cast_distribution(token_id, data.stake_weight)?;
+            self.remove_cast_distribution(nft_id, data.stake_weight)?;
             let last_claim = self
                 .last_reward_claim
-                .get(token_id)
+                .get(nft_id)
                 .unwrap_or(data.block_created);
 
             let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
             debug_println!("{}{:?}", "reward earned ", reward);
             self.staked_token_balance -= data.stake_weight;
             self.unstake_requests.insert(
-                token_id,
+                nft_id,
                 &UnstakeRequest {
                     time: now,
                     token_value: data.stake_weight + reward,
                     owner: caller,
                 },
             );
-            self.last_reward_claim.insert(token_id, &now); // optional-housekeeping
-            self.redelegate_requests.remove(token_id); // optional-housekeeping
-            self.cast_distribution.remove(token_id); // optional-housekeeping
+            self.last_reward_claim.insert(nft_id, &now); // optional-housekeeping
+            self.redelegate_requests.remove(nft_id); // optional-housekeeping
+            self.cast_distribution.remove(nft_id); // optional-housekeeping
 
             // This helps prevent delegator of this nft (if a rep) from getting stuck
-            let prev_nonce = self
-                .voting_delegations_nonce
-                .get(token_id)
-                .unwrap_or_default();
+            let prev_nonce = self.get_voting_delegation_nonce(nft_id);
             self.voting_delegations_nonce
-                .insert(token_id, &(prev_nonce + 1));
+                .insert(nft_id, &(prev_nonce + 1));
 
-            self.burn_psp34(caller, token_id)?;
+            self.burn_psp34(caller, nft_id)?;
             Ok(())
         }
 
         #[ink(message, selector = 9)]
-        pub fn complete_request(&mut self, token_id: u128) -> Result<(), StakingError> {
+        pub fn complete_unwrap_request(&mut self, nft_id: u128) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
-            let data = self.unstake_requests.get(token_id).ok_or(StakingError::InvalidRequest)?;
+            let data = self
+                .unstake_requests
+                .get(nft_id)
+                .ok_or(StakingError::InvalidRequest)?;
+
             if now < data.time + WITHDRAW_DELAY {
                 return Err(StakingError::InvalidTimeWindow);
             }
             if data.owner != caller {
                 return Err(StakingError::Unauthorized);
             }
+
+            self.unstake_requests.remove(nft_id);
             self.transfer_psp22_from(&Self::env().account_id(), &caller, data.token_value)?;
-            self.unstake_requests.remove(token_id);
+
             Ok(())
         }
 
@@ -849,18 +847,17 @@ pub mod staking {
         pub fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError> {
             //let data = self.nft.get_governance_data(id).unwrap();
             let now = Self::env().block_timestamp();
-            let caller: ink::primitives::AccountId = Self::env().caller();
+            let caller = Self::env().caller();
 
             self.transfer_psp22_from(&caller, &Self::env().account_id(), self.token_stake_amount)?;
             self.update_stake_accumulation(now)?;
             self.staked_token_balance += self.token_stake_amount;
             // self.transfer_psp34(&caller, &Self::env().account_id(), id)?;
-            let minted_nft = self
-                .mint_psp34(
-                    Self::env().account_id(),
-                    self.token_stake_amount,
-                    self.token_stake_amount,
-                )?;
+            let minted_nft = self.mint_psp34(
+                Self::env().account_id(),
+                self.token_stake_amount,
+                self.token_stake_amount,
+            )?;
             let azero = Self::env().transferred_value();
 
             if azero != self.create_deposit + self.existential_deposit {
@@ -869,23 +866,20 @@ pub mod staking {
 
             if self
                 .deployed_validators
-                .clone()
-                .into_iter()
+                .iter()
                 .any(|p| p.validator == validator)
             {
                 return Err(StakingError::AlreadyOnList);
             }
 
-            let new_agent = self
-                .call_add_agent(
-                    validator,
-                    caller,
-                    self.create_deposit,
-                    self.existential_deposit,
-                )?;
+            let new_agent = self.call_add_agent(
+                validator,
+                caller,
+                self.create_deposit,
+                self.existential_deposit,
+            )?;
 
             // Cast NFT Weight to new agent
-
             let cast = CastType::Direct(vec![(new_agent, BIPS)]);
             self.new_cast_distribution(minted_nft, self.token_stake_amount, cast)?;
 
@@ -915,7 +909,7 @@ pub mod staking {
             agent: AccountId,
             slash: bool,
         ) -> Result<(), StakingError> {
-            let caller: ink::primitives::AccountId = Self::env().caller();
+            let caller = Self::env().caller();
             if caller != self.governance_council {
                 return Err(StakingError::InvalidPermissions);
             }
@@ -933,13 +927,13 @@ pub mod staking {
             };
 
             self.transfer_psp34(&Self::env().account_id(), &recipient, validator_info.nft_id)?;
-            let filtered: Vec<Validator> = self
+
+            self.deployed_validators = self
                 .deployed_validators
-                .clone()
-                .into_iter()
+                .iter()
                 .filter(|v| v.agent != agent)
+                .cloned()
                 .collect();
-            self.deployed_validators = filtered;
 
             Ok(())
         }
