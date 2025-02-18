@@ -381,11 +381,10 @@ pub mod staking {
         }
 
         fn is_disabled(&self, agent: AccountId, agents: Vec<Agent>) -> bool {
-            agents
-                .into_iter()
-                .find(|a| a.address == agent)
-                .unwrap()
-                .disabled
+            match agents.iter().find(|a| a.address == agent) {
+                Some(agent) => agent.disabled,
+                None => true,
+            }
         }
 
         fn mint_psp34(
