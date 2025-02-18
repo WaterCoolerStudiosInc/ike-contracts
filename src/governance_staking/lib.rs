@@ -51,9 +51,11 @@ pub mod staking {
         InvalidStake,
         InvalidPermissions,
         InvalidRepresentative,
+        InvalidRequest,
         DuplicateRequest,
         AlreadyOnList,
         RegistryError,
+        NoChange,
     }
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -77,8 +79,9 @@ pub mod staking {
         governance_token: AccountId,
         nft: GovernanceNFTRef,
         cast_distribution: Mapping<u128, Vec<(AccountId, u128)>>,
-        voting_delegations: Mapping<u128, (u128, u128)>,
+        voting_delegations: Mapping<u128, (u128, u128, u128)>, // (delegatee, amount, nonce)
         redelegate_requests: Mapping<u128, (u64, u128)>,
+        voting_delegations_nonce: Mapping<u128, u128>,
         governance_nfts: Mapping<AccountId, Vec<u128>>,
         unstake_requests: Mapping<u128, UnstakeRequest>,
         last_reward_claim: Mapping<u128, u64>,
@@ -467,6 +470,12 @@ pub mod staking {
 
             data.vote_weight >= data.stake_weight
         }
+    
+        fn is_still_same_pool(&self, delegatee: u128, nonce: u128) -> bool {
+            // Check the self-delegator nonce matches the record
+            let latest_nonce = self.voting_delegations_nonce.get(delegatee).unwrap_or_default();
+            latest_nonce == nonce
+        }
     }
     impl Staking {
         #[ink(constructor)]
@@ -497,6 +506,7 @@ pub mod staking {
                 cast_distribution: Mapping::new(),
                 voting_delegations: Mapping::new(),
                 redelegate_requests: Mapping::new(),
+                voting_delegations_nonce: Mapping::new(),
                 governance_nfts: Mapping::new(),
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
@@ -516,7 +526,7 @@ pub mod staking {
             GovernanceNFTRef::to_account_id(&self.nft)
         }
         #[ink(message)]
-        pub fn get_voting_delegation(&self, nft_id: u128) -> Option<(u128, u128)> {
+        pub fn get_voting_delegation(&self, nft_id: u128) -> Option<(u128, u128, u128)> {
             self.voting_delegations.get(nft_id)
         }
         #[ink(message, selector = 1)]
@@ -561,8 +571,9 @@ pub mod staking {
                 if !self.is_self_delegator(vote_delegation) {
                     return Err(StakingError::InvalidRepresentative);
                 }
+                let nonce = self.voting_delegations_nonce.get(vote_delegation).unwrap_or_default();
                 self.voting_delegations
-                    .insert(minted_nft, &(vote_delegation, token_value));
+                    .insert(minted_nft, &(vote_delegation, token_value, nonce));
             }
 
             match validator_cast {
@@ -645,17 +656,47 @@ pub mod staking {
             debug_println!("Current NFT Governance DATA {:?}", &data);
             let current = self.voting_delegations.get(nft_id);
             if let Some(curr) = current {
+                if delegatee == curr.0 {
+                    return Err(StakingError::NoChange);
+                }
                 debug_println!("Current delegation values being updated {:?}", curr);
-                self.decrease_vote_weight(curr.0, curr.1)?;
+                if self.is_still_same_pool(curr.0, curr.2) {
+                    self.decrease_vote_weight(curr.0, curr.1)?;
+                }
                 self.voting_delegations.remove(nft_id);
+            } else if delegatee == nft_id {
+                return Err(StakingError::NoChange);
             }
             if data.vote_weight != 0 {
                 self.decrease_vote_weight(nft_id, data.vote_weight)?;
             }
             self.redelegate_requests.insert(nft_id, &(now, delegatee));
 
+            let prev_nonce = self.voting_delegations_nonce.get(nft_id).unwrap_or_default();
+            self.voting_delegations_nonce.insert(nft_id, &(prev_nonce + 1));
+
             Ok(())
         }
+
+        #[ink(message)]
+        pub fn update_vote_redelegate(
+            &mut self, 
+            nft_id: u128,
+            new_delegatee: u128
+        ) -> Result<(), StakingError> {
+            let caller = self.env().caller();
+            if !self.check_ownership(nft_id, caller) {
+                return Err(StakingError::Unauthorized);
+            }
+
+            let Some((time, _)) = self.redelegate_requests.get(nft_id) else {
+                return Err(StakingError::InvalidRequest);
+            };
+            self.redelegate_requests.insert(nft_id, &(time, new_delegatee));
+            
+            Ok(())
+        }
+
         #[ink(message, selector = 5)]
         pub fn complete_vote_redelegate(&mut self, nft_id: u128) -> Result<(), StakingError> {
             let caller = Self::env().caller();
@@ -681,8 +722,9 @@ pub mod staking {
                     return Err(StakingError::InvalidRepresentative);
                 }
 
+                let nonce = self.voting_delegations_nonce.get(req.1).unwrap_or_default();
                 self.voting_delegations
-                    .insert(nft_id, &(req.1, data.stake_weight));
+                    .insert(nft_id, &(req.1, data.stake_weight, nonce));
             }
 
             Ok(())
@@ -704,11 +746,14 @@ pub mod staking {
             if let Some(vote_delegation) = self.voting_delegations.get(nft_id) {
                 debug_println!("ADDing Delegation Value {}", token_value);
                 let update = vote_delegation.1 + token_value;
-                self.call_increment_weights(vote_delegation.0, 0, token_value)?;
+
+                if self.is_still_same_pool(vote_delegation.0, vote_delegation.2) {
+                    self.call_increment_weights(vote_delegation.0, 0, token_value)?;
+                }
 
                 self.call_increment_weights(nft_id, token_value, 0)?;
                 self.voting_delegations
-                    .insert(nft_id, &(vote_delegation.0, update));
+                    .insert(nft_id, &(vote_delegation.0, update, vote_delegation.2));
             } else if self.redelegate_requests.contains(nft_id) {
                 // To avoid breaking 1-role-1-representative constraint and double-voting; 
                 // new voting_weight is activated alongside redelegation-completion
@@ -735,8 +780,12 @@ pub mod staking {
             self.update_registry_weights(current_cast, reward, true)?;
             self.last_reward_claim.insert(token_id, &now);
             if let Some(vote_delegation) = self.voting_delegations.get(token_id) {
-                self.call_increment_weights(vote_delegation.0, 0, reward)?;
+                if self.is_still_same_pool(vote_delegation.0, vote_delegation.2) {
+                    self.call_increment_weights(vote_delegation.0, 0, reward)?;
+                }
                 self.call_increment_weights(token_id, reward, 0)?;
+                self.voting_delegations
+                    .insert(token_id, &(vote_delegation.0, vote_delegation.1 + reward, vote_delegation.2));
             } else if self.redelegate_requests.contains(token_id) {
                 // To avoid breaking 1-role-1-representative constraint and double-voting; 
                 // new voting_weight is activated alongside redelegation-completion
@@ -764,8 +813,10 @@ pub mod staking {
             }
             let delegations = self.voting_delegations.get(token_id);
             if let Some(d) = delegations {
-                self.voting_delegations.remove(token_id);
-                self.decrease_vote_weight(d.0, d.1)?
+                self.voting_delegations.remove(token_id); // optional-housekeeping
+                if self.is_still_same_pool(d.0, d.2) {
+                    self.decrease_vote_weight(d.0, d.1)?
+                }
             }
             self.update_stake_accumulation(now)?;
             let cast_distribution: Vec<(ink::primitives::AccountId, u128)> =
@@ -787,7 +838,14 @@ pub mod staking {
                     owner: caller,
                 },
             );
-            self.last_reward_claim.insert(token_id, &now);
+            self.last_reward_claim.insert(token_id, &now); // optional-housekeeping
+            self.redelegate_requests.remove(token_id); // optional-housekeeping
+            self.cast_distribution.remove(token_id); // optional-housekeeping
+            
+            // This helps prevent delegator of this nft (if a rep) from getting stuck
+            let prev_nonce = self.voting_delegations_nonce.get(token_id).unwrap_or_default();
+            self.voting_delegations_nonce.insert(token_id, &(prev_nonce + 1));
+            
             self.burn_psp34(caller, token_id)?;
             Ok(())
         }
