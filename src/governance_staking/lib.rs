@@ -193,60 +193,28 @@ pub mod staking {
 
         pub fn update_registry_weights(
             &mut self,
-            agents: Vec<(AccountId, u128)>,
+            agents: &[(AccountId, u128)],
             mut value: u128,
             increase: bool,
+            safe_check: bool,
         ) -> Result<(), StakingError> {
             let mut sum: u128 = 0;
             let mut update_list = Vec::new();
-            debug_println!("{:?}", agents);
+
             if agents.len() > 5 {
                 return Err(StakingError::InvalidInput);
             }
+
+            let current_agents = match safe_check {
+                true => self.get_agents().unwrap(),
+                false => vec![],
+            };
 
             for agent in agents.iter() {
                 sum += agent.1;
 
                 let amt = self.pro_rata(value, agent.1, BIPS);
-                update_list.push(WeightUpdate {
-                    agent: agent.0,
-                    weight: amt,
-                    increase,
-                });
-                value -= amt;
-            }
-            if sum != BIPS {
-                return Err(StakingError::InvalidInput);
-            }
-
-            // Add remaining (dust) value to the 1st agent from the `agents` list
-            update_list[0].weight += value;
-
-            debug_println!("{:?}", update_list);
-            if let Err(e) = self.call_registry_update(update_list) {
-                return Err(StakingError::InternalError(e));
-            }
-            Ok(())
-        }
-
-        pub fn safe_update_registry_weights(
-            &mut self,
-            agents: Vec<(AccountId, u128)>,
-            mut value: u128,
-            increase: bool,
-        ) -> Result<(), StakingError> {
-            let mut sum: u128 = 0;
-            let mut update_list = Vec::new();
-            debug_println!("{:?}", agents);
-            if agents.len() > 5 {
-                return Err(StakingError::InvalidInput);
-            }
-            let current_agents = self.get_agents().unwrap();
-            for agent in agents.iter() {
-                sum += agent.1;
-
-                let amt = self.pro_rata(value, agent.1, BIPS);
-                if !self.is_disabled(agent.0, &current_agents) {
+                if safe_check && !self.is_disabled(agent.0, &current_agents) {
                     update_list.push(WeightUpdate {
                         agent: agent.0,
                         weight: amt,
@@ -259,7 +227,7 @@ pub mod staking {
                 return Err(StakingError::InvalidInput);
             }
 
-            // Add remaining (dust) value to the 1st agent from the `agents` list if it isn't disabled
+            // Add remaining (dust) value to the 1st agent from the `agents` list if it's part of the updated_list
             match update_list.first() {
                 Some(WeightUpdate { agent, .. }) if agent == &agents[0].0 => {
                     update_list[0].weight += value
@@ -273,48 +241,42 @@ pub mod staking {
             Ok(())
         }
 
-        pub fn remove_cast_distribution(
+        pub fn new_cast_distribution(
             &mut self,
-            existing: Vec<(AccountId, u128)>,
-            mut value: u128,
+            nft_id: u128,
+            value: u128,
+            cast: CastType,
         ) -> Result<(), StakingError> {
-            let mut sum: u128 = 0;
-            let mut update_list = Vec::new();
-            debug_println!("{:?}", existing);
-            if existing.len() > 5 {
-                return Err(StakingError::InvalidInput);
-            }
-            let current_agents = self.get_agents().unwrap();
-            for agent in existing.iter() {
-                sum += agent.1;
-
-                let amt = self.pro_rata(value, agent.1, BIPS);
-                if !self.is_disabled(agent.0, &current_agents) {
-                    update_list.push(WeightUpdate {
-                        agent: agent.0,
-                        weight: amt,
-                        increase: false,
-                    });
-                    value -= amt;
-                }
-            }
-            if sum != BIPS {
-                return Err(StakingError::InvalidInput);
-            }
-
-            // Add remaining (dust) value to the 1st agent from the `agents` list if it isn't disabled
-            match update_list.first() {
-                Some(WeightUpdate { agent, .. }) if agent == &existing[0].0 => {
-                    update_list[0].weight += value
-                }
-                _ => {}
+            let (weights, safe_check) = match cast {
+                CastType::Direct(weights) => (weights, false),
+                CastType::Delegate(nft) => (
+                    self.cast_distribution
+                        .get(nft)
+                        .ok_or(StakingError::InvalidInput)?,
+                    true,
+                ),
             };
 
-            debug_println!("{:?}", update_list);
-            if let Err(e) = self.call_registry_update(update_list) {
-                return Err(StakingError::InternalError(e));
-            }
-            Ok(())
+            self.cast_distribution.insert(nft_id, &weights);
+            self.update_registry_weights(&weights, value, true, safe_check)
+        }
+
+        pub fn add_cast_distribution(
+            &mut self,
+            nft_id: u128,
+            value: u128,
+        ) -> Result<(), StakingError> {
+            let cast = self.cast_distribution.get(nft_id).unwrap();
+            self.update_registry_weights(&cast, value, true, true)
+        }
+
+        pub fn remove_cast_distribution(
+            &mut self,
+            nft_id: u128,
+            value: u128,
+        ) -> Result<(), StakingError> {
+            let cast = self.cast_distribution.get(nft_id).unwrap();
+            self.update_registry_weights(&cast, value, false, true)
         }
 
         fn emit_event<EE>(emitter: EE, event: Event)
@@ -605,21 +567,7 @@ pub mod staking {
                     .insert(minted_nft, &(vote_delegation, token_value, nonce));
             }
 
-            match validator_cast {
-                CastType::Direct(weights) => {
-                    self.cast_distribution.insert(minted_nft, &weights);
-                    self.update_registry_weights(weights, token_value, true)?;
-                }
-                CastType::Delegate(nft) => {
-                    let d = self.cast_distribution.get(nft);
-                    if let Some(dist) = d {
-                        self.cast_distribution.insert(minted_nft, &dist);
-                        self.safe_update_registry_weights(dist, token_value, true)?;
-                    } else {
-                        return Err(StakingError::InvalidInput);
-                    }
-                }
-            }
+            self.new_cast_distribution(minted_nft, token_value, validator_cast)?;
 
             Self::emit_event(
                 Self::env(),
@@ -645,25 +593,8 @@ pub mod staking {
             }
             let data = self.nft.get_governance_data(nft_id).unwrap();
             // deallocate current cast weights
-            let current_cast = self.cast_distribution.get(nft_id).unwrap();
-            self.remove_cast_distribution(current_cast, data.stake_weight)?;
-            //
-            match validator_cast {
-                CastType::Direct(weights) => {
-                    self.cast_distribution.insert(nft_id, &weights);
-                    self.update_registry_weights(weights, data.stake_weight, true)?;
-                }
-                CastType::Delegate(nft) => {
-                    let d = self.cast_distribution.get(nft);
-                    if let Some(dist) = d {
-                        self.cast_distribution.insert(nft_id, &dist);
-                        self.update_registry_weights(dist, data.stake_weight, true)?;
-                    } else {
-                        return Err(StakingError::InvalidInput);
-                    }
-                }
-            }
-            Ok(())
+            self.remove_cast_distribution(nft_id, data.stake_weight)?;
+            self.new_cast_distribution(nft_id, data.stake_weight, validator_cast)
         }
 
         #[ink(message, selector = 4)]
@@ -774,12 +705,13 @@ pub mod staking {
         ) -> Result<(), StakingError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
+
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
             self.update_stake_accumulation(now)?;
-            self.claim_staking_rewards(nft_id)?; // should come before `update_registry_weights` call
+            self.claim_staking_rewards(nft_id)?; // should come before `add_cast_distribution` call
+            self.add_cast_distribution(nft_id, token_value)?;
             self.staked_token_balance += token_value;
-            let current_cast = self.cast_distribution.get(nft_id).unwrap();
-            self.update_registry_weights(current_cast, token_value, true)?;
+
             if let Some(vote_delegation) = self.voting_delegations.get(nft_id) {
                 debug_println!("ADDing Delegation Value {}", token_value);
                 let update = vote_delegation.1 + token_value;
@@ -813,8 +745,7 @@ pub mod staking {
                 .get(token_id)
                 .unwrap_or(data.block_created);
             let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
-            let current_cast = self.cast_distribution.get(token_id).unwrap();
-            self.update_registry_weights(current_cast, reward, true)?;
+            self.add_cast_distribution(token_id, reward)?;
             self.last_reward_claim.insert(token_id, &now);
             if let Some(vote_delegation) = self.voting_delegations.get(token_id) {
                 if self.is_still_same_pool(vote_delegation.0, vote_delegation.2) {
@@ -862,8 +793,7 @@ pub mod staking {
                 }
             }
             self.update_stake_accumulation(now)?;
-            let cast_distribution = self.cast_distribution.get(token_id).unwrap();
-            self.update_registry_weights(cast_distribution, data.stake_weight, false)?;
+            self.remove_cast_distribution(token_id, data.stake_weight)?;
             let last_claim = self
                 .last_reward_claim
                 .get(token_id)
@@ -955,9 +885,8 @@ pub mod staking {
 
             // Cast NFT Weight to new agent
 
-            let weights = vec![(new_agent, BIPS)];
-            self.cast_distribution.insert(minted_nft, &weights);
-            self.update_registry_weights(weights, self.token_stake_amount, true)?;
+            let cast = CastType::Direct(vec![(new_agent, BIPS)]);
+            self.new_cast_distribution(minted_nft, self.token_stake_amount, cast)?;
 
             self.deployed_validators.push(Validator {
                 validator,
