@@ -571,6 +571,7 @@ pub mod staking {
 
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
             self.staked_token_balance += token_value;
+            self.reward_stake_accumulation += token_value * ((now - self.creation_time) as u128);
 
             let recipient = to.unwrap_or(caller);
             let minted_nft = self.mint_psp34(recipient, token_value, 0)?;
@@ -713,7 +714,7 @@ pub mod staking {
 
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
             self.staked_token_balance += token_value;
-            // TODO: self.reward_stake_accumulation += token_value; Is it required?
+            self.reward_stake_accumulation += token_value * ((now - self.creation_time) as u128);
 
             self.add_cast_distribution(nft_id, token_value)?;
 
@@ -766,7 +767,7 @@ pub mod staking {
             }
 
             self.staked_token_balance += reward;
-            self.reward_stake_accumulation += reward;
+            self.reward_stake_accumulation += reward * ((now - self.creation_time) as u128);
 
             Ok(())
         }
@@ -798,6 +799,10 @@ pub mod staking {
             }
 
             self.staked_token_balance -= data.stake_weight;
+            // FIXME: still need some adjustments
+            self.reward_stake_accumulation -=
+                data.stake_weight * ((now - self.creation_time) as u128);
+            
             self.unstake_requests.insert(
                 nft_id,
                 &UnstakeRequest {
