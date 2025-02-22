@@ -14,9 +14,6 @@ jobs:
         job:
           - contract build
           - test
-    env:
-      CONTRACTS: "governance governance_council governance_nft governance_staking governance_token
-                  mock_nominator nomination_agent registry share_token vault vesting"
 
     steps:
     - uses: actions/checkout@v3
@@ -30,7 +27,8 @@ jobs:
       run: cargo install cargo-contract --force --locked --version 3.2.0
     - name: Run ${{ matrix.job }}
       run: |
-        for contract in ${CONTRACTS}; do
+        contracts=($(find "./src" -maxdepth 1 -type d -exec test -f {}/Cargo.toml \; -print | xargs -n 1 basename))
+        for contract in ${contracts[@]}; do
           echo "Processing contract: $contract";
           cargo ${{ matrix.job }} --manifest-path=src/$contract/Cargo.toml;
         done
