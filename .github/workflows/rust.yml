@@ -34,3 +34,8 @@ jobs:
           echo "Processing contract: $contract";
           cargo ${{ matrix.job }} --manifest-path=src/$contract/Cargo.toml;
         done
+    - name: Run integration test
+      if: matrix.job == 'test'
+      run: |
+        bash ./build-all.sh
+        cargo test --manifest-path=drink_tests/Cargo.toml
