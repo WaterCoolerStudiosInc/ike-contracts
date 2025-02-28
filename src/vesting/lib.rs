@@ -55,6 +55,15 @@ pub mod vesting {
             }
         }
 
+        fn only_admin(&self) -> Result<AccountId, VestingError> {
+            let admin = self.admin.ok_or(VestingError::NoAdmin)?;
+            if self.env().caller() != admin {
+                return Err(VestingError::AdminOnly);
+            }
+
+            Ok(admin)
+        }
+
         fn token_balance_of(&self, account: AccountId) -> u128 {
             let token: contract_ref!(PSP22) = self.token.into();
             token.balance_of(account)
@@ -94,11 +103,7 @@ pub mod vesting {
             recipients: Vec<AccountId>,
             schedules: Vec<Schedule>,
         ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            self.only_admin()?;
 
             // Cannot add recipient after activation
             if self.active {
@@ -142,11 +147,7 @@ pub mod vesting {
             &mut self,
             recipients: Vec<AccountId>,
         ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            self.only_admin()?;
 
             // Cannot remove recipient after activation
             if self.active {
@@ -178,11 +179,7 @@ pub mod vesting {
         /// Caller must be the current admin
         #[ink(message)]
         pub fn activate(&mut self) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            self.only_admin()?;
 
             if self.active {
                 return Err(VestingError::NoChange);
@@ -198,11 +195,7 @@ pub mod vesting {
         /// Caller must be the current admin
         #[ink(message)]
         pub fn admin_transfer(&mut self, to: AccountId) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            let admin = self.only_admin()?;
 
             if admin == to {
                 return Err(VestingError::NoChange);
@@ -224,11 +217,7 @@ pub mod vesting {
         /// Contract must have been activated
         #[ink(message)]
         pub fn admin_relinquish(&mut self) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            self.only_admin()?;
 
             if !self.active {
                 return Err(VestingError::NotActive);
@@ -245,11 +234,7 @@ pub mod vesting {
         /// Can be disabled by removing the admin via `admin_relinquish()`
         #[ink(message)]
         pub fn admin_abort(&mut self) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            let admin = self.only_admin()?;
 
             let balance = self.token_balance_of(self.env().account_id());
 
