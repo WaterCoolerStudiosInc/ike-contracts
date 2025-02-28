@@ -8,17 +8,10 @@ pub mod vesting {
     use crate::errors::VestingError;
     use ink::{
         contract_ref,
-        env::Error as InkEnvError,
-        prelude::{format, vec::Vec},
+        prelude::vec::Vec,
         storage::Mapping,
     };
     use psp22::PSP22;
-
-    impl From<InkEnvError> for VestingError {
-        fn from(e: InkEnvError) -> Self {
-            VestingError::InkEnvError(format!("{:?}", e))
-        }
-    }
 
     #[ink(event)]
     pub struct Claim {
@@ -108,7 +101,7 @@ pub mod vesting {
             }
 
             // Cannot add recipient after activation
-            if self.active == true {
+            if self.active {
                 return Err(VestingError::Active);
             }
 
@@ -156,7 +149,7 @@ pub mod vesting {
             }
 
             // Cannot remove recipient after activation
-            if self.active == true {
+            if self.active {
                 return Err(VestingError::Active);
             }
 
@@ -191,7 +184,7 @@ pub mod vesting {
                 return Err(VestingError::AdminOnly);
             }
 
-            if self.active == true {
+            if self.active {
                 return Err(VestingError::NoChange);
             }
 
@@ -271,7 +264,7 @@ pub mod vesting {
             let recipient = self.env().caller();
 
             // Vesting must have been activated
-            if self.active == false {
+            if !self.active {
                 return Err(VestingError::NotActive);
             }
 
@@ -310,7 +303,6 @@ pub mod vesting {
                 // Vest full remaining amount
                 payable += schedule.amount;
                 schedule.amount = 0;
-                schedule.offset += schedule.duration;
                 schedule.duration = 0;
             }
 
