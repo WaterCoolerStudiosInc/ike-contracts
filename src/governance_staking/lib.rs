@@ -799,10 +799,13 @@ pub mod staking {
             }
 
             self.staked_token_balance -= data.stake_weight;
-            // FIXME: still need some adjustments
-            self.reward_stake_accumulation -=
-                data.stake_weight * ((now - self.creation_time) as u128);
-            
+
+            // Possible heuristics to adjust the weights
+            // 1. Don't make any changes (=> future reward is always less than the ideal yield)
+            // 2. Remove the utilised range (=> future reward can yield higher than ideal returns)
+            // 3. Only account for utilised range (middle ground) (ACTIVE)
+            self.reward_stake_accumulation -= data.stake_weight * (self.creation_time as u128);
+
             self.unstake_requests.insert(
                 nft_id,
                 &UnstakeRequest {
