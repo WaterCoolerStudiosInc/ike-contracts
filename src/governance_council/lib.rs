@@ -89,6 +89,7 @@ mod governance_council {
     )]
     pub struct Proposal {
         action: Action,
+        threshold: u16,
         proposers: Vec<AccountId>,
     }
 
@@ -178,6 +179,7 @@ mod governance_council {
                 hash,
                 &Proposal {
                     action: action.clone(),
+                    threshold: self.threshold,
                     proposers: vec![creator],
                 },
             );
@@ -186,6 +188,7 @@ mod governance_council {
                 Event::ProposalCreated(ProposalCreated {
                     proposal: Proposal {
                         action: action.clone(),
+                        threshold: self.threshold,
                         proposers: vec![creator],
                     },
                 }),
@@ -313,7 +316,7 @@ mod governance_council {
                         return Err(CouncilError::Unauthorized);
                     }
 
-                    if curr_proposers.len() as u16 + 1_u16 == self.threshold {
+                    if curr_proposers.len() as u16 + 1_u16 == proposal.threshold {
                         debug_println!("{}", "executing");
                         self.proposals.remove(hash);
                         self.execute(&proposal.action)?;
