@@ -1,4 +1,3 @@
-use ink::prelude::string::String;
 use psp22::PSP22Error;
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -14,6 +13,5 @@ pub enum VestingError {
     AdminOnly,
     InsufficientFunding,
     InvalidInput,
-    InkEnvError(String),
     TokenError(PSP22Error),
 }

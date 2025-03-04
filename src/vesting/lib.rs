@@ -8,17 +8,10 @@ pub mod vesting {
     use crate::errors::VestingError;
     use ink::{
         contract_ref,
-        env::{Error as InkEnvError},
-        prelude::{format, vec::Vec},
+        prelude::vec::Vec,
         storage::Mapping,
     };
     use psp22::PSP22;
-
-    impl From<InkEnvError> for VestingError {
-        fn from(e: InkEnvError) -> Self {
-            VestingError::InkEnvError(format!("{:?}", e))
-        }
-    }
 
     #[ink(event)]
     pub struct Claim {
@@ -28,7 +21,10 @@ pub mod vesting {
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    #[cfg_attr(
+        feature = "std",
+        derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
+    )]
     pub struct Schedule {
         pub amount: u128,
         pub cliff: u128,
@@ -48,9 +44,7 @@ pub mod vesting {
 
     impl Vesting {
         #[ink(constructor)]
-        pub fn new(
-            token: AccountId,
-        ) -> Self {
+        pub fn new(token: AccountId) -> Self {
             Self {
                 token,
                 admin: Some(Self::env().caller()),
@@ -59,6 +53,15 @@ pub mod vesting {
                 funding_required: 0,
                 active: false,
             }
+        }
+
+        fn only_admin(&self) -> Result<AccountId, VestingError> {
+            let admin = self.admin.ok_or(VestingError::NoAdmin)?;
+            if self.env().caller() != admin {
+                return Err(VestingError::AdminOnly);
+            }
+
+            Ok(admin)
         }
 
         fn token_balance_of(&self, account: AccountId) -> u128 {
@@ -100,14 +103,10 @@ pub mod vesting {
             recipients: Vec<AccountId>,
             schedules: Vec<Schedule>,
         ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            self.only_admin()?;
 
             // Cannot add recipient after activation
-            if self.active == true {
+            if self.active {
                 return Err(VestingError::Active);
             }
 
@@ -148,21 +147,19 @@ pub mod vesting {
             &mut self,
             recipients: Vec<AccountId>,
         ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+            self.only_admin()?;
 
             // Cannot remove recipient after activation
-            if self.active == true {
+            if self.active {
                 return Err(VestingError::Active);
             }
 
             let mut removed_funding_required = 0u128;
 
             for recipient in recipients.iter() {
-                let schedule = self.schedules.get(recipient)
+                let schedule = self
+                    .schedules
+                    .get(recipient)
                     .ok_or(VestingError::RecipientDoesNotExist)
                     .unwrap();
 
@@ -181,16 +178,10 @@ pub mod vesting {
         ///
         /// Caller must be the current admin
         #[ink(message)]
-        pub fn activate(
-            &mut self,
-        ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
+        pub fn activate(&mut self) -> Result<(), VestingError> {
+            self.only_admin()?;
 
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
-
-            if self.active == true {
+            if self.active {
                 return Err(VestingError::NoChange);
             }
 
@@ -203,15 +194,8 @@ pub mod vesting {
         ///
         /// Caller must be the current admin
         #[ink(message)]
-        pub fn admin_transfer(
-            &mut self,
-            to: AccountId,
-        ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+        pub fn admin_transfer(&mut self, to: AccountId) -> Result<(), VestingError> {
+            let admin = self.only_admin()?;
 
             if admin == to {
                 return Err(VestingError::NoChange);
@@ -232,14 +216,8 @@ pub mod vesting {
         /// Caller must be the current admin
         /// Contract must have been activated
         #[ink(message)]
-        pub fn admin_relinquish(
-            &mut self,
-        ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+        pub fn admin_relinquish(&mut self) -> Result<(), VestingError> {
+            self.only_admin()?;
 
             if !self.active {
                 return Err(VestingError::NotActive);
@@ -255,14 +233,8 @@ pub mod vesting {
         /// Caller must be the current admin
         /// Can be disabled by removing the admin via `admin_relinquish()`
         #[ink(message)]
-        pub fn admin_abort(
-            &mut self,
-        ) -> Result<(), VestingError> {
-            let admin = self.admin.ok_or(VestingError::NoAdmin).unwrap();
-
-            if self.env().caller() != admin {
-                return Err(VestingError::AdminOnly);
-            }
+        pub fn admin_abort(&mut self) -> Result<(), VestingError> {
+            let admin = self.only_admin()?;
 
             let balance = self.token_balance_of(self.env().account_id());
 
@@ -272,18 +244,18 @@ pub mod vesting {
         }
 
         #[ink(message)]
-        pub fn claim(
-            &mut self,
-        ) -> Result<u128, VestingError> {
+        pub fn claim(&mut self) -> Result<u128, VestingError> {
             let now = self.env().block_timestamp();
             let recipient = self.env().caller();
 
             // Vesting must have been activated
-            if self.active == false {
+            if !self.active {
                 return Err(VestingError::NotActive);
             }
 
-            let mut schedule = self.schedules.get(recipient)
+            let mut schedule = self
+                .schedules
+                .get(recipient)
                 .ok_or(VestingError::RecipientDoesNotExist)
                 .unwrap();
 
@@ -306,7 +278,8 @@ pub mod vesting {
             if now < end {
                 // Vest amount proportional to elapsed time
                 let time_elapsed = now - start;
-                let amount_proportional = time_elapsed as u128 * schedule.amount / schedule.duration as u128;
+                let amount_proportional =
+                    time_elapsed as u128 * schedule.amount / schedule.duration as u128;
                 payable += amount_proportional;
                 schedule.amount -= amount_proportional;
                 schedule.offset += time_elapsed;
@@ -315,7 +288,6 @@ pub mod vesting {
                 // Vest full remaining amount
                 payable += schedule.amount;
                 schedule.amount = 0;
-                schedule.offset += schedule.duration;
                 schedule.duration = 0;
             }
 
@@ -327,12 +299,10 @@ pub mod vesting {
 
             self.token_transfer_to(recipient, payable)?;
 
-            Self::env().emit_event(
-                Claim {
-                    recipient,
-                    amount: payable,
-                }
-            );
+            Self::env().emit_event(Claim {
+                recipient,
+                amount: payable,
+            });
 
             Ok(payable)
         }
