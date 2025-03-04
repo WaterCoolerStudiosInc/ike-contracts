@@ -14,7 +14,7 @@ core_contracts=("mock_nominator" "nomination_agent" "registry" "share_token" "va
 for i in "${core_contracts[@]}"
 do
   echo -e "\nBuilding '$CONTRACTS_DIR/$i/Cargo.toml'…"
-  cargo +stable-2023-12-28 contract build --release --quiet --manifest-path $CONTRACTS_DIR/$i/Cargo.toml
+  cargo contract build --release --quiet --manifest-path $CONTRACTS_DIR/$i/Cargo.toml
 
   echo "Copying build files to '$DEPLOYMENTS_DIR/development/$i'…"
   mkdir -p $DEPLOYMENTS_DIR/development/$i
