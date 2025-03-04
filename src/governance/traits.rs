@@ -1,39 +1,51 @@
+use super::*;
 use crate::governance::{GovernanceError, PropType, Proposal, Vote};
-use ink::{primitives::AccountId, prelude::vec::Vec};
+use ink::{prelude::vec::Vec, primitives::AccountId};
 
 #[ink::trait_definition]
-
-pub trait IGovernaance {
+pub trait IGovernance {
     #[ink(message)]
     fn get_council(&self) -> AccountId;
+
     #[ink(message)]
     fn get_staking(&self) -> AccountId;
+
     #[ink(message)]
-    fn get_voting_delay(&self) -> u64;
+    fn get_voting_delay(&self) -> Time;
+
     #[ink(message)]
-    fn get_voting_period(&self) -> u64;
+    fn get_voting_period(&self) -> Time;
+
     #[ink(message)]
     fn get_execution_threshold(&self) -> u128;
+
     #[ink(message)]
     fn get_rejection_threshold(&self) -> u128;
+
     #[ink(message)]
     fn get_acceptance_threshold(&self) -> u128;
+
     #[ink(message)]
-    fn get_proposal_by_id(&self, id: u128) -> Option<Proposal>;
+    fn get_proposal_by_id(&self, id: PropId) -> Option<Proposal>;
+
     #[ink(message)]
     fn get_all_proposals(&self) -> Vec<Proposal>;
+
     #[ink(message)]
-    fn get_proposal_by_nft(&self, id: u128) -> Option<Proposal>;
+    fn get_proposal_by_nft(&self, id: NftId) -> Option<Proposal>;
+
     #[ink(message, selector = 33)]
-    fn get_active_proposal_status_by_nft(&self, id: u128) -> bool;
+    fn get_active_proposal_status_by_nft(&self, id: NftId) -> bool;
 
     #[ink(message)]
-    fn create_proposal(&mut self, prop: PropType, nft_id: u128) -> Result<(), GovernanceError>;
+    fn create_proposal(&mut self, prop: PropType, nft_id: NftId) -> Result<(), GovernanceError>;
 
     #[ink(message)]
-    fn vote(&mut self, prop_id: u128, nft_id: u128, pro: Vote) -> Result<(), GovernanceError>;
+    fn vote(&mut self, prop_id: PropId, nft_id: NftId, pro: Vote) -> Result<(), GovernanceError>;
+
     #[ink(message)]
-    fn complete_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError>;
+    fn complete_proposal(&mut self, prop_id: PropId) -> Result<(), GovernanceError>;
+
     #[ink(message)]
-    fn cancel_proposal(&mut self, prop_id: u128) -> Result<(), GovernanceError>;
+    fn cancel_proposal(&mut self, prop_id: PropId) -> Result<(), GovernanceError>;
 }
