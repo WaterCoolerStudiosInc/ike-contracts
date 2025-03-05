@@ -3,23 +3,6 @@ pub mod traits;
 pub use crate::governance_nft::GovernanceNFT;
 pub use crate::governance_nft::GovernanceNFTRef;
 
-//pub use psp34::{Id, PSP34Data, PSP34Event};
-//pub use psp34::PSP34Error;
-//pub use psp34::{PSP34Burnable, PSP34Metadata, PSP34Mintable, PSP34};
-
-// An example code of a smart contract using PSP34Data struct to implement
-// the functionality of PSP34 fungible token.
-//
-// Any contract can be easily enriched to act as PSP34 token by:
-// (1) adding PSP34Data to contract storage
-// (2) properly initializing it
-// (3) defining the correct AttributeSet, Transfer and Approval events
-// (4) implementing PSP34 trait based on PSP34Data methods
-// (5) properly emitting resulting events
-//
-// Implemented the optional PSP34Mintable (6), PSP34Burnable (7), and PSP34Metadata (8) extensions
-// and included unit tests (8).
-
 #[ink::contract]
 mod governance_nft {
     use ink::{
@@ -44,7 +27,7 @@ mod governance_nft {
 
     #[ink(storage)]
     pub struct GovernanceNFT {
-        data: PSP34Data, // (1)
+        data: PSP34Data,
         metadata: metadata::Data,
         admin: AccountId,
         governance: AccountId,
@@ -57,19 +40,18 @@ mod governance_nft {
         #[ink(constructor)]
         pub fn new(governance: AccountId) -> Self {
             Self {
-                data: PSP34Data::new(), // (2)
+                data: PSP34Data::new(),
                 metadata: metadata::Data::default(),
                 admin: governance,
                 governance: governance,
                 mint_count: 0_u128,
-                token_governance_data: Mapping::default(), // (8)
+                token_governance_data: Mapping::default(),
                 lock_transfer: true,
             }
         }
 
         // A helper function translating a vector of PSP34Events into the proper
         // ink event types (defined internally in this contract) and emitting them.
-        // (5)
         fn emit_events(&self, events: ink::prelude::vec::Vec<PSP34Event>) {
             for event in events {
                 match event {
@@ -94,6 +76,7 @@ mod governance_nft {
             }
         }
     }
+
     impl IGovernanceNFT for GovernanceNFT {
         #[ink(message, selector = 91)]
         fn lock_transfer(&mut self) -> Result<(), PSP34Error> {
@@ -133,11 +116,12 @@ mod governance_nft {
             self.emit_events(events);
             Ok(())
         }
-        
+
         #[ink(message, selector = 31337)]
         fn get_governance_data(&self, id: u128) -> Option<GovernanceData> {
             self.token_governance_data.get(id)
         }
+
         fn get_admin(&self) -> AccountId {
             self.admin
         }
@@ -169,6 +153,7 @@ mod governance_nft {
 
             Ok(())
         }
+
         #[ink(message, selector = 99)]
         fn decrement_vote_weight(&mut self, id: u128, vote_weight: u128) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
@@ -183,6 +168,7 @@ mod governance_nft {
             self.token_governance_data.insert(id, &curr);
             Ok(())
         }
+
         #[ink(message, selector = 1337)]
         fn mint(
             &mut self,
@@ -224,6 +210,7 @@ mod governance_nft {
             self.emit_events(events);
             Ok(())
         }
+
         #[ink(message, selector = 8888)]
         fn set_admin(&mut self, new_admin: AccountId) -> Result<(), PSP34Error> {
             if self.env().caller() != self.admin {
@@ -232,13 +219,13 @@ mod governance_nft {
             self.admin = new_admin;
             Ok(())
         }
+
         #[ink(message)]
         fn owner_of_id(&self, id: u128) -> Option<AccountId> {
             self.data.owner_of(&Id::U128(id))
         }
     }
 
-    // (3)
     #[ink(event)]
     pub struct Approval {
         #[ink(topic)]
@@ -250,7 +237,6 @@ mod governance_nft {
         approved: bool,
     }
 
-    // (3)
     #[ink(event)]
     pub struct Transfer {
         #[ink(topic)]
@@ -261,7 +247,6 @@ mod governance_nft {
         id: Id,
     }
 
-    // (3)
     #[ink(event)]
     pub struct AttributeSet {
         id: Id,
@@ -269,7 +254,6 @@ mod governance_nft {
         data: Vec<u8>,
     }
 
-    // (4)
     impl PSP34 for GovernanceNFT {
         #[ink(message)]
         fn collection_id(&self) -> Id {
@@ -326,15 +310,10 @@ mod governance_nft {
         }
     }
 
-    // (7)
-
-    // (8)
     impl PSP34Metadata for GovernanceNFT {
         #[ink(message)]
         fn get_attribute(&self, id: Id, key: Vec<u8>) -> Option<Vec<u8>> {
             self.metadata.get_attribute(id, key)
         }
     }
-
-    // (9)
 }
