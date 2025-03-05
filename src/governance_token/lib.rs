@@ -1,24 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-
-
 pub use crate::token::TokenRef;
 
 #[ink::contract]
 mod token {
-
     use ink::prelude::{string::String, vec::Vec};
     use psp22::{PSP22Burnable, PSP22Data, PSP22Error, PSP22Event, PSP22Metadata, PSP22};
+
     #[ink(storage)]
     pub struct Token {
-        data: PSP22Data, // (1)
+        data: PSP22Data,
         owner: AccountId,
         operator: AccountId,
         name: Option<String>,
         symbol: Option<String>,
-        
         decimals: u8,
     }
+
     impl Token {
         #[ink(constructor)]
         pub fn new() -> Self {
@@ -26,12 +24,12 @@ mod token {
                 owner: Self::env().caller(),
                 operator: Self::env().caller(),
                 data: PSP22Data::new(100_000_000_000_000_000, Self::env().caller()), // (2)
-                name:Some(String::from("Governance Token")),
-                symbol:Some(String::from("GT")),
+                name: Some(String::from("Governance Token")),
+                symbol: Some(String::from("GT")),
                 decimals: 18_u8,
             }
         }
-       
+
         #[ink(message)]
         pub fn transfer_ownership(&mut self, new_owner: AccountId) -> Result<(), PSP22Error> {
             if Self::env().caller() != self.owner {
@@ -40,13 +38,14 @@ mod token {
             self.owner = new_owner;
             Ok(())
         }
+
         #[ink(message)]
         pub fn get_owner(&self) -> AccountId {
             self.owner
         }
+
         // A helper function translating a vector of PSP22Events into the proper
         // ink event types (defined internally in this contract) and emitting them.
-        // (5)
         fn emit_events(&self, events: Vec<PSP22Event>) {
             for event in events {
                 match event {
@@ -67,7 +66,6 @@ mod token {
         }
     }
 
-    // (3)
     #[ink(event)]
     pub struct Approval {
         #[ink(topic)]
@@ -77,7 +75,6 @@ mod token {
         amount: u128,
     }
 
-    // (3)
     #[ink(event)]
     pub struct Transfer {
         #[ink(topic)]
@@ -89,15 +86,16 @@ mod token {
     impl PSP22Burnable for Token {
         #[ink(message)]
         fn burn(&mut self, value: u128) -> Result<(), PSP22Error> {
-            if Self::env().caller() != self.owner {
+            let caller = self.env().caller();
+            if caller != self.owner {
                 return Err(PSP22Error::Custom(String::from("Caller is not Owner")));
             }
-            let events = self.data.burn(self.env().caller(), value)?;
+            let events = self.data.burn(caller, value)?;
             self.emit_events(events);
             Ok(())
         }
     }
-    // (4)
+
     impl PSP22 for Token {
         #[ink(message)]
         fn total_supply(&self) -> u128 {
@@ -143,7 +141,7 @@ mod token {
                 let events = self.data.transfer_from(caller, from, to, value)?;
                 self.emit_events(events);
             }
-            
+
             Ok(())
         }
 
@@ -181,21 +179,20 @@ mod token {
         }
     }
 
-    // (6)
     impl PSP22Metadata for Token {
         #[ink(message)]
         fn token_name(&self) -> Option<String> {
             self.name.clone()
         }
+
         #[ink(message)]
         fn token_symbol(&self) -> Option<String> {
             self.symbol.clone()
         }
+
         #[ink(message)]
         fn token_decimals(&self) -> u8 {
             self.decimals
         }
     }
-
-    // (7)
 }
