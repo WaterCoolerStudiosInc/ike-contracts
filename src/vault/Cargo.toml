@@ -40,3 +40,5 @@ std = [
     "registry/std",
 ]
 ink-as-dependency = []
+__ink_dylint_Storage = []
+__ink_dylint_Constructor = []
