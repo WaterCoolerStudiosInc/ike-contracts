@@ -14,6 +14,34 @@ mod governance_nft {
 
     use crate::traits::IGovernanceNFT;
 
+    #[ink(event)]
+    pub struct Approval {
+        #[ink(topic)]
+        owner: AccountId,
+        #[ink(topic)]
+        operator: AccountId,
+        #[ink(topic)]
+        id: Option<Id>,
+        approved: bool,
+    }
+
+    #[ink(event)]
+    pub struct Transfer {
+        #[ink(topic)]
+        from: Option<AccountId>,
+        #[ink(topic)]
+        to: Option<AccountId>,
+        #[ink(topic)]
+        id: Id,
+    }
+
+    #[ink(event)]
+    pub struct AttributeSet {
+        id: Id,
+        key: Vec<u8>,
+        data: Vec<u8>,
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
         feature = "std",
@@ -43,7 +71,7 @@ mod governance_nft {
                 data: PSP34Data::new(),
                 metadata: metadata::Data::default(),
                 admin: governance,
-                governance: governance,
+                governance,
                 mint_count: 0_u128,
                 token_governance_data: Mapping::default(),
                 lock_transfer: true,
@@ -110,7 +138,7 @@ mod governance_nft {
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
             let events = self.data.transfer(from, to, id, data)?;
-            if self.lock_transfer == true && self.env().caller() != self.admin {
+            if self.lock_transfer && self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
             }
             self.emit_events(events);
@@ -136,16 +164,15 @@ mod governance_nft {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
-            debug_println!("NFT ID {}", &id);
-            let mut curr = self.token_governance_data.get(id).unwrap();
+            let mut curr = self
+                .token_governance_data
+                .get(id)
+                .ok_or(PSP34Error::TokenNotExists)?;
             debug_println!("{:?}", curr);
             if vote_weight > 0 {
-                debug_println!("VOTE WEIGHT UPDATE {}", &vote_weight);
                 curr.vote_weight += vote_weight;
             }
             if stake_weight > 0 {
-                debug_println!("STAKE WEIGHT UPDATE {}", &stake_weight);
-
                 curr.stake_weight += stake_weight;
             }
             debug_println!("{:?}", curr);
@@ -159,13 +186,18 @@ mod governance_nft {
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
-            let mut curr = self.token_governance_data.get(id).unwrap();
-            assert!(curr.vote_weight >= vote_weight);
-            //assert!(curr.stake_weight >= vote_weight);
+            
+            let mut curr = self
+                .token_governance_data
+                .get(id)
+                .ok_or(PSP34Error::TokenNotExists)?;
+
+            if curr.vote_weight < vote_weight {
+                return Err(PSP34Error::Custom(String::from("Insufficient vote weight")));
+            }
             curr.vote_weight -= vote_weight;
-            //curr.stake_weight -= vote_weight;
-            debug_println!("VOTE WEIGHT {}", curr.vote_weight);
             self.token_governance_data.insert(id, &curr);
+            
             Ok(())
         }
 
@@ -185,13 +217,12 @@ mod governance_nft {
             let g_metadata = GovernanceData {
                 block_created: self.env().block_timestamp(),
                 stake_weight,
-                vote_weight: vote_weight,
+                vote_weight,
             };
-
             self.token_governance_data
                 .insert(self.mint_count, &g_metadata);
-            let events = self.data.mint(to, curr_id)?;
 
+            let events = self.data.mint(to, curr_id)?;
             self.emit_events(events);
 
             Ok(self.mint_count)
@@ -199,15 +230,14 @@ mod governance_nft {
 
         #[ink(message, selector = 8057)]
         fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
-            // Add security, restrict usage of the message
             if self.env().caller() != self.admin {
                 return Err(PSP34Error::Custom(String::from("Unauthorized")));
             }
-            self.token_governance_data.remove(id);
-            let _id = Id::U128(id);
 
-            let events = self.data.burn(account, self.env().caller(), _id)?;
+            self.token_governance_data.remove(id);
+            let events = self.data.burn(account, self.env().caller(), Id::U128(id))?;
             self.emit_events(events);
+
             Ok(())
         }
 
@@ -224,34 +254,6 @@ mod governance_nft {
         fn owner_of_id(&self, id: u128) -> Option<AccountId> {
             self.data.owner_of(&Id::U128(id))
         }
-    }
-
-    #[ink(event)]
-    pub struct Approval {
-        #[ink(topic)]
-        owner: AccountId,
-        #[ink(topic)]
-        operator: AccountId,
-        #[ink(topic)]
-        id: Option<Id>,
-        approved: bool,
-    }
-
-    #[ink(event)]
-    pub struct Transfer {
-        #[ink(topic)]
-        from: Option<AccountId>,
-        #[ink(topic)]
-        to: Option<AccountId>,
-        #[ink(topic)]
-        id: Id,
-    }
-
-    #[ink(event)]
-    pub struct AttributeSet {
-        id: Id,
-        key: Vec<u8>,
-        data: Vec<u8>,
     }
 
     impl PSP34 for GovernanceNFT {
@@ -282,10 +284,10 @@ mod governance_nft {
             id: Id,
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
-            let events = self.data.transfer(self.env().caller(), to, id, data)?;
-            if self.lock_transfer == true {
+            if self.lock_transfer {
                 return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
             }
+            let events = self.data.transfer(self.env().caller(), to, id, data)?;
             self.emit_events(events);
             Ok(())
         }
