@@ -103,6 +103,13 @@ mod governance_nft {
                 }
             }
         }
+
+        fn only_admin(&self) -> Result<(), PSP34Error> {
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
+            Ok(())
+        }
     }
 
     impl IGovernanceNFT for GovernanceNFT {
@@ -161,9 +168,8 @@ mod governance_nft {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
+            self.only_admin()?;
+
             let mut curr = self
                 .token_governance_data
                 .get(id)
@@ -183,10 +189,8 @@ mod governance_nft {
 
         #[ink(message, selector = 99)]
         fn decrement_vote_weight(&mut self, id: u128, vote_weight: u128) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
-            
+            self.only_admin()?;
+
             let mut curr = self
                 .token_governance_data
                 .get(id)
@@ -197,7 +201,7 @@ mod governance_nft {
             }
             curr.vote_weight -= vote_weight;
             self.token_governance_data.insert(id, &curr);
-            
+
             Ok(())
         }
 
@@ -208,9 +212,7 @@ mod governance_nft {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<u128, PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
+            self.only_admin()?;
 
             self.mint_count += 1;
             let curr_id = Id::U128(self.mint_count);
@@ -230,9 +232,7 @@ mod governance_nft {
 
         #[ink(message, selector = 8057)]
         fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
+            self.only_admin()?;
 
             self.token_governance_data.remove(id);
             let events = self.data.burn(account, self.env().caller(), Id::U128(id))?;
@@ -243,9 +243,7 @@ mod governance_nft {
 
         #[ink(message, selector = 8888)]
         fn set_admin(&mut self, new_admin: AccountId) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
+            self.only_admin()?;
             self.admin = new_admin;
             Ok(())
         }
