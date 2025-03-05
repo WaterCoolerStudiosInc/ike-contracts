@@ -136,22 +136,6 @@ mod governance_nft {
             self.lock_transfer
         }
 
-        #[ink(message, selector = 17)]
-        fn transfer_from(
-            &mut self,
-            from: AccountId,
-            to: AccountId,
-            id: Id,
-            data: ink::prelude::vec::Vec<u8>,
-        ) -> Result<(), PSP34Error> {
-            let events = self.data.transfer(from, to, id, data)?;
-            if self.lock_transfer && self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
-            }
-            self.emit_events(events);
-            Ok(())
-        }
-
         #[ink(message, selector = 31337)]
         fn get_governance_data(&self, id: u128) -> Option<GovernanceData> {
             self.token_governance_data.get(id)
@@ -282,7 +266,8 @@ mod governance_nft {
             id: Id,
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
-            if self.lock_transfer {
+            if self.lock_transfer && self.env().caller() != self.admin {
+                // Only admin can transfer when locked
                 return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
             }
             let events = self.data.transfer(self.env().caller(), to, id, data)?;

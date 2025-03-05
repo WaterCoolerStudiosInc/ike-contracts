@@ -1,6 +1,5 @@
 pub use crate::governance_nft::GovernanceData;
 use ink::primitives::AccountId;
-use psp34::Id;
 use psp34::PSP34Error;
 
 #[ink::trait_definition]
@@ -38,15 +37,6 @@ pub trait IGovernanceNFT {
 
     #[ink(message, selector = 69)]
     fn is_collection_locked(&self) -> bool;
-
-    #[ink(message, selector = 17)]
-    fn transfer_from(
-        &mut self,
-        from: AccountId,
-        to: AccountId,
-        id: Id,
-        data: ink::prelude::vec::Vec<u8>,
-    ) -> Result<(), PSP34Error>;
 
     #[ink(message)]
     fn owner_of_id(&self, id: u128) -> Option<AccountId>;
