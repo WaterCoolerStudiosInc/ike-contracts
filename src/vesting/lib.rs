@@ -95,7 +95,6 @@ pub mod vesting {
         /// Adds schedules for recipients
         ///
         /// Caller must be the current admin
-        /// Can only call before vesting is active
         /// Can only have one schedule per recipient
         #[ink(message)]
         pub fn add_recipients(
@@ -104,11 +103,6 @@ pub mod vesting {
             schedules: Vec<Schedule>,
         ) -> Result<(), VestingError> {
             self.only_admin()?;
-
-            // Cannot add recipient after activation
-            if self.active {
-                return Err(VestingError::Active);
-            }
 
             if recipients.len() != schedules.len() {
                 return Err(VestingError::InvalidInput);
