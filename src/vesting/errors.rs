@@ -7,6 +7,7 @@ pub enum VestingError {
     RecipientAlreadyExists,
     Active,
     NotActive,
+    NotCancellable,
     TooEarly,
     NoChange,
     NoAdmin,

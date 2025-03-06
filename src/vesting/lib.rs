@@ -6,11 +6,7 @@ mod errors;
 pub mod vesting {
 
     use crate::errors::VestingError;
-    use ink::{
-        contract_ref,
-        prelude::vec::Vec,
-        storage::Mapping,
-    };
+    use ink::{contract_ref, prelude::vec::Vec, storage::Mapping};
     use psp22::PSP22;
 
     #[ink(event)]
@@ -30,6 +26,7 @@ pub mod vesting {
         pub cliff: u128,
         pub offset: u64,
         pub duration: u64,
+        pub is_cancellable: bool,
     }
 
     #[ink(storage)]
@@ -75,6 +72,30 @@ pub mod vesting {
                 return Err(VestingError::TokenError(e));
             }
             Ok(())
+        }
+
+        fn vested_amount(&self, schedule: &Schedule, now: u64) -> u128 {
+            let start = self.deployment_time + schedule.offset;
+            let end = start + schedule.duration;
+
+            if now < start {
+                return 0;
+            }
+
+            let mut vested = schedule.cliff;
+
+            if now < end {
+                // Vest amount proportional to elapsed time
+                let time_elapsed = now - start;
+                let amount_proportional =
+                    time_elapsed as u128 * schedule.amount / schedule.duration as u128;
+                vested += amount_proportional;
+            } else {
+                // Vest full remaining amount
+                vested += schedule.amount;
+            }
+
+            vested
         }
 
         #[ink(message)]
@@ -143,22 +164,34 @@ pub mod vesting {
         ) -> Result<(), VestingError> {
             self.only_admin()?;
 
-            // Cannot remove recipient after activation
-            if self.active {
-                return Err(VestingError::Active);
-            }
-
             let mut removed_funding_required = 0u128;
 
             for recipient in recipients.iter() {
                 let schedule = self
                     .schedules
                     .get(recipient)
-                    .ok_or(VestingError::RecipientDoesNotExist)
-                    .unwrap();
+                    .ok_or(VestingError::RecipientDoesNotExist)?;
 
-                removed_funding_required += schedule.amount + schedule.cliff;
+                let vested = match self.active {
+                    false => 0,
+                    true => {
+                        if !schedule.is_cancellable {
+                            return Err(VestingError::NotCancellable);
+                        }
+                        self.vested_amount(&schedule, self.env().block_timestamp())
+                    }
+                };
 
+                if vested != 0 {
+                    self.token_transfer_to(*recipient, vested)?;
+
+                    self.env().emit_event(Claim {
+                        recipient: *recipient,
+                        amount: vested,
+                    });
+                }
+
+                removed_funding_required += schedule.amount + schedule.cliff - vested;
                 self.schedules.remove(recipient);
             }
 
@@ -256,47 +289,27 @@ pub mod vesting {
             let mut schedule = self
                 .schedules
                 .get(recipient)
-                .ok_or(VestingError::RecipientDoesNotExist)
-                .unwrap();
+                .ok_or(VestingError::RecipientDoesNotExist)?;
 
             let start = self.deployment_time + schedule.offset;
-            let end = start + schedule.duration;
-
-            // Ensure vesting schedule has begun
             if now < start {
                 return Err(VestingError::TooEarly);
             }
 
-            let mut payable: u128 = 0;
-
-            // Vest cliff if not already vested
-            if schedule.cliff > 0 {
-                payable += schedule.cliff;
-                schedule.cliff = 0;
-            }
-
-            if now < end {
-                // Vest amount proportional to elapsed time
-                let time_elapsed = now - start;
-                let amount_proportional =
-                    time_elapsed as u128 * schedule.amount / schedule.duration as u128;
-                payable += amount_proportional;
-                schedule.amount -= amount_proportional;
-                schedule.offset += time_elapsed;
-                schedule.duration -= time_elapsed;
-            } else {
-                // Vest full remaining amount
-                payable += schedule.amount;
-                schedule.amount = 0;
-                schedule.duration = 0;
-            }
-
+            let payable = self.vested_amount(&schedule, now);
             if payable == 0 {
                 return Err(VestingError::NoChange);
             }
 
-            self.schedules.insert(recipient, &schedule);
+            let now = now.min(start + schedule.duration);
+            let time_elapsed = now - start;
 
+            schedule.amount -= payable - schedule.cliff;
+            schedule.cliff = 0;
+            schedule.offset += time_elapsed;
+            schedule.duration -= time_elapsed;
+
+            self.schedules.insert(recipient, &schedule);
             self.token_transfer_to(recipient, payable)?;
 
             Self::env().emit_event(Claim {
