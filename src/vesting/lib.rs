@@ -4,6 +4,8 @@ mod errors;
 
 #[ink::contract]
 pub mod vesting {
+    pub const DAY: u64 = 86400 * 1000;
+    pub const INTERVAL_DURATION: u64 = 30 * DAY;
 
     use crate::errors::VestingError;
     use ink::{contract_ref, prelude::vec::Vec, storage::Mapping};
@@ -75,18 +77,22 @@ pub mod vesting {
         }
 
         fn vested_amount(&self, schedule: &Schedule, now: u64) -> u128 {
+            let completed_intervals = (now - self.deployment_time) / INTERVAL_DURATION;
+            let last_interval_completion =
+                self.deployment_time + (completed_intervals * INTERVAL_DURATION);
+
             let start = self.deployment_time + schedule.offset;
             let end = start + schedule.duration;
 
-            if now < start {
+            if last_interval_completion < start {
                 return 0;
             }
 
             let mut vested = schedule.cliff;
 
-            if now < end {
+            if last_interval_completion < end {
                 // Vest amount proportional to elapsed time
-                let time_elapsed = now - start;
+                let time_elapsed = last_interval_completion - start;
                 let amount_proportional =
                     time_elapsed as u128 * schedule.amount / schedule.duration as u128;
                 vested += amount_proportional;
@@ -291,8 +297,11 @@ pub mod vesting {
                 .get(recipient)
                 .ok_or(VestingError::RecipientDoesNotExist)?;
 
+            let completed_intervals = (now - self.deployment_time) / INTERVAL_DURATION;
+            let last_interval_completion =
+                self.deployment_time + (completed_intervals * INTERVAL_DURATION);
             let start = self.deployment_time + schedule.offset;
-            if now < start {
+            if last_interval_completion < start {
                 return Err(VestingError::TooEarly);
             }
 
@@ -301,8 +310,8 @@ pub mod vesting {
                 return Err(VestingError::NoChange);
             }
 
-            let now = now.min(start + schedule.duration);
-            let time_elapsed = now - start;
+            let last_interval_completion = last_interval_completion.min(start + schedule.duration);
+            let time_elapsed = last_interval_completion - start;
 
             schedule.amount -= payable - schedule.cliff;
             schedule.cliff = 0;
