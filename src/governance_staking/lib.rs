@@ -487,6 +487,13 @@ pub mod staking {
             }
         }
 
+        fn only_governor(&self) -> Result<(), StakingError> {
+            match self.env().caller() == self.governor {
+                true => Ok(()),
+                false => Err(StakingError::Unauthorized),
+            }
+        }
+
         fn nft_proposal_lock(&self, nft_id: NftId) -> Result<(), StakingError> {
             let is_locked = build_call::<DefaultEnvironment>()
                 .call(self.governor)
@@ -536,7 +543,7 @@ pub mod staking {
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
                 deployed_validators: Vec::new(),
-                token_stake_amount: 100000_u128,
+                token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
                 create_deposit: 100_000_000_000_000_u128,
                 existential_deposit: 500_u128,
                 treasury: governance_council,
@@ -565,9 +572,8 @@ pub mod staking {
 
         #[ink(message, selector = 0)]
         pub fn increase_reward_pool(&mut self, amount: Balance) -> Result<(), StakingError> {
-            if self.env().caller() != self.governor {
-                return Err(StakingError::Unauthorized);
-            }
+            self.only_governor()?;
+
             self.reward_token_balance += amount;
 
             if self.reward_token_balance > self.accumulated_rewards {
@@ -579,14 +585,31 @@ pub mod staking {
 
         #[ink(message, selector = 1)]
         pub fn update_rewards_rate(&mut self, new_rate: Balance) -> Result<(), StakingError> {
-            if self.env().caller() != self.governor {
-                return Err(StakingError::Unauthorized);
-            }
+            self.only_governor()?;
 
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
             self.rewards_per_second = new_rate;
+            Ok(())
+        }
+
+        #[ink(message, selector = 12)]
+        pub fn update_validator_stake_requirement(
+            &mut self,
+            ike_deposit: Option<Balance>,
+            azero_deposit: Option<Balance>,
+        ) -> Result<(), StakingError> {
+            self.only_governor()?;
+
+            if let Some(amount) = ike_deposit {
+                self.token_stake_amount = amount;
+            }
+
+            if let Some(amount) = azero_deposit {
+                self.create_deposit = amount;
+            }
+
             Ok(())
         }
 

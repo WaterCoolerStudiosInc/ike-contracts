@@ -76,6 +76,8 @@ pub mod governance {
         IncreaseStakingRewardPool(u128),
         // update tokens per second for staker in staking contract
         ChangeStakingRewardRate(u128),
+        // Update the bond requirement [Ike-deposit, A0-deposit] to become a validator
+        UpdateValidatorStakeRequirement(Option<Balance>, Option<Balance>),
         // Add to council
         AddCouncilMember(AccountId),
         // remove then add to council
@@ -339,6 +341,17 @@ pub mod governance {
                 .map_err(|_| GovernanceError::StakingError)
         }
 
+        fn update_validator_stake_requirement(
+            &self,
+            ike: Option<Balance>,
+            a0: Option<Balance>,
+        ) -> Result<(), GovernanceError> {
+            let mut staking: contract_ref!(Staking) = self.staking.into();
+            staking
+                .update_validator_stake_requirement(ike, a0)
+                .map_err(|_| GovernanceError::StakingError)
+        }
+
         fn update_reject_threshold(&mut self, update: Weight) {
             self.rejection_threshold = update;
         }
@@ -439,6 +452,9 @@ pub mod governance {
                 PropType::ChangeStakingRewardRate(new_rate) => {
                     debug_println!("executing staking update {}", new_rate);
                     self.update_staking_rewards(new_rate)?
+                }
+                PropType::UpdateValidatorStakeRequirement(ike, a0) => {
+                    self.update_validator_stake_requirement(ike, a0)?
                 }
                 PropType::SetCodeHash(code_hash) => self.set_code_internal(code_hash)?,
                 PropType::UnlockTransfer() => self.unlock_transfer()?,
