@@ -90,7 +90,6 @@ pub mod staking {
         voting_delegations: Mapping<NftId, (NftId, Nonce)>, // (delegatee, nonce)
         redelegate_requests: Mapping<NftId, (Time, NftId)>,
         voting_delegations_nonce: Mapping<NftId, Nonce>,
-        governance_nfts: Mapping<AccountId, Vec<NftId>>,
         unstake_requests: Mapping<NftId, UnstakeRequest>,
         last_reward_claim: Mapping<NftId, Time>,
         deployed_validators: Vec<Validator>,
@@ -534,7 +533,6 @@ pub mod staking {
                 voting_delegations: Mapping::new(),
                 redelegate_requests: Mapping::new(),
                 voting_delegations_nonce: Mapping::new(),
-                governance_nfts: Mapping::new(),
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
                 deployed_validators: Vec::new(),
