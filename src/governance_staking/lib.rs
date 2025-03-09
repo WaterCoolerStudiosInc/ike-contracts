@@ -74,6 +74,7 @@ pub mod staking {
     #[ink(storage)]
     pub struct Staking {
         creation_time: Time,
+        freeze_time: Option<Time>,
         governor: AccountId,
         registry: AccountId,
         reward_token_balance: Balance,
@@ -373,8 +374,17 @@ pub mod staking {
         }
 
         fn update_stake_accumulation(&mut self, curr_time: Time) -> Result<(), StakingError> {
-            self.accumulated_rewards +=
-                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
+            if self.freeze_time.is_none() {
+                self.accumulated_rewards +=
+                    ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
+
+                if self.accumulated_rewards > self.reward_token_balance {
+                    self.accumulated_rewards = self.reward_token_balance;
+                    self.rewards_per_second = 0;
+                    self.freeze_time = Some(curr_time); // approx. time
+                }
+            }
+
             self.reward_stake_accumulation +=
                 self.staked_token_balance * ((curr_time - self.last_accumulation_update) as u128);
             self.last_accumulation_update = curr_time;
@@ -392,7 +402,13 @@ pub mod staking {
             debug_println!("{}{}", stake_balance, " STAKE");
             debug_println!("{}{}", self.accumulated_rewards, " ACCUMULATED");
             debug_println!("{}{}", self.reward_stake_accumulation, " REWARD");
-            let user_stake_weight = stake_balance * ((curr_time - last_update) as u128);
+
+            let curr_time = match self.freeze_time {
+                Some(freeze_time) if freeze_time < curr_time => freeze_time,
+                _ => curr_time,
+            };
+
+            let user_stake_weight = stake_balance * (curr_time.saturating_sub(last_update) as u128);
             self.pro_rata(
                 self.accumulated_rewards,
                 user_stake_weight,
@@ -494,6 +510,7 @@ pub mod staking {
             registry: AccountId,
             governor: AccountId,
             governance_nft: GovernanceNFTRef,
+            reward_token_balance: Balance,
             interest_rate: Balance,
             governance_council: AccountId,
         ) -> Self {
@@ -501,9 +518,10 @@ pub mod staking {
 
             Self {
                 creation_time: now,
+                freeze_time: None,
                 governor,
                 registry,
-                reward_token_balance: 0_u128,
+                reward_token_balance,
                 staked_token_balance: 0_u128,
                 rewards_per_second: interest_rate,
                 reward_stake_accumulation: 0,
@@ -540,6 +558,25 @@ pub mod staking {
         #[ink(message)]
         pub fn get_voting_delegation(&self, nft_id: NftId) -> Option<(NftId, Nonce)> {
             self.voting_delegations.get(nft_id)
+        }
+
+        #[ink(message)]
+        pub fn get_reward_pool(&self) -> Balance {
+            self.reward_token_balance
+        }
+
+        #[ink(message, selector = 0)]
+        pub fn increase_reward_pool(&mut self, amount: Balance) -> Result<(), StakingError> {
+            if self.env().caller() != self.governor {
+                return Err(StakingError::Unauthorized);
+            }
+            self.reward_token_balance += amount;
+
+            if self.reward_token_balance > self.accumulated_rewards {
+                self.freeze_time = None;
+            }
+
+            Ok(())
         }
 
         #[ink(message, selector = 1)]

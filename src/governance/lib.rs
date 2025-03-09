@@ -72,6 +72,8 @@ pub mod governance {
         TransferFunds(AccountId, Balance, AccountId),
         // Transfer psp22 token from governance
         NativeTokenTransfer(AccountId, Balance),
+        // Increase the reward pool balance for the staking contract
+        IncreaseStakingRewardPool(u128),
         // update tokens per second for staker in staking contract
         ChangeStakingRewardRate(u128),
         // Add to council
@@ -321,11 +323,20 @@ pub mod governance {
                 .map_err(|_| GovernanceError::CouncilError)
         }
 
+        fn increase_staking_reward_pool(&self, extra_reward: u128) -> Result<(), GovernanceError> {
+            let mut staking: contract_ref!(Staking) = self.staking.into();
+
+            // DISCUSS: should also transfer funds from the reserve?
+            staking
+                .increase_reward_pool(extra_reward)
+                .map_err(|_| GovernanceError::StakingError)
+        }
+
         fn update_staking_rewards(&self, new_reward: u128) -> Result<(), GovernanceError> {
             let mut staking: contract_ref!(Staking) = self.staking.into();
             staking
                 .update_rewards_rate(new_reward)
-                .map_err(|_| GovernanceError::CouncilError)
+                .map_err(|_| GovernanceError::StakingError)
         }
 
         fn update_reject_threshold(&mut self, update: Weight) {
@@ -422,6 +433,9 @@ pub mod governance {
                     self.change_council_threshold(update)?
                 }
                 PropType::FeeChange(new_fee) => self.update_vault_fee(&new_fee)?,
+                PropType::IncreaseStakingRewardPool(extra_reward) => {
+                    self.increase_staking_reward_pool(extra_reward)?
+                }
                 PropType::ChangeStakingRewardRate(new_rate) => {
                     debug_println!("executing staking update {}", new_rate);
                     self.update_staking_rewards(new_rate)?
@@ -477,6 +491,7 @@ pub mod governance {
             exec_threshold: Weight,
             reject_threshold: Weight,
             acc_threshold: Weight,
+            staking_reward_pool: Balance,
             interest_rate: u128,
             signers: Vec<AccountId>,
         ) -> Self {
@@ -500,6 +515,7 @@ pub mod governance {
                 registry,
                 governor,
                 nft_ref.clone(),
+                staking_reward_pool,
                 interest_rate,
                 CouncilRef::to_account_id(&council_ref),
             )
