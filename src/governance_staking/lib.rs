@@ -93,6 +93,7 @@ pub mod staking {
         unstake_requests: Mapping<NftId, UnstakeRequest>,
         last_reward_claim: Mapping<NftId, Time>,
         deployed_validators: Vec<Validator>,
+        representative_stake_threshold: Balance,
         token_stake_amount: Balance,
         create_deposit: Balance,
         existential_deposit: Balance,
@@ -543,6 +544,7 @@ pub mod staking {
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
                 deployed_validators: Vec::new(),
+                representative_stake_threshold: 0,
                 token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
                 create_deposit: 100_000_000_000_000_u128,
                 existential_deposit: 500_u128,
@@ -613,6 +615,16 @@ pub mod staking {
             Ok(())
         }
 
+        #[ink(message, selector = 13)]
+        pub fn update_representative_stake_threshold(
+            &mut self,
+            amount: Balance,
+        ) -> Result<(), StakingError> {
+            self.only_governor()?;
+            self.representative_stake_threshold = amount;
+            Ok(())
+        }
+
         #[ink(message, selector = 2)]
         pub fn wrap_tokens(
             &mut self,
@@ -633,7 +645,11 @@ pub mod staking {
             let minted_nft = self.mint_psp34(recipient, token_value, 0)?;
             let vote_delegation = vote_delegation.unwrap_or(minted_nft);
 
-            if vote_delegation != minted_nft {
+            if vote_delegation == minted_nft {
+                if token_value < self.representative_stake_threshold {
+                    return Err(StakingError::InvalidStake);
+                }
+            } else {
                 if !self.is_self_delegator(vote_delegation) {
                     return Err(StakingError::InvalidRepresentative);
                 }
@@ -684,6 +700,9 @@ pub mod staking {
             }
 
             let data = self.get_governance_data(nft_id)?;
+            if new_delegatee == nft_id && data.stake_weight < self.representative_stake_threshold {
+                return Err(StakingError::InvalidStake);
+            }
             if data.vote_weight != 0 {
                 self.decrease_vote_weight(nft_id, data.vote_weight)?;
             }
@@ -721,6 +740,12 @@ pub mod staking {
             let Some((time, _)) = self.redelegate_requests.get(nft_id) else {
                 return Err(StakingError::InvalidRequest);
             };
+
+            let data = self.get_governance_data(nft_id)?;
+            if data.stake_weight < self.representative_stake_threshold {
+                return Err(StakingError::InvalidStake);
+            }
+
             self.redelegate_requests
                 .insert(nft_id, &(time, new_delegatee));
 
@@ -744,7 +769,11 @@ pub mod staking {
             }
 
             let data = self.get_governance_data(nft_id)?;
-            if nft_id != delegatee {
+            if nft_id == delegatee {
+                if data.stake_weight < self.representative_stake_threshold {
+                    return Err(StakingError::InvalidStake);
+                }
+            } else {
                 if !self.is_self_delegator(delegatee) {
                     return Err(StakingError::InvalidRepresentative);
                 }

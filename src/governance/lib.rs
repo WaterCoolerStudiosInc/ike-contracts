@@ -78,6 +78,8 @@ pub mod governance {
         ChangeStakingRewardRate(u128),
         // Update the bond requirement [Ike-deposit, A0-deposit] to become a validator
         UpdateValidatorStakeRequirement(Option<Balance>, Option<Balance>),
+        // Update the threshold stake required to become a self-delegator
+        UpdateRespresentativeStakeThreshold(Balance),
         // Add to council
         AddCouncilMember(AccountId),
         // remove then add to council
@@ -352,6 +354,16 @@ pub mod governance {
                 .map_err(|_| GovernanceError::StakingError)
         }
 
+        fn update_representative_stake_threshold(
+            &self,
+            amount: Balance,
+        ) -> Result<(), GovernanceError> {
+            let mut staking: contract_ref!(Staking) = self.staking.into();
+            staking
+                .update_representative_stake_threshold(amount)
+                .map_err(|_| GovernanceError::StakingError)
+        }
+
         fn update_reject_threshold(&mut self, update: Weight) {
             self.rejection_threshold = update;
         }
@@ -455,6 +467,9 @@ pub mod governance {
                 }
                 PropType::UpdateValidatorStakeRequirement(ike, a0) => {
                     self.update_validator_stake_requirement(ike, a0)?
+                }
+                PropType::UpdateRespresentativeStakeThreshold(amount) => {
+                    self.update_representative_stake_threshold(amount)?
                 }
                 PropType::SetCodeHash(code_hash) => self.set_code_internal(code_hash)?,
                 PropType::UnlockTransfer() => self.unlock_transfer()?,
