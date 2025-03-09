@@ -12,6 +12,7 @@ pub enum VestingError {
     NoChange,
     NoAdmin,
     AdminOnly,
+    NotAuthorised,
     InsufficientFunding,
     InvalidInput,
     TokenError(PSP22Error),
