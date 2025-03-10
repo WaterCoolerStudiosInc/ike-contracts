@@ -1929,7 +1929,7 @@ dependencies = [
 [[package]]
 name = "psp34"
 version = "0.2.1"
-source = "git+https://github.com/Cardinal-Cryptography/PSP34.git#05714b04748bc2485772a3913e5129d57b0fcbc2"
+source = "git+https://github.com/Cardinal-Cryptography/PSP34.git#9e33a159c570b50c4a4d2f91854417862f0da3b6"
 dependencies = [
  "ink",
  "parity-scale-codec",

@@ -219,7 +219,7 @@ mod governance_nft {
             self.only_admin()?;
 
             self.token_governance_data.remove(id);
-            let events = self.data.burn(account, self.env().caller(), Id::U128(id))?;
+            let events = self.data.burn(self.env().caller(), account, Id::U128(id))?;
             self.emit_events(events);
 
             Ok(())
