@@ -74,7 +74,6 @@ pub mod staking {
     #[ink(storage)]
     pub struct Staking {
         creation_time: Time,
-        freeze_time: Option<Time>,
         governor: AccountId,
         registry: AccountId,
         reward_token_balance: Balance,
@@ -374,16 +373,8 @@ pub mod staking {
         }
 
         fn update_stake_accumulation(&mut self, curr_time: Time) -> Result<(), StakingError> {
-            if self.freeze_time.is_none() {
-                self.accumulated_rewards +=
-                    ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
-
-                if self.accumulated_rewards > self.reward_token_balance {
-                    self.accumulated_rewards = self.reward_token_balance;
-                    self.rewards_per_second = 0;
-                    self.freeze_time = Some(curr_time); // approx. time
-                }
-            }
+            self.accumulated_rewards +=
+                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
 
             self.reward_stake_accumulation +=
                 self.staked_token_balance * ((curr_time - self.last_accumulation_update) as u128);
@@ -402,11 +393,6 @@ pub mod staking {
             debug_println!("{}{}", stake_balance, " STAKE");
             debug_println!("{}{}", self.accumulated_rewards, " ACCUMULATED");
             debug_println!("{}{}", self.reward_stake_accumulation, " REWARD");
-
-            let curr_time = match self.freeze_time {
-                Some(freeze_time) if freeze_time < curr_time => freeze_time,
-                _ => curr_time,
-            };
 
             let user_stake_weight = stake_balance * (curr_time.saturating_sub(last_update) as u128);
             self.pro_rata(
@@ -534,7 +520,6 @@ pub mod staking {
 
             Self {
                 creation_time: now,
-                freeze_time: None,
                 governor,
                 registry,
                 reward_token_balance,
@@ -586,10 +571,6 @@ pub mod staking {
             self.only_governor()?;
 
             self.reward_token_balance += amount;
-
-            if self.reward_token_balance > self.accumulated_rewards {
-                self.freeze_time = None;
-            }
 
             Ok(())
         }
@@ -847,8 +828,15 @@ pub mod staking {
                 .last_reward_claim
                 .get(nft_id)
                 .unwrap_or(data.block_created);
-            let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
+            let mut reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
             self.last_reward_claim.insert(nft_id, &now);
+
+            if self.reward_token_balance <= reward {
+                // discuss: call to gov_token to get the latest reward reserve balance?
+                self.rewards_per_second = 0;
+                reward = self.reward_token_balance;
+            }
+            self.reward_token_balance -= reward;
 
             match withdraw_yield {
                 true => {
@@ -899,7 +887,14 @@ pub mod staking {
                 .last_reward_claim
                 .get(nft_id)
                 .unwrap_or(data.block_created);
-            let reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
+            let mut reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
+
+            if self.reward_token_balance <= reward {
+                // discuss: call to gov_token to get the latest reward reserve balance?
+                self.rewards_per_second = 0;
+                reward = self.reward_token_balance;
+            }
+            self.reward_token_balance -= reward;
 
             let delegations = self.voting_delegations.get(nft_id);
             if let Some((delegatee, nonce)) = delegations {
