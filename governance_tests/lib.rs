@@ -272,7 +272,7 @@ mod tests {
             sess,
             &governance,
             &bob,
-            String::from("get_staking"),
+            String::from("IGovernance::get_staking"),
             None,
             None,
             transcoder_governance(),
@@ -284,7 +284,7 @@ mod tests {
             sess,
             &governance,
             &bob,
-            String::from("get_council"),
+            String::from("IGovernance::get_council"),
             None,
             None,
             transcoder_governance(),
@@ -331,7 +331,7 @@ mod tests {
             sess,
             &governance,
             &bob,
-            String::from("get_council"),
+            String::from("IGovernance::get_council"),
             None,
             None,
             transcoder_governance(),
@@ -1038,7 +1038,7 @@ mod tests {
             sess,
             &ctx.stake_contract,
             &ctx.alice,
-            String::from("complete_request"),
+            String::from("complete_unwrap_request"),
             Some(vec![1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
@@ -1078,7 +1078,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1133,7 +1133,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1189,7 +1189,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1210,7 +1210,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1233,7 +1233,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1253,7 +1253,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("cancel_proposal"),
+            String::from("IGovernance::cancel_proposal"),
             Some(vec![1.to_string()]),
             None,
             transcoder_governance(),
@@ -1270,7 +1270,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1291,7 +1291,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("cancel_proposal"),
+            String::from("IGovernance::cancel_proposal"),
             Some(vec![1.to_string()]),
             None,
             transcoder_governance(),
@@ -1311,7 +1311,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1325,7 +1325,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1347,7 +1347,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1362,7 +1362,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1381,7 +1381,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 1.to_string(),
@@ -1402,7 +1402,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
                 3.to_string(),
@@ -1424,7 +1424,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::FeeChange(2333_u16).to_string(),
                 1.to_string(),
@@ -1445,7 +1445,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1460,7 +1460,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1488,7 +1488,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::VoteDelayUpdate(3 * DAY).to_string(),
                 1.to_string(),
@@ -1505,7 +1505,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1521,7 +1521,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1539,7 +1539,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::VoteDelayUpdate(9 * DAY).to_string(),
                 1.to_string(),
@@ -1560,7 +1560,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::VotePeriodUpdate(12 * DAY).to_string(),
                 1.to_string(),
@@ -1577,7 +1577,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1592,7 +1592,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1610,7 +1610,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::VotePeriodUpdate(33 * DAY).to_string(),
                 1.to_string(),
@@ -1645,7 +1645,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::AcceptanceWeightUpdate(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -1662,7 +1662,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1677,7 +1677,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1696,7 +1696,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UpdateRejectThreshhold(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -1713,7 +1713,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1728,7 +1728,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1746,7 +1746,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -1763,7 +1763,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1778,7 +1778,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1808,7 +1808,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::TransferFunds(ctx.gov_token, TOTAL_SUPPLY / 50, ctx.dave)
                     .to_string(),
@@ -1827,7 +1827,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1842,7 +1842,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1862,7 +1862,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::NativeTokenTransfer(ctx.dave, 100000000000_u128).to_string(),
                 1.to_string(),
@@ -1885,7 +1885,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1900,7 +1900,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
@@ -1913,13 +1913,14 @@ mod tests {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
 
+        let new_account = AccountId::new([99u8; 32]);
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::AddCouncilMember(ctx.dave).to_string(),
+                helpers::PropType::AddCouncilMember(new_account.clone()).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1938,7 +1939,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -1952,7 +1953,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.charlie,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 3.to_string(),
@@ -1962,29 +1963,24 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
+        
+        let (council_members, sess) = helpers::query_council_members(sess, &ctx.council).unwrap();
+        assert!(!council_members.contains(&new_account));
+
         let sess = update_days(sess, 10_u64);
         let sess = call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),
         )
         .unwrap();
-        let sess = call_function(
-            sess,
-            &ctx.council,
-            &ctx.bob,
-            String::from("ICouncil::get_signers"),
-            None,
-            None,
-            transcoder_governance_council(),
-        )
-        .unwrap();
-        let proposal: Result<Vec<AccountId>, drink::errors::LangError> =
-            sess.last_call_return().unwrap();
+
+        let (council_members, sess) = helpers::query_council_members(sess, &ctx.council).unwrap();
+        assert!(council_members.contains(&new_account));
         Ok(())
     }
 
@@ -1997,7 +1993,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -2013,7 +2009,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -2030,7 +2026,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -2054,7 +2050,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -2071,7 +2067,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -2088,7 +2084,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("get_active_proposal_status_by_nft"),
+            String::from("IGovernance::get_active_proposal_status_by_nft"),
             Some(vec![1.to_string()]),
             None,
             transcoder_governance(),
@@ -2110,7 +2106,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -2127,7 +2123,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -2144,7 +2140,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("get_active_proposal_status_by_nft"),
+            String::from("IGovernance::get_active_proposal_status_by_nft"),
             Some(vec![1.to_string()]),
             None,
             transcoder_governance(),
@@ -2166,7 +2162,7 @@ mod tests {
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
                 1.to_string(),
@@ -2183,7 +2179,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -2200,7 +2196,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("get_active_proposal_status_by_nft"),
+            String::from("IGovernance::get_active_proposal_status_by_nft"),
             Some(vec![1.to_string()]),
             None,
             transcoder_governance(),
@@ -2238,7 +2234,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.alice,
-            String::from("create_proposal"),
+            String::from("IGovernance::create_proposal"),
             Some(vec![
                 helpers::PropType::UnlockTransfer().to_string(),
                 1.to_string(),
@@ -2254,7 +2250,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("vote"),
+            String::from("IGovernance::vote"),
             Some(vec![
                 proposal.prop_id.to_string(),
                 2.to_string(),
@@ -2269,7 +2265,7 @@ mod tests {
             sess,
             &ctx.governance,
             &ctx.bob,
-            String::from("complete_proposal"),
+            String::from("IGovernance::complete_proposal"),
             Some(vec![proposal.prop_id.to_string()]),
             None,
             transcoder_governance(),

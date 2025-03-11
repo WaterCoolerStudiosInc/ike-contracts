@@ -56,7 +56,6 @@ pub enum PropType {
     RemoveCouncilMember(AccountId),
     ChangeCouncilThreshold(u16),
     FeeChange(u16),
-    CompoundIncentiveChange(u16),
     AcceptanceWeightUpdate(u128),
     VoteDelayUpdate(u64),
     VotePeriodUpdate(u64),
@@ -309,7 +308,7 @@ pub fn query_governance_get_proposal_by_nft(
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
-        "get_proposal_by_nft",
+        "IGovernance::get_proposal_by_nft",
         &[nft_id.to_string()],
         None,
     )?;
@@ -323,7 +322,7 @@ pub fn query_governance_get_all_proposals(
     governance: &AccountId,
 ) -> Result<(Vec<Proposal>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_all_proposals", NO_ARGS, None)?;
+    sess.call_with_address(governance.clone(), "IGovernance::get_all_proposals", NO_ARGS, None)?;
 
     let proposals: Result<Vec<Proposal>, drink::errors::LangError> =
         sess.last_call_return().unwrap();
@@ -355,7 +354,7 @@ pub fn query_governance_vote_period(
     governance: AccountId,
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_voting_period", NO_ARGS, None)?;
+    sess.call_with_address(governance.clone(), "IGovernance::get_voting_period", NO_ARGS, None)?;
 
     let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
@@ -366,7 +365,7 @@ pub fn query_governance_vote_delay(
     governance: AccountId,
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_voting_delay", NO_ARGS, None)?;
+    sess.call_with_address(governance.clone(), "IGovernance::get_voting_delay", NO_ARGS, None)?;
 
     let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
@@ -379,7 +378,7 @@ pub fn query_governance_acceptance_threshold(
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
-        "get_acceptance_threshold",
+        "IGovernance::get_acceptance_threshold",
         NO_ARGS,
         None,
     )?;
@@ -394,7 +393,7 @@ pub fn query_governance_rejection_threshold(
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_rejection_threshold", NO_ARGS, None)?;
+    sess.call_with_address(governance.clone(), "IGovernance::get_rejection_threshold", NO_ARGS, None)?;
 
     let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
@@ -406,7 +405,7 @@ pub fn query_governance_execution_threshold(
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_execution_threshold", NO_ARGS, None)?;
+    sess.call_with_address(governance.clone(), "IGovernance::get_execution_threshold", NO_ARGS, None)?;
 
     let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
@@ -452,6 +451,19 @@ pub fn query_allowance(
     let result: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((result.unwrap(), sess))
+}
+
+pub fn query_council_members(
+    mut sess: Session<MinimalRuntime>,
+    council: &AccountId,
+) -> Result<(Vec<AccountId>, Session<MinimalRuntime>), Box<dyn Error>> {
+    // sess.set_transcoder(council.clone(), &transcoder_council().unwrap());
+    sess.call_with_address(council.clone(), "ICouncil::get_signers", NO_ARGS, None)?;
+
+    let council_members: Result<Vec<AccountId>, drink::errors::LangError> =
+            sess.last_call_return().unwrap();
+
+    Ok((council_members.unwrap(), sess))
 }
 
 pub fn gov_token_transfer(
