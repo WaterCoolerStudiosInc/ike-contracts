@@ -3,23 +3,6 @@ pub mod traits;
 pub use crate::governance_nft::GovernanceNFT;
 pub use crate::governance_nft::GovernanceNFTRef;
 
-//pub use psp34::{Id, PSP34Data, PSP34Event};
-//pub use psp34::PSP34Error;
-//pub use psp34::{PSP34Burnable, PSP34Metadata, PSP34Mintable, PSP34};
-
-// An example code of a smart contract using PSP34Data struct to implement
-// the functionality of PSP34 fungible token.
-//
-// Any contract can be easily enriched to act as PSP34 token by:
-// (1) adding PSP34Data to contract storage
-// (2) properly initializing it
-// (3) defining the correct AttributeSet, Transfer and Approval events
-// (4) implementing PSP34 trait based on PSP34Data methods
-// (5) properly emitting resulting events
-//
-// Implemented the optional PSP34Mintable (6), PSP34Burnable (7), and PSP34Metadata (8) extensions
-// and included unit tests (8).
-
 #[ink::contract]
 mod governance_nft {
     use ink::{
@@ -30,6 +13,34 @@ mod governance_nft {
     use psp34::{metadata, Id, PSP34Data, PSP34Error, PSP34Event, PSP34Metadata, PSP34};
 
     use crate::traits::IGovernanceNFT;
+
+    #[ink(event)]
+    pub struct Approval {
+        #[ink(topic)]
+        owner: AccountId,
+        #[ink(topic)]
+        operator: AccountId,
+        #[ink(topic)]
+        id: Option<Id>,
+        approved: bool,
+    }
+
+    #[ink(event)]
+    pub struct Transfer {
+        #[ink(topic)]
+        from: Option<AccountId>,
+        #[ink(topic)]
+        to: Option<AccountId>,
+        #[ink(topic)]
+        id: Id,
+    }
+
+    #[ink(event)]
+    pub struct AttributeSet {
+        id: Id,
+        key: Vec<u8>,
+        data: Vec<u8>,
+    }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     #[cfg_attr(
@@ -44,7 +55,7 @@ mod governance_nft {
 
     #[ink(storage)]
     pub struct GovernanceNFT {
-        data: PSP34Data, // (1)
+        data: PSP34Data,
         metadata: metadata::Data,
         admin: AccountId,
         governance: AccountId,
@@ -57,19 +68,18 @@ mod governance_nft {
         #[ink(constructor)]
         pub fn new(governance: AccountId) -> Self {
             Self {
-                data: PSP34Data::new(), // (2)
+                data: PSP34Data::new(),
                 metadata: metadata::Data::default(),
                 admin: governance,
-                governance: governance,
+                governance,
                 mint_count: 0_u128,
-                token_governance_data: Mapping::default(), // (8)
+                token_governance_data: Mapping::default(),
                 lock_transfer: true,
             }
         }
 
         // A helper function translating a vector of PSP34Events into the proper
         // ink event types (defined internally in this contract) and emitting them.
-        // (5)
         fn emit_events(&self, events: ink::prelude::vec::Vec<PSP34Event>) {
             for event in events {
                 match event {
@@ -93,7 +103,15 @@ mod governance_nft {
                 }
             }
         }
+
+        fn only_admin(&self) -> Result<(), PSP34Error> {
+            if self.env().caller() != self.admin {
+                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            }
+            Ok(())
+        }
     }
+
     impl IGovernanceNFT for GovernanceNFT {
         #[ink(message, selector = 91)]
         fn lock_transfer(&mut self) -> Result<(), PSP34Error> {
@@ -118,26 +136,11 @@ mod governance_nft {
             self.lock_transfer
         }
 
-        #[ink(message, selector = 17)]
-        fn transfer_from(
-            &mut self,
-            from: AccountId,
-            to: AccountId,
-            id: Id,
-            data: ink::prelude::vec::Vec<u8>,
-        ) -> Result<(), PSP34Error> {
-            let events = self.data.transfer(from, to, id, data)?;
-            if self.lock_transfer == true && self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
-            }
-            self.emit_events(events);
-            Ok(())
-        }
-        
         #[ink(message, selector = 31337)]
         fn get_governance_data(&self, id: u128) -> Option<GovernanceData> {
             self.token_governance_data.get(id)
         }
+
         fn get_admin(&self) -> AccountId {
             self.admin
         }
@@ -149,19 +152,17 @@ mod governance_nft {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
-            debug_println!("NFT ID {}", &id);
-            let mut curr = self.token_governance_data.get(id).unwrap();
+            self.only_admin()?;
+
+            let mut curr = self
+                .token_governance_data
+                .get(id)
+                .ok_or(PSP34Error::TokenNotExists)?;
             debug_println!("{:?}", curr);
             if vote_weight > 0 {
-                debug_println!("VOTE WEIGHT UPDATE {}", &vote_weight);
                 curr.vote_weight += vote_weight;
             }
             if stake_weight > 0 {
-                debug_println!("STAKE WEIGHT UPDATE {}", &stake_weight);
-
                 curr.stake_weight += stake_weight;
             }
             debug_println!("{:?}", curr);
@@ -169,20 +170,25 @@ mod governance_nft {
 
             Ok(())
         }
+
         #[ink(message, selector = 99)]
         fn decrement_vote_weight(&mut self, id: u128, vote_weight: u128) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
+            self.only_admin()?;
+
+            let mut curr = self
+                .token_governance_data
+                .get(id)
+                .ok_or(PSP34Error::TokenNotExists)?;
+
+            if curr.vote_weight < vote_weight {
+                return Err(PSP34Error::Custom(String::from("Insufficient vote weight")));
             }
-            let mut curr = self.token_governance_data.get(id).unwrap();
-            assert!(curr.vote_weight >= vote_weight);
-            //assert!(curr.stake_weight >= vote_weight);
             curr.vote_weight -= vote_weight;
-            //curr.stake_weight -= vote_weight;
-            debug_println!("VOTE WEIGHT {}", curr.vote_weight);
             self.token_governance_data.insert(id, &curr);
+
             Ok(())
         }
+
         #[ink(message, selector = 1337)]
         fn mint(
             &mut self,
@@ -190,22 +196,19 @@ mod governance_nft {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<u128, PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
+            self.only_admin()?;
 
             self.mint_count += 1;
             let curr_id = Id::U128(self.mint_count);
             let g_metadata = GovernanceData {
                 block_created: self.env().block_timestamp(),
                 stake_weight,
-                vote_weight: vote_weight,
+                vote_weight,
             };
-
             self.token_governance_data
                 .insert(self.mint_count, &g_metadata);
-            let events = self.data.mint(to, curr_id)?;
 
+            let events = self.data.mint(to, curr_id)?;
             self.emit_events(events);
 
             Ok(self.mint_count)
@@ -213,63 +216,28 @@ mod governance_nft {
 
         #[ink(message, selector = 8057)]
         fn burn(&mut self, account: AccountId, id: u128) -> Result<(), PSP34Error> {
-            // Add security, restrict usage of the message
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
-            self.token_governance_data.remove(id);
-            let _id = Id::U128(id);
+            self.only_admin()?;
 
-            let events = self.data.burn(account, self.env().caller(), _id)?;
+            self.token_governance_data.remove(id);
+            let events = self.data.burn(self.env().caller(), account, Id::U128(id))?;
             self.emit_events(events);
+
             Ok(())
         }
+
         #[ink(message, selector = 8888)]
         fn set_admin(&mut self, new_admin: AccountId) -> Result<(), PSP34Error> {
-            if self.env().caller() != self.admin {
-                return Err(PSP34Error::Custom(String::from("Unauthorized")));
-            }
+            self.only_admin()?;
             self.admin = new_admin;
             Ok(())
         }
+
         #[ink(message)]
         fn owner_of_id(&self, id: u128) -> Option<AccountId> {
             self.data.owner_of(&Id::U128(id))
         }
     }
 
-    // (3)
-    #[ink(event)]
-    pub struct Approval {
-        #[ink(topic)]
-        owner: AccountId,
-        #[ink(topic)]
-        operator: AccountId,
-        #[ink(topic)]
-        id: Option<Id>,
-        approved: bool,
-    }
-
-    // (3)
-    #[ink(event)]
-    pub struct Transfer {
-        #[ink(topic)]
-        from: Option<AccountId>,
-        #[ink(topic)]
-        to: Option<AccountId>,
-        #[ink(topic)]
-        id: Id,
-    }
-
-    // (3)
-    #[ink(event)]
-    pub struct AttributeSet {
-        id: Id,
-        key: Vec<u8>,
-        data: Vec<u8>,
-    }
-
-    // (4)
     impl PSP34 for GovernanceNFT {
         #[ink(message)]
         fn collection_id(&self) -> Id {
@@ -298,10 +266,11 @@ mod governance_nft {
             id: Id,
             data: ink::prelude::vec::Vec<u8>,
         ) -> Result<(), PSP34Error> {
-            let events = self.data.transfer(self.env().caller(), to, id, data)?;
-            if self.lock_transfer == true {
+            if self.lock_transfer && self.env().caller() != self.admin {
+                // Only admin can transfer when locked
                 return Err(PSP34Error::Custom(String::from("Token transfer is locked")));
             }
+            let events = self.data.transfer(self.env().caller(), to, id, data)?;
             self.emit_events(events);
             Ok(())
         }
@@ -326,15 +295,10 @@ mod governance_nft {
         }
     }
 
-    // (7)
-
-    // (8)
     impl PSP34Metadata for GovernanceNFT {
         #[ink(message)]
         fn get_attribute(&self, id: Id, key: Vec<u8>) -> Option<Vec<u8>> {
             self.metadata.get_attribute(id, key)
         }
     }
-
-    // (9)
 }

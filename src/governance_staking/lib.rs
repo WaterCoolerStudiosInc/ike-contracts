@@ -31,7 +31,7 @@ pub mod staking {
     use governance_nft::traits::{GovernanceData, IGovernanceNFT};
     use governance_nft::GovernanceNFTRef;
     use psp22::{PSP22Error, PSP22};
-    use psp34::{Id, PSP34Error};
+    use psp34::{Id, PSP34Error, PSP34};
     use registry::traits::IRegistry;
 
     pub const DAY: Time = 86400 * 1000;
@@ -400,14 +400,9 @@ pub mod staking {
             )
         }
 
-        fn transfer_psp34(
-            &mut self,
-            from: &AccountId,
-            to: &AccountId,
-            nft_id: Balance,
-        ) -> Result<(), StakingError> {
+        fn transfer_psp34(&mut self, to: &AccountId, nft_id: Balance) -> Result<(), StakingError> {
             self.nft
-                .transfer_from(*from, *to, Id::U128(nft_id), Vec::new())
+                .transfer(*to, Id::U128(nft_id), Vec::new())
                 .map_err(StakingError::NFTError)
         }
 
@@ -862,7 +857,6 @@ pub mod staking {
             self.transfer_psp22_from(&caller, &Self::env().account_id(), self.token_stake_amount)?;
             self.staked_token_balance += self.token_stake_amount;
 
-            // self.transfer_psp34(&caller, &Self::env().account_id(), id)?;
             let minted_nft = self.mint_psp34(
                 Self::env().account_id(),
                 self.token_stake_amount,
@@ -936,7 +930,7 @@ pub mod staking {
                 false => validator_info.admin,
             };
 
-            self.transfer_psp34(&Self::env().account_id(), &recipient, validator_info.nft_id)?;
+            self.transfer_psp34(&recipient, validator_info.nft_id)?;
 
             self.deployed_validators = self
                 .deployed_validators
