@@ -25,3 +25,5 @@ path = "lib.rs"
 default = ["std"]
 std = ["ink/std", "scale/std", "scale-info", "scale-info/std", "nomination_agent/std"]
 ink-as-dependency = []
+__ink_dylint_Storage = []
+__ink_dylint_Constructor = []
