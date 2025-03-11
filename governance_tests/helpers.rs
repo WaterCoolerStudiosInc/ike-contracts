@@ -4,22 +4,14 @@ use drink::{
     session::{contract_transcode::ContractMessageTranscoder, Session, NO_ARGS},
     AccountId32 as AccountId,
 };
-use hex_literal;
 use serde::{Deserialize, Serialize};
-use sp_core::{Encode, Pair};
 use std::{error::Error, fmt, rc::Rc};
 // Publicize all sources module methods (hash_*, transcoder_*, bytes_*)
 pub use crate::sources::*;
 pub const SECOND: u64 = 1_000;
 pub const DAY: u64 = SECOND * 86400;
-pub const YEAR: u64 = DAY * 365_25 / 100;
-pub const BIPS: u128 = 10000;
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-#[cfg_attr(
-    feature = "std",
-    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-)]
 pub struct TokenTransfer {
     pub token: AccountId,
     pub amount: u128,
@@ -27,10 +19,6 @@ pub struct TokenTransfer {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-#[cfg_attr(
-    feature = "std",
-    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-)]
 pub struct Proposal {
     pub creation_timestamp: u64,
     pub creator_id: u128,
@@ -43,10 +31,6 @@ pub struct Proposal {
 }
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
-#[cfg_attr(
-    feature = "std",
-    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-)]
 pub enum PropType {
     TransferFunds(AccountId, u128, AccountId),
     NativeTokenTransfer(AccountId, u128),
@@ -56,7 +40,6 @@ pub enum PropType {
     RemoveCouncilMember(AccountId),
     ChangeCouncilThreshold(u16),
     FeeChange(u16),
-    CompoundIncentiveChange(u16),
     AcceptanceWeightUpdate(u128),
     VoteDelayUpdate(u64),
     VotePeriodUpdate(u64),
@@ -68,23 +51,41 @@ pub enum PropType {
 }
 
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
-#[cfg_attr(
-    feature = "std",
-    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-)]
 pub enum Action {
     RemoveValidator(AccountId, bool),
     CompleteRemoveValidator(AccountId),
 }
+
+#[allow(dead_code)]
+pub enum RoleType {
+    AddAgent,
+    UpdateAgents,
+    DisableAgent,
+    RemoveAgent,
+    SetCodeHash,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, scale::Decode)]
+pub struct Agent {
+    pub address: AccountId,
+    pub weight: u128,
+    pub disabled: bool,
+}
+
 #[derive(Debug, PartialEq, Eq, scale::Encode, Clone, scale::Decode)]
-#[cfg_attr(
-    feature = "std",
-    derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout)
-)]
 pub enum Vote {
     Pro,
     Con,
 }
+
+#[allow(dead_code)]
+#[derive(Debug)]
+pub enum CastType {
+    Direct(Vec<(AccountId, u128)>),
+    Delegate(u128),
+}
+
 impl fmt::Display for Action {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -97,11 +98,13 @@ impl fmt::Display for Action {
         }
     }
 }
+
 impl fmt::Display for Vote {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
+
 impl fmt::Display for PropType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -120,17 +123,13 @@ impl fmt::Display for PropType {
         }
     }
 }
-#[derive(Debug)]
-pub enum CastType {
-    Direct(Vec<(AccountId, u128)>),
-    Delegate(u128),
-}
+
 impl fmt::Display for CastType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             CastType::Direct(validators) => {
                 let mut s = String::new();
-                for (i, v) in validators.into_iter().enumerate() {
+                for (i, v) in validators.iter().enumerate() {
                     if i == validators.len() - 1 {
                         let temp = format!("({},{})", v.0, v.1);
                         s.push_str(&temp);
@@ -145,15 +144,6 @@ impl fmt::Display for CastType {
         }
     }
 }
-fn sign(hash: [u8; 32], pk: &str) -> [u8; 65] {
-    // Use Dan's seed
-    // `subkey inspect //Dan --scheme Ecdsa --output-type json | jq .secretSeed`
-
-    let pair = sp_core::ecdsa::Pair::from_legacy_string(pk, None);
-
-    let signature = pair.sign_prehashed(&hash);
-    signature.0
-}
 
 pub fn update_days(mut sess: Session<MinimalRuntime>, days: u64) -> Session<MinimalRuntime> {
     let current_time = sess.chain_api().get_timestamp();
@@ -161,6 +151,7 @@ pub fn update_days(mut sess: Session<MinimalRuntime>, days: u64) -> Session<Mini
     sess.chain_api().set_timestamp(current_time + time_update);
     sess
 }
+
 pub fn update_in_milliseconds(
     mut sess: Session<MinimalRuntime>,
     milliseconds: u64,
@@ -169,6 +160,7 @@ pub fn update_in_milliseconds(
     sess.chain_api().set_timestamp(current_time + milliseconds);
     sess
 }
+
 pub fn call_function(
     mut sess: Session<MinimalRuntime>,
     contract: &AccountId,
@@ -194,54 +186,14 @@ pub fn call_function(
     let decoded = encoded.iter().map(|b| *b as char).collect::<String>();
     let messages: Vec<String> = decoded.split('\n').map(|s| s.to_string()).collect();
     for line in messages {
-        if line.len() > 0 {
+        if !line.is_empty() {
             println!("LOG: {}", line);
         }
     }
 
     Ok(sess)
 }
-#[allow(dead_code)]
-pub enum RoleType {
-    AddAgent,
-    UpdateAgents,
-    DisableAgent,
-    RemoveAgent,
-    SetCodeHash,
-}
 
-#[derive(Debug, scale::Decode)]
-pub struct Agent {
-    pub address: AccountId,
-    pub weight: u128,
-    pub disabled: bool,
-}
-
-pub fn transfer_role_admin(
-    sess: Session<MinimalRuntime>,
-    registry: &AccountId,
-    sender: &AccountId,
-    role_type: &RoleType,
-    new_account: &AccountId,
-) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
-    let role_string = match role_type {
-        RoleType::AddAgent => "AddAgent",
-        RoleType::UpdateAgents => "UpdateAgents",
-        RoleType::DisableAgent => "DisableAgent",
-        RoleType::RemoveAgent => "RemoveAgent",
-        RoleType::SetCodeHash => "SetCodeHash",
-    };
-    let sess = call_function(
-        sess,
-        &registry,
-        &sender,
-        String::from("IRegistry::transfer_role_admin"),
-        Some([role_string.to_string(), new_account.to_string()].to_vec()),
-        None,
-        transcoder_registry(),
-    )?;
-    Ok(sess)
-}
 pub fn transfer_role(
     sess: Session<MinimalRuntime>,
     registry: &AccountId,
@@ -258,8 +210,8 @@ pub fn transfer_role(
     };
     let sess = call_function(
         sess,
-        &registry,
-        &sender,
+        registry,
+        sender,
         String::from("IRegistry::transfer_role"),
         Some([role_string.to_string(), new_account.to_string()].to_vec()),
         None,
@@ -267,6 +219,7 @@ pub fn transfer_role(
     )?;
     Ok(sess)
 }
+
 pub fn call_add_agent(
     sess: Session<MinimalRuntime>,
     registry: AccountId,
@@ -289,6 +242,7 @@ pub fn call_add_agent(
 
     Ok((agents[agents.len() - 1].address.clone(), sess))
 }
+
 pub fn get_agents(
     mut sess: Session<MinimalRuntime>,
     registry: &AccountId,
@@ -301,6 +255,7 @@ pub fn get_agents(
 
     Ok((total_weight, agents, sess))
 }
+
 pub fn query_governance_get_proposal_by_nft(
     mut sess: Session<MinimalRuntime>,
     governance: &AccountId,
@@ -309,7 +264,7 @@ pub fn query_governance_get_proposal_by_nft(
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
-        "get_proposal_by_nft",
+        "IGovernance::get_proposal_by_nft",
         &[nft_id.to_string()],
         None,
     )?;
@@ -318,17 +273,24 @@ pub fn query_governance_get_proposal_by_nft(
         sess.last_call_return().unwrap();
     Ok(((proposal.unwrap()).unwrap(), sess))
 }
+
 pub fn query_governance_get_all_proposals(
     mut sess: Session<MinimalRuntime>,
     governance: &AccountId,
 ) -> Result<(Vec<Proposal>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_all_proposals", NO_ARGS, None)?;
+    sess.call_with_address(
+        governance.clone(),
+        "IGovernance::get_all_proposals",
+        NO_ARGS,
+        None,
+    )?;
 
     let proposals: Result<Vec<Proposal>, drink::errors::LangError> =
         sess.last_call_return().unwrap();
     Ok((proposals.unwrap(), sess))
 }
+
 pub fn query_owner(
     mut sess: Session<MinimalRuntime>,
     governance_nft: AccountId,
@@ -350,28 +312,41 @@ pub fn query_owner(
     //println!("{:?}",&prop.clone().unwrap());
     Ok((owner.unwrap(), sess))
 }
+
 pub fn query_governance_vote_period(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_voting_period", NO_ARGS, None)?;
+    sess.call_with_address(
+        governance.clone(),
+        "IGovernance::get_voting_period",
+        NO_ARGS,
+        None,
+    )?;
 
     let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((value.unwrap(), sess))
 }
+
 pub fn query_governance_vote_delay(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
 ) -> Result<(u64, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_voting_delay", NO_ARGS, None)?;
+    sess.call_with_address(
+        governance.clone(),
+        "IGovernance::get_voting_delay",
+        NO_ARGS,
+        None,
+    )?;
 
     let value: Result<u64, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((value.unwrap(), sess))
 }
+
 pub fn query_governance_acceptance_threshold(
     mut sess: Session<MinimalRuntime>,
     governance: AccountId,
@@ -379,7 +354,7 @@ pub fn query_governance_acceptance_threshold(
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
     sess.call_with_address(
         governance.clone(),
-        "get_acceptance_threshold",
+        "IGovernance::get_acceptance_threshold",
         NO_ARGS,
         None,
     )?;
@@ -394,7 +369,12 @@ pub fn query_governance_rejection_threshold(
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_rejection_threshold", NO_ARGS, None)?;
+    sess.call_with_address(
+        governance.clone(),
+        "IGovernance::get_rejection_threshold",
+        NO_ARGS,
+        None,
+    )?;
 
     let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
@@ -406,12 +386,18 @@ pub fn query_governance_execution_threshold(
     governance: AccountId,
 ) -> Result<(Option<u128>, Session<MinimalRuntime>), Box<dyn Error>> {
     sess.set_transcoder(governance.clone(), &transcoder_governance().unwrap());
-    sess.call_with_address(governance.clone(), "get_execution_threshold", NO_ARGS, None)?;
+    sess.call_with_address(
+        governance.clone(),
+        "IGovernance::get_execution_threshold",
+        NO_ARGS,
+        None,
+    )?;
 
     let value: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((Some(value.unwrap()), sess))
 }
+
 pub fn query_token_balance(
     mut sess: Session<MinimalRuntime>,
     token: &AccountId,
@@ -428,6 +414,7 @@ pub fn query_token_balance(
     let balance: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
     Ok((balance.unwrap(), sess))
 }
+
 pub fn query_allowance(
     mut sess: Session<MinimalRuntime>,
     governance_nft: &AccountId,
@@ -454,8 +441,21 @@ pub fn query_allowance(
     Ok((result.unwrap(), sess))
 }
 
-pub fn gov_token_transfer(
+pub fn query_council_members(
     mut sess: Session<MinimalRuntime>,
+    council: &AccountId,
+) -> Result<(Vec<AccountId>, Session<MinimalRuntime>), Box<dyn Error>> {
+    // sess.set_transcoder(council.clone(), &transcoder_council().unwrap());
+    sess.call_with_address(council.clone(), "ICouncil::get_signers", NO_ARGS, None)?;
+
+    let council_members: Result<Vec<AccountId>, drink::errors::LangError> =
+        sess.last_call_return().unwrap();
+
+    Ok((council_members.unwrap(), sess))
+}
+
+pub fn gov_token_transfer(
+    sess: Session<MinimalRuntime>,
     gov_token: &AccountId,
     sender: &AccountId,
     to: &AccountId,
@@ -463,8 +463,8 @@ pub fn gov_token_transfer(
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
-        &gov_token,
-        &sender,
+        gov_token,
+        sender,
         String::from("PSP22::transfer"),
         Some(vec![to.to_string(), amount.to_string(), "[]".to_string()]),
         None,
@@ -518,8 +518,8 @@ pub fn vesting_add_recipients(
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
-        &vesting,
-        &sender,
+        vesting,
+        sender,
         String::from("add_recipients"),
         Some(vec![
             serde_json::to_string(&recipients).unwrap(),
@@ -539,8 +539,8 @@ pub fn vesting_remove_recipients(
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
-        &vesting,
-        &sender,
+        vesting,
+        sender,
         String::from("remove_recipients"),
         Some(vec![serde_json::to_string(&recipients).unwrap()]),
         None,
@@ -556,8 +556,8 @@ pub fn vesting_activate(
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
-        &vesting,
-        &sender,
+        vesting,
+        sender,
         String::from("activate"),
         None,
         None,
@@ -573,8 +573,8 @@ pub fn vesting_claim(
 ) -> Result<Session<MinimalRuntime>, Box<dyn Error>> {
     let sess: Session<MinimalRuntime> = call_function(
         sess,
-        &vesting,
-        &sender,
+        vesting,
+        sender,
         String::from("claim"),
         None,
         None,

@@ -269,7 +269,7 @@ pub mod governance {
 
         fn remove_expired_proposals(&mut self, current_time: Time) -> Vec<Proposal> {
             debug_println!("{}", current_time);
-            let (active, expired) =
+            let (expired, active) =
                 self.proposals.clone().into_iter().partition(|p| {
                     self.get_proposal_state(p, current_time) == ProposalState::Expired
                 });
@@ -439,15 +439,14 @@ pub mod governance {
         }
 
         fn handle_proposal_rejection(&mut self, index: usize) {
-            if self.proposals[index].con_vote_count >= self.rejection_threshold {
+            let proposal = self.proposals[index].clone();
+            if proposal.con_vote_count >= self.rejection_threshold {
                 debug_println!("removing at index {}", index);
                 self.proposals.swap_remove(index);
 
                 Self::emit_event(
                     Self::env(),
-                    Event::ProposalRejected(ProposalRejected {
-                        proposal: self.proposals[index].clone(),
-                    }),
+                    Event::ProposalRejected(ProposalRejected { proposal }),
                 );
             }
         }

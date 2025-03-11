@@ -186,8 +186,11 @@ pub mod staking {
     #[ink(impl)]
     impl Staking {
         pub fn pro_rata(&self, a: u128, b: u128, c: u128) -> u128 {
+            if a == 0 || b == 0 {
+                return 0;
+            }
             let result = BigUint::from(a) * BigUint::from(b) / BigUint::from(c);
-            BigUint::to_u128(&result).unwrap()
+            BigUint::to_u128(&result).expect("overflow")
         }
 
         pub fn update_registry_weights(
@@ -804,7 +807,7 @@ pub mod staking {
             // 1. Don't make any changes (=> future reward is always less than the ideal yield)
             // 2. Remove the utilised range (=> future reward can yield higher than ideal returns)
             // 3. Only account for utilised range (middle ground) (ACTIVE)
-            self.reward_stake_accumulation -= data.stake_weight * (self.creation_time as u128);
+            self.reward_stake_accumulation -= data.stake_weight * ((data.block_created - self.creation_time) as u128);
 
             self.unstake_requests.insert(
                 nft_id,
@@ -880,8 +883,8 @@ pub mod staking {
             }
 
             let new_agent = self.call_add_agent(
-                validator,
                 caller,
+                validator,
                 self.create_deposit,
                 self.existential_deposit,
             )?;

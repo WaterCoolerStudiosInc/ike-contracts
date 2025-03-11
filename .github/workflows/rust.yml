@@ -37,3 +37,4 @@ jobs:
       run: |
         bash ./build-all.sh
         cargo test --manifest-path=drink_tests/Cargo.toml
+        cargo test --manifest-path=governance_tests/Cargo.toml
