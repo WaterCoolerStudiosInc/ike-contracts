@@ -7,13 +7,12 @@ mod helpers;
 #[cfg(test)]
 mod tests {
     use crate::helpers;
-    use crate::helpers::Proposal;
+
     use crate::helpers::{
-        call_function, get_agents, gov_token_transfer, query_allowance,
-        query_governance_acceptance_threshold, query_governance_execution_threshold,
-        query_governance_rejection_threshold, query_governance_vote_delay,
-        query_governance_vote_period, query_owner, query_token_balance, transfer_role_admin,
-        update_days, CastType, Vote, DAY,
+        call_function, gov_token_transfer, query_allowance, query_governance_acceptance_threshold,
+        query_governance_execution_threshold, query_governance_rejection_threshold,
+        query_governance_vote_delay, query_governance_vote_period, query_owner,
+        query_token_balance, update_days, CastType, Vote, DAY,
     };
     use crate::sources::*;
     use drink::{
@@ -23,6 +22,7 @@ mod tests {
         AccountId32 as AccountId,
     };
     use std::error::Error;
+
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
     pub struct GovernanceData {
         pub block_created: u64,
@@ -37,6 +37,7 @@ mod tests {
     const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const USER_SUPPLY: u128 = TOTAL_SUPPLY / 20;
     const REWARDS_PER_SECOND: u128 = 100_000u128;
+
     struct TestContext {
         sess: Session<MinimalRuntime>,
         gov_token: AccountId,
@@ -52,18 +53,8 @@ mod tests {
         charlie: AccountId,
         dave: AccountId,
         ed: AccountId,
-        validators: Vec<AccountId>,
     }
-    struct CouncilCTX {
-        sess: Session<MinimalRuntime>,
-        registry: AccountId,
-        council: AccountId,
-        alice: AccountId,
-        bob: AccountId,
-        charlie: AccountId,
-        dave: AccountId,
-        ed: AccountId,
-    }
+
     fn setup(
         acc_threshold: u128,
         reject_threshold: u128,
@@ -79,7 +70,6 @@ mod tests {
         let validator3 = AccountId::new([103u8; 32]);
         let validator4 = AccountId::new([104u8; 32]);
         let validator5 = AccountId::new([105u8; 32]);
-        let validator6 = AccountId::new([106u8; 32]);
 
         let mut sess: Session<MinimalRuntime> = Session::<MinimalRuntime>::new().unwrap();
 
@@ -155,15 +145,7 @@ mod tests {
         sess.set_transcoder(registry.clone(), &transcoder_registry().unwrap());
         println!("registry: {:?}", registry.to_string());
         sess.set_actor(bob.clone());
-        /**
-        * sess: Session<MinimalRuntime>,
-           registry: AccountId,
-           sender: AccountId,
-           admin: AccountId,
-           validator: AccountId,
-           pool_create_amount: u128,
-           existential_deposit: u128,
-        */
+
         let (_new_agent, sess) = helpers::call_add_agent(
             sess,
             registry.clone(),
@@ -204,29 +186,7 @@ mod tests {
             validator5.clone(),
             100e12 as u128,
         )?;
-        /**
-        *    vault: AccountId,
-           registry: AccountId,
-           governance_token: AccountId,
-           council_hash: Hash,
-           gov_nft_hash: Hash,
-           staking_hash: Hash,
-           exec_threshold: u128,
-           reject_threshold: u128,
-           acc_threshold: u128,
-           interest_rate: u128,
-        */
-        //acc_threshold:u128,reject_threshold:u128,exec_threshold
-        println!(
-            "{:?}",
-            vec![
-                alice.to_string(),
-                bob.to_string(),
-                charlie.to_string(),
-                ed.to_string(),
-                dave.to_string()
-            ]
-        );
+
         let governance = sess.deploy(
             bytes_governance(),
             "new",
@@ -268,7 +228,7 @@ mod tests {
             helpers::transcoder_vault(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &governance,
             &bob,
@@ -280,7 +240,7 @@ mod tests {
         .unwrap();
         let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
         let stake_contract = rr.unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &governance,
             &bob,
@@ -290,9 +250,8 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let rr: Result<AccountId, drink::errors::LangError> = sess.last_call_return().unwrap();
-        let council = rr.unwrap();
-        let mut sess = helpers::transfer_role(
+
+        let sess = helpers::transfer_role(
             sess,
             &registry,
             &bob,
@@ -300,7 +259,7 @@ mod tests {
             &stake_contract,
         )
         .unwrap();
-        let mut sess = helpers::transfer_role(
+        let sess = helpers::transfer_role(
             sess,
             &registry,
             &bob,
@@ -308,7 +267,7 @@ mod tests {
             &stake_contract,
         )
         .unwrap();
-        let mut sess = helpers::transfer_role(
+        let sess = helpers::transfer_role(
             sess,
             &registry,
             &bob,
@@ -363,9 +322,7 @@ mod tests {
         let sess = gov_token_transfer(sess, &gov_token, &bob, &charlie, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &dave, USER_SUPPLY)?;
         let sess = gov_token_transfer(sess, &gov_token, &bob, &ed, USER_SUPPLY)?;
-        let validators = vec![
-            validator1, validator2, validator3, validator4, validator5, validator6,
-        ];
+
         Ok(TestContext {
             sess,
             gov_token,
@@ -381,7 +338,6 @@ mod tests {
             charlie,
             dave,
             ed,
-            validators: validators,
         })
     }
 
@@ -397,7 +353,7 @@ mod tests {
             (agents[0].address.clone(), BIPS / 2),
             (agents[1].address.clone(), BIPS / 2),
         ]);
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_token,
             &ctx.alice,
@@ -407,7 +363,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.alice,
@@ -422,7 +378,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_token,
             &ctx.bob,
@@ -432,7 +388,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.bob,
@@ -447,7 +403,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_token,
             &ctx.charlie,
@@ -457,7 +413,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.charlie,
@@ -472,7 +428,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_token,
             &ctx.dave,
@@ -482,7 +438,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.dave,
@@ -497,7 +453,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_token,
             &ctx.ed,
@@ -507,7 +463,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.ed,
@@ -531,12 +487,13 @@ mod tests {
         //let ctx = multi_sig_test_setup();
         Ok(())
     }
+
     #[test]
     fn vote_delegation() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
         // Bob approves Ed to transfer 1k sAZERO
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.bob,
@@ -584,7 +541,7 @@ mod tests {
         let gdata: Result<Option<GovernanceData>, drink::errors::LangError> =
             sess.last_call_return().unwrap();
         println!("{:?}", gdata.unwrap());
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_nft,
             &ctx.bob,
@@ -645,12 +602,13 @@ mod tests {
         );
         Ok(())
     }
+
     #[test]
     fn update_vote_delegation() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
         // Bob approves Ed to transfer 1k sAZERO
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.bob,
@@ -736,12 +694,13 @@ mod tests {
         );
         Ok(())
     }
+
     #[test]
     fn completion_fails_when_called_twice() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
         // Bob approves Ed to transfer 1k sAZERO
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.bob,
@@ -809,7 +768,7 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        match call_function(
+        if call_function(
             sess,
             &ctx.stake_contract,
             &ctx.bob,
@@ -817,19 +776,21 @@ mod tests {
             Some(vec![6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal resuse");
         }
 
         Ok(())
     }
+
     #[test]
     fn completion_fails_before_interval() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY / 2).unwrap();
         // Bob approves Ed to transfer 1k sAZERO
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.bob,
@@ -888,7 +849,7 @@ mod tests {
         .unwrap();
         let sess = update_days(sess, 7_u64);
 
-        match call_function(
+        if call_function(
             sess,
             &ctx.stake_contract,
             &ctx.bob,
@@ -896,9 +857,10 @@ mod tests {
             Some(vec![6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal resuse")
         }
 
         Ok(())
@@ -909,7 +871,7 @@ mod tests {
         let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
 
         // Bob approves Ed to transfer 1k sAZERO
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.bob,
@@ -929,7 +891,7 @@ mod tests {
             (agents[1].address.clone(), BIPS / 2),
         ]);
 
-        println!("{}", cast.to_string());
+        println!("{}", cast);
         let sess = call_function(
             sess,
             &ctx.stake_contract,
@@ -946,7 +908,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.gov_nft,
             &ctx.bob,
@@ -988,6 +950,7 @@ mod tests {
         assert_eq!(gdata.unwrap().unwrap().stake_weight, expected);
         Ok(())
     }
+
     #[test]
     fn burn_remint() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1008,7 +971,7 @@ mod tests {
             &ctx.alice,
             String::from("PSP34::approve"),
             Some(vec![
-                (&ctx.stake_contract).to_string(),
+                (ctx.stake_contract).to_string(),
                 String::from("None"),
                 true.to_string(),
             ]),
@@ -1047,7 +1010,7 @@ mod tests {
 
         let (balance_in_wallet, sess) =
             query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
-        let (balance_in_staking, sess) =
+        let (balance_in_staking, _) =
             query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
         let total_rewards_2_days = REWARDS_PER_SECOND * 2 * DAY as u128;
         let rewards_share_alice = total_rewards_2_days / 5;
@@ -1061,14 +1024,16 @@ mod tests {
 
         Ok(())
     }
+
     #[test]
     fn compound_without_burning() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
-        let sess = update_days(ctx.sess, 30);
+        update_days(ctx.sess, 30);
 
         Ok(())
     }
+
     #[test]
     fn nft_unlocks_fail_with_active_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1080,7 +1045,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1100,7 +1065,7 @@ mod tests {
             &ctx.alice,
             String::from("PSP34::approve"),
             Some(vec![
-                (&ctx.stake_contract).to_string(),
+                (ctx.stake_contract).to_string(),
                 String::from("None"),
                 true.to_string(),
             ]),
@@ -1108,7 +1073,7 @@ mod tests {
             transcoder_governance_nft(),
         )
         .unwrap();
-        match call_function(
+        if call_function(
             sess,
             &ctx.stake_contract,
             &ctx.alice,
@@ -1116,9 +1081,10 @@ mod tests {
             Some(vec![1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal resuse");
         }
 
         Ok(())
@@ -1135,7 +1101,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1156,7 +1122,7 @@ mod tests {
             &ctx.alice,
             String::from("PSP34::approve"),
             Some(vec![
-                (&ctx.stake_contract).to_string(),
+                (ctx.stake_contract).to_string(),
                 String::from("None"),
                 true.to_string(),
             ]),
@@ -1167,7 +1133,7 @@ mod tests {
 
         let sess = update_days(sess, 30);
 
-        let sess = call_function(
+        call_function(
             sess,
             &ctx.stake_contract,
             &ctx.alice,
@@ -1175,7 +1141,9 @@ mod tests {
             Some(vec![1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
-        );
+        )
+        .unwrap();
+
         Ok(())
     }
 
@@ -1191,7 +1159,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1206,7 +1174,7 @@ mod tests {
             helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
         println!("{:?}", proposal.clone().prop_id.to_string());
         let sess = update_days(sess, 3_u64);
-        let sess = call_function(
+        call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
@@ -1223,6 +1191,7 @@ mod tests {
 
         Ok(())
     }
+
     // Todo add check for removed proposal
     #[test]
     fn cancel_proposal_works() -> Result<(), Box<dyn Error>> {
@@ -1235,7 +1204,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1249,7 +1218,7 @@ mod tests {
         let (proposal, sess) =
             helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
         println!("{:?}", proposal.clone().prop_id.to_string());
-        let sess = call_function(
+        call_function(
             sess,
             &ctx.governance,
             &ctx.alice,
@@ -1261,6 +1230,7 @@ mod tests {
         .unwrap();
         Ok(())
     }
+
     #[test]
     fn cancel_proposal_fails_during_active_period() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1272,7 +1242,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1287,7 +1257,7 @@ mod tests {
             helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
         let sess = update_days(sess, 7_u64);
         println!("{:?}", proposal.clone().prop_id.to_string());
-        match call_function(
+        if call_function(
             sess,
             &ctx.governance,
             &ctx.alice,
@@ -1295,13 +1265,15 @@ mod tests {
             Some(vec![1.to_string()]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal reuse")
         }
 
         Ok(())
     }
+
     #[test]
     fn double_proposal_creation_fails() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1313,7 +1285,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1321,23 +1293,25 @@ mod tests {
         )
         .unwrap();
 
-        match call_function(
+        if call_function(
             sess,
             &ctx.governance,
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal reuse")
         }
         Ok(())
     }
+
     #[test]
     fn double_proposal_creation_after_expiry() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1349,7 +1323,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1358,13 +1332,13 @@ mod tests {
         .unwrap();
         let sess = update_days(sess, 10_u64);
 
-        let sess = call_function(
+        call_function(
             sess,
             &ctx.governance,
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -1373,48 +1347,53 @@ mod tests {
         .unwrap();
         Ok(())
     }
+
     #[test]
     fn proposal_creation_fails_with_invalid_nft_weight() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(4 * USER_SUPPLY, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
-        match call_function(
+        if call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 1.to_string(),
             ]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal reuse");
         }
         Ok(())
     }
+
     #[test]
     fn proposal_creation_fails_with_invalid_nft() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
-        match call_function(
+        if call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::ChangeStakingRewardRate(70000000_128).to_string(),
+                helpers::PropType::ChangeStakingRewardRate(70_000_000_128).to_string(),
                 3.to_string(),
             ]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of a proposal resuse"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of a proposal reuse");
         }
         Ok(())
     }
+
     #[test]
     fn vault_fee_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1480,6 +1459,7 @@ mod tests {
         assert_eq!(res.unwrap(), 2333);
         Ok(())
     }
+
     #[test]
     fn test_vote_delay_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1527,15 +1507,16 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (value, sess) = query_governance_vote_delay(sess, ctx.governance.clone()).unwrap();
+        let (value, _) = query_governance_vote_delay(sess, ctx.governance.clone()).unwrap();
         assert_eq!(3 * DAY, value);
         Ok(())
     }
+
     #[test]
     fn test_invalid_delay_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
-        match call_function(
+        if call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
@@ -1546,12 +1527,14 @@ mod tests {
             ]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of invalid delay input"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of invalid delay input");
         }
         Ok(())
     }
+
     #[test]
     fn test_vote_period_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1598,15 +1581,16 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (value, sess) = query_governance_vote_period(sess, ctx.governance).unwrap();
+        let (value, _) = query_governance_vote_period(sess, ctx.governance).unwrap();
         assert_eq!(12 * DAY, value);
         Ok(())
     }
+
     #[test]
     fn test_vote_invalid_period_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
-        match call_function(
+        if call_function(
             ctx.sess,
             &ctx.governance,
             &ctx.alice,
@@ -1617,26 +1601,15 @@ mod tests {
             ]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of invalid vote period input"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of invalid vote period input");
         }
 
         Ok(())
     }
-    //CompoundIncentiveChange(
 
-    /**
-    *   PropType::AcceptanceWeightUpdate(update) => {
-                       self.update_acceptance_threshold(*update)
-                   }
-                   PropType::UpdateRejectThreshhold(update) => {
-                       self.update_reject_threshold(*update)
-                   }
-                   PropType::UpdateExecThreshhold(update) => {
-                       self.update_execution_threshold(*update)
-                   }
-    */
     #[test]
     fn acceptance_weight_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1683,11 +1656,12 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (value, sess) = query_governance_acceptance_threshold(sess, ctx.governance).unwrap();
+        let (value, _) = query_governance_acceptance_threshold(sess, ctx.governance).unwrap();
         assert_eq!(100_000_000_999_u128, value.unwrap());
         println!("{:?}", value);
         Ok(())
     }
+
     #[test]
     fn rejection_threshold_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1734,10 +1708,11 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (value, sess) = query_governance_rejection_threshold(sess, ctx.governance).unwrap();
+        let (value, _) = query_governance_rejection_threshold(sess, ctx.governance).unwrap();
         assert_eq!(100_000_000_999_u128, value.unwrap());
         Ok(())
     }
+
     #[test]
     fn execution_threshold_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, USER_SUPPLY).unwrap();
@@ -1784,26 +1759,16 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        let (value, sess) = query_governance_execution_threshold(sess, ctx.governance).unwrap();
+        let (value, _) = query_governance_execution_threshold(sess, ctx.governance).unwrap();
         assert_eq!(100_000_000_999_u128, value.unwrap());
         Ok(())
     }
+
     #[test]
     fn transfer_funds_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD / 2).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
-        /**
-        pub struct TokenTransfer {
-            token: AccountId,
-            amount: u128,
-            to: AccountId,
-        } */
-        /*let transfer = helpers::TokenTransfer {
-            token: ctx.gov_token,
-            amount: (TOTAL_SUPPLY / 50),
-            to: ctx.dave,
-        };
-        **/
+
         let sess = call_function(
             ctx.sess,
             &ctx.governance,
@@ -1838,7 +1803,7 @@ mod tests {
         )
         .unwrap();
         let sess = update_days(sess, 10_u64);
-        let sess = call_function(
+        call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
@@ -1850,13 +1815,14 @@ mod tests {
         .unwrap();
         Ok(())
     }
+
     #[test]
     fn transfer_native_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD / 2).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
         println!(
             "{}",
-            helpers::PropType::NativeTokenTransfer(ctx.dave.clone(), 100000000000_u128).to_string()
+            helpers::PropType::NativeTokenTransfer(ctx.dave.clone(), 100000000000_u128)
         );
         let sess = call_function(
             ctx.sess,
@@ -1896,7 +1862,7 @@ mod tests {
         )
         .unwrap();
         let sess = update_days(sess, 10_u64);
-        let sess = call_function(
+        call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
@@ -1908,6 +1874,7 @@ mod tests {
         .unwrap();
         Ok(())
     }
+
     #[test]
     fn add_multisigner_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -1963,7 +1930,7 @@ mod tests {
             transcoder_governance(),
         )
         .unwrap();
-        
+
         let (council_members, sess) = helpers::query_council_members(sess, &ctx.council).unwrap();
         assert!(!council_members.contains(&new_account));
 
@@ -1979,7 +1946,7 @@ mod tests {
         )
         .unwrap();
 
-        let (council_members, sess) = helpers::query_council_members(sess, &ctx.council).unwrap();
+        let (council_members, _) = helpers::query_council_members(sess, &ctx.council).unwrap();
         assert!(council_members.contains(&new_account));
         Ok(())
     }
@@ -2022,7 +1989,7 @@ mod tests {
         let (proposal, sess) =
             helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
         println!("proposal: {:?}", proposal);
-        match call_function(
+        if call_function(
             sess,
             &ctx.governance,
             &ctx.bob,
@@ -2034,13 +2001,15 @@ mod tests {
             ]),
             None,
             transcoder_governance(),
-        ) {
-            Ok(_) => panic!("Should panic because of invalid vote period input"),
-            Err(_) => (),
+        )
+        .is_ok()
+        {
+            panic!("Should panic because of invalid vote period input");
         }
 
         Ok(())
     }
+
     #[test]
     fn proposals_fail_by_negative_votes() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, USER_SUPPLY, USER_SUPPLY).unwrap();
@@ -2079,7 +2048,7 @@ mod tests {
         .unwrap();
         let sess = update_days(sess, 10_u64);
 
-        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        let (_, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
         let sess = call_function(
             sess,
             &ctx.governance,
@@ -2093,10 +2062,11 @@ mod tests {
 
         let rr: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
         let expired_status = rr.unwrap();
-        assert_eq!(expired_status, false);
+        assert!(!expired_status);
 
         Ok(())
     }
+
     #[test]
     fn proposals_fail_by_not_reaching_quorum() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, USER_SUPPLY, EXEC_THRESHOLD).unwrap();
@@ -2135,7 +2105,7 @@ mod tests {
         .unwrap();
         let sess = update_days(sess, 10_u64);
 
-        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        let (_, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
         let sess = call_function(
             sess,
             &ctx.governance,
@@ -2149,10 +2119,11 @@ mod tests {
 
         let rr: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
         let expired_status = rr.unwrap();
-        assert_eq!(expired_status, false);
+        assert!(!expired_status);
 
         Ok(())
     }
+
     #[test]
     fn expired_proposal_cannot_be_executed() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, USER_SUPPLY, EXEC_THRESHOLD).unwrap();
@@ -2191,7 +2162,7 @@ mod tests {
         .unwrap();
         let sess = update_days(sess, 10_u64);
 
-        let (proposals, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        let (_, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
         let sess = call_function(
             sess,
             &ctx.governance,
@@ -2205,10 +2176,11 @@ mod tests {
 
         let rr: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
         let expired_status = rr.unwrap();
-        assert_eq!(expired_status, false);
+        assert!(!expired_status);
 
         Ok(())
     }
+
     #[test]
     fn unlock_nft_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD / 2).unwrap();
@@ -2228,7 +2200,7 @@ mod tests {
         let rr: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
         let transfer_status = rr.unwrap();
 
-        assert_eq!(transfer_status, true);
+        assert!(transfer_status);
 
         let sess = call_function(
             sess,
@@ -2285,7 +2257,7 @@ mod tests {
         let rr: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
         let transfer_status = rr.unwrap();
 
-        assert_eq!(transfer_status, false);
+        assert!(!transfer_status);
         // let rr: Result<helpers::Proposal, drink::errors::LangError> = sess.last_call_return().unwrap();
         // let proposal = rr.unwrap();
 
@@ -2294,6 +2266,7 @@ mod tests {
         // let proposal_string: String = proposal.prop_id.to_string();
         Ok(())
     }
+
     #[test]
     fn vesting_admin_can_transfer() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
@@ -2789,12 +2762,13 @@ mod tests {
 
         Ok(())
     }
+
     #[test]
     fn validator_onboarding() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         let new_validator = AccountId::new([106u8; 32]);
 
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.alice,
@@ -2807,7 +2781,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.alice,
@@ -2817,18 +2791,18 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
-        let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
+        let (_, agents, _) = helpers::get_agents(sess, &ctx.registry)?;
         assert_eq!(agents.len(), 6);
         Ok(())
     }
-    
+
     //Todo Query validator Status
     #[test]
     fn disable_validator() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         let new_validator = AccountId::new([106u8; 32]);
 
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.alice,
@@ -2841,7 +2815,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.alice,
@@ -2853,7 +2827,7 @@ mod tests {
         .unwrap();
         let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
         println!("{:?}", agents);
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.council,
             &ctx.alice,
@@ -2867,7 +2841,7 @@ mod tests {
             transcoder_governance_council(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.council,
             &ctx.bob,
@@ -2881,7 +2855,8 @@ mod tests {
             transcoder_governance_council(),
         )
         .unwrap();
-        let mut sess = call_function(
+
+        call_function(
             sess,
             &ctx.council,
             &ctx.charlie,
@@ -2898,14 +2873,16 @@ mod tests {
 
         Ok(())
     }
-      //Todo Query validator Status
-      //Todo Query NFT Status
+
+    //Todo Query validator Status
+    //Todo Query NFT Status
+
     #[test]
     fn disable_validator_with_slashing() -> Result<(), Box<dyn Error>> {
-        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         let new_validator = AccountId::new([106u8; 32]);
 
-        let mut sess = call_function(
+        let sess = call_function(
             ctx.sess,
             &ctx.gov_token,
             &ctx.alice,
@@ -2918,7 +2895,7 @@ mod tests {
             transcoder_governance_token(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.stake_contract,
             &ctx.alice,
@@ -2930,7 +2907,7 @@ mod tests {
         .unwrap();
         let (_, agents, sess) = helpers::get_agents(sess, &ctx.registry)?;
         println!("{:?}", agents);
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.council,
             &ctx.alice,
@@ -2944,7 +2921,7 @@ mod tests {
             transcoder_governance_council(),
         )
         .unwrap();
-        let mut sess = call_function(
+        let sess = call_function(
             sess,
             &ctx.council,
             &ctx.bob,
@@ -2958,7 +2935,7 @@ mod tests {
             transcoder_governance_council(),
         )
         .unwrap();
-        let mut sess = call_function(
+        call_function(
             sess,
             &ctx.council,
             &ctx.charlie,
