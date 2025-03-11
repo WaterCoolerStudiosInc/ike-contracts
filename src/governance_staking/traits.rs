@@ -3,9 +3,6 @@ use ink::primitives::AccountId;
 
 #[ink::trait_definition]
 pub trait Staking {
-    #[ink(message, selector = 0)]
-    fn increase_reward_pool(&mut self, amount: u128) -> Result<(), StakingError>;
-
     #[ink(message, selector = 1)]
     fn update_rewards_rate(&mut self, new_rate: u128) -> Result<(), StakingError>;
 

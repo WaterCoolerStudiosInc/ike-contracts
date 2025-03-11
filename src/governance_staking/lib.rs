@@ -78,6 +78,7 @@ pub mod staking {
         registry: AccountId,
         reward_token_balance: Balance,
         staked_token_balance: Balance,
+        unstaked_token_balance: Balance,
         rewards_per_second: Balance,
         reward_stake_accumulation: Balance,
         accumulated_rewards: Balance,
@@ -524,6 +525,7 @@ pub mod staking {
                 registry,
                 reward_token_balance,
                 staked_token_balance: 0_u128,
+                unstaked_token_balance: 0,
                 rewards_per_second: interest_rate,
                 reward_stake_accumulation: 0,
                 accumulated_rewards: 0,
@@ -566,13 +568,12 @@ pub mod staking {
             self.reward_token_balance
         }
 
-        #[ink(message, selector = 0)]
-        pub fn increase_reward_pool(&mut self, amount: Balance) -> Result<(), StakingError> {
-            self.only_governor()?;
-
-            self.reward_token_balance += amount;
-
-            Ok(())
+        #[ink(message)]
+        pub fn sync_reward_pool(&mut self) {
+            let token: contract_ref!(PSP22) = self.governance_token.into();
+            let balance = token.balance_of(self.env().account_id());
+            self.reward_token_balance =
+                balance - (self.staked_token_balance + self.unstaked_token_balance);
         }
 
         #[ink(message, selector = 1)]
@@ -832,9 +833,11 @@ pub mod staking {
             self.last_reward_claim.insert(nft_id, &now);
 
             if self.reward_token_balance <= reward {
-                // discuss: call to gov_token to get the latest reward reserve balance?
-                self.rewards_per_second = 0;
-                reward = self.reward_token_balance;
+                self.sync_reward_pool(); // optional - can remove to save gas
+                if self.reward_token_balance <= reward {
+                    self.rewards_per_second = 0;
+                    reward = self.reward_token_balance;
+                }
             }
             self.reward_token_balance -= reward;
 
@@ -890,9 +893,11 @@ pub mod staking {
             let mut reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
 
             if self.reward_token_balance <= reward {
-                // discuss: call to gov_token to get the latest reward reserve balance?
-                self.rewards_per_second = 0;
-                reward = self.reward_token_balance;
+                self.sync_reward_pool(); // optional - can remove to save gas
+                if self.reward_token_balance <= reward {
+                    self.rewards_per_second = 0;
+                    reward = self.reward_token_balance;
+                }
             }
             self.reward_token_balance -= reward;
 
@@ -912,11 +917,14 @@ pub mod staking {
             // 3. Only account for utilised range (middle ground) (ACTIVE)
             self.reward_stake_accumulation -= data.stake_weight * ((data.block_created - self.creation_time) as u128);
 
+            let token_value = data.stake_weight + reward;
+            self.unstaked_token_balance += token_value;
+
             self.unstake_requests.insert(
                 nft_id,
                 &UnstakeRequest {
                     time: now,
-                    token_value: data.stake_weight + reward,
+                    token_value,
                     owner: caller,
                 },
             );
@@ -950,6 +958,7 @@ pub mod staking {
                 return Err(StakingError::Unauthorized);
             }
 
+            self.unstaked_token_balance -= data.token_value;
             self.unstake_requests.remove(nft_id);
             self.transfer_psp22_from(&Self::env().account_id(), &caller, data.token_value)?;
 
