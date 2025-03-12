@@ -37,6 +37,7 @@ pub enum PropType {
     ChangeStakingRewardRate(u128),
     UpdateValidatorStakeRequirement(Option<u128>, Option<u128>),
     UpdateRespresentativeStakeThreshold(u128),
+    UpdateDelegationFees(u128),
     AddCouncilMember(AccountId),
     ReplaceCouncilMember(AccountId, AccountId),
     RemoveCouncilMember(AccountId),

@@ -564,7 +564,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -653,7 +653,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -745,7 +745,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -835,7 +835,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -931,7 +931,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 1_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
