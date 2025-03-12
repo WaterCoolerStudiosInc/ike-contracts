@@ -78,6 +78,8 @@ pub mod governance {
         UpdateValidatorStakeRequirement(Option<Balance>, Option<Balance>),
         // Update the threshold stake required to become a self-delegator
         UpdateRespresentativeStakeThreshold(Balance),
+        // Update the delegation fees in staking contract
+        UpdateDelegationFees(u128),
         // Add to council
         AddCouncilMember(AccountId),
         // remove then add to council
@@ -353,6 +355,13 @@ pub mod governance {
                 .map_err(|_| GovernanceError::StakingError)
         }
 
+        fn update_delegation_fees(&self, fees: u128) -> Result<(), GovernanceError> {
+            let mut staking: contract_ref!(Staking) = self.staking.into();
+            staking
+                .update_delegation_fees(fees)
+                .map_err(|_| GovernanceError::StakingError)
+        }
+
         fn update_reject_threshold(&mut self, update: Weight) {
             self.rejection_threshold = update;
         }
@@ -457,6 +466,7 @@ pub mod governance {
                 PropType::UpdateRespresentativeStakeThreshold(amount) => {
                     self.update_representative_stake_threshold(amount)?
                 }
+                PropType::UpdateDelegationFees(fees) => self.update_delegation_fees(fees)?,
                 PropType::SetCodeHash(code_hash) => self.set_code_internal(code_hash)?,
                 PropType::UnlockTransfer() => self.unlock_transfer()?,
                 PropType::LockTransfer() => self.lock_transfer()?,
