@@ -74,6 +74,7 @@ pub mod staking {
     #[ink(storage)]
     pub struct Staking {
         creation_time: Time,
+        admin: Option<AccountId>,
         governor: AccountId,
         registry: AccountId,
         reward_token_balance: Balance,
@@ -491,6 +492,13 @@ pub mod staking {
             }
         }
 
+        fn only_admin(&self) -> Result<(), StakingError> {
+            match Some(self.env().caller()) == self.admin {
+                true => Ok(()),
+                false => Err(StakingError::Unauthorized),
+            }
+        }
+
         fn nft_proposal_lock(&self, nft_id: NftId) -> Result<(), StakingError> {
             let is_locked = build_call::<DefaultEnvironment>()
                 .call(self.governor)
@@ -509,6 +517,7 @@ pub mod staking {
     impl Staking {
         #[ink(constructor)]
         pub fn new(
+            admin: AccountId,
             governance_token: AccountId,
             registry: AccountId,
             governor: AccountId,
@@ -521,6 +530,7 @@ pub mod staking {
 
             Self {
                 creation_time: now,
+                admin: Some(admin),
                 governor,
                 registry,
                 reward_token_balance,
@@ -915,7 +925,8 @@ pub mod staking {
             // 1. Don't make any changes (=> future reward is always less than the ideal yield)
             // 2. Remove the utilised range (=> future reward can yield higher than ideal returns)
             // 3. Only account for utilised range (middle ground) (ACTIVE)
-            self.reward_stake_accumulation -= data.stake_weight * ((data.block_created - self.creation_time) as u128);
+            self.reward_stake_accumulation -=
+                data.stake_weight * ((data.block_created - self.creation_time) as u128);
 
             let token_value = data.stake_weight + reward;
             self.unstaked_token_balance += token_value;
@@ -1056,6 +1067,23 @@ pub mod staking {
                 .cloned()
                 .collect();
 
+            Ok(())
+        }
+
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, code_hash: [u8; 32]) -> Result<(), StakingError> {
+            self.only_admin()?;
+            ink::env::set_code_hash(&code_hash)
+                .map_err(|_| StakingError::InternalError(RuntimeError::CallRuntimeFailed))
+        }
+
+        #[ink(message)]
+        pub fn transfer_admin_role(
+            &mut self,
+            new_admin: Option<AccountId>,
+        ) -> Result<(), StakingError> {
+            self.only_admin()?;
+            self.admin = new_admin;
             Ok(())
         }
     }

@@ -24,7 +24,8 @@ mod governance_council {
 
     #[ink(storage)]
     pub struct Council {
-        pub admin: AccountId,
+        pub admin: Option<AccountId>,
+        pub governor: AccountId,
         pub gov_staking: AccountId,
         pub registry: AccountId,
         pub signers: Vec<AccountId>,
@@ -42,6 +43,7 @@ mod governance_council {
         Unauthorized,
         InvalidInput,
         UsedNonce,
+        EnvError,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -203,8 +205,15 @@ mod governance_council {
             self.signers.iter().position(|a| a == acc)
         }
 
+        fn only_governor(&self) -> Result<(), CouncilError> {
+            match self.env().caller() == self.governor {
+                true => Ok(()),
+                false => Err(CouncilError::Unauthorized),
+            }
+        }
+
         fn only_admin(&self) -> Result<(), CouncilError> {
-            match self.env().caller() == self.admin {
+            match Some(self.env().caller()) == self.admin {
                 true => Ok(()),
                 false => Err(CouncilError::Unauthorized),
             }
@@ -215,12 +224,14 @@ mod governance_council {
         #[ink(constructor)]
         pub fn new(
             admin: AccountId,
+            governor: AccountId,
             registry: AccountId,
             gov_staking: AccountId,
             initial_signers: Vec<AccountId>,
         ) -> Self {
             Self {
-                admin,
+                admin: Some(admin),
+                governor,
                 registry,
                 gov_staking,
                 signers: initial_signers,
@@ -228,12 +239,28 @@ mod governance_council {
                 proposals: Mapping::new(),
             }
         }
+
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, code_hash: [u8; 32]) -> Result<(), CouncilError> {
+            self.only_admin()?;
+            ink::env::set_code_hash(&code_hash).map_err(|_| CouncilError::EnvError)
+        }
+
+        #[ink(message)]
+        pub fn transfer_admin_role(
+            &mut self,
+            new_admin: Option<AccountId>,
+        ) -> Result<(), CouncilError> {
+            self.only_admin()?;
+            self.admin = new_admin;
+            Ok(())
+        }
     }
 
     impl ICouncil for Council {
         #[ink(message, selector = 1)]
         fn add_signer(&mut self, signer: AccountId) -> Result<(), CouncilError> {
-            self.only_admin()?;
+            self.only_governor()?;
 
             if self.is_signer(&signer) {
                 return Err(CouncilError::SignerAlreadyExists);
@@ -246,7 +273,7 @@ mod governance_council {
 
         #[ink(message, selector = 2)]
         fn remove_signer(&mut self, signer: AccountId) -> Result<(), CouncilError> {
-            self.only_admin()?;
+            self.only_governor()?;
 
             match self.get_signer_index(&signer) {
                 None => Err(CouncilError::SignerNotFound),
@@ -260,7 +287,7 @@ mod governance_council {
 
         #[ink(message, selector = 3)]
         fn update_threshold(&mut self, new_threshold: u16) -> Result<(), CouncilError> {
-            self.only_admin()?;
+            self.only_governor()?;
             self.threshold = new_threshold;
             Ok(())
         }
@@ -271,7 +298,7 @@ mod governance_council {
             signer_old: AccountId,
             signer_new: AccountId,
         ) -> Result<(), CouncilError> {
-            self.only_admin()?;
+            self.only_governor()?;
 
             if self.is_signer(&signer_new) {
                 return Err(CouncilError::SignerAlreadyExists);
@@ -347,7 +374,7 @@ mod governance_council {
 
         #[ink(message, selector = 9)]
         fn set_gov_staking(&mut self, new_account: AccountId) -> Result<(), CouncilError> {
-            self.only_admin()?;
+            self.only_governor()?;
             self.gov_staking = new_account;
             Ok(())
         }
