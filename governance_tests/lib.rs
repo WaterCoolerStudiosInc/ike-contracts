@@ -94,10 +94,8 @@ mod tests {
 
         let gov_token = sess.deploy(
             bytes_governance_token(),
-            "new",
+            "new_2",
             &[
-                "ike-token".to_string(),
-                "IKE".to_string(), 
                 18u8.to_string(), 
                 TOTAL_SUPPLY.to_string()
             ],

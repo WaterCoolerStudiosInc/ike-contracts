@@ -18,7 +18,7 @@ mod token {
     }
 
     impl Token {
-        #[ink(constructor)]
+        #[ink(constructor, default)]
         pub fn new(name: String, symbol: String, decimals: u8, supply: Balance) -> Self {
             let caller = Self::env().caller();
 
@@ -30,6 +30,16 @@ mod token {
                 symbol: Some(symbol),
                 decimals,
             }
+        }
+
+        #[ink(constructor)]
+        pub fn new_2(decimals: u8, supply: Balance) -> Self {
+            Self::new(
+                String::from("IKE Token"), 
+                String::from("IKE"), 
+                decimals, 
+                supply
+            )
         }
 
         #[ink(message)]
