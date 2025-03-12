@@ -190,6 +190,12 @@ pub mod vesting {
             Ok(())
         }
 
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, code_hash: [u8; 32]) -> Result<(), VestingError> {
+            self.only_admin()?;
+            ink::env::set_code_hash(&code_hash).map_err(|_| VestingError::EnvError)
+        }
+
         /// Transfers admin role to another user
         ///
         /// Caller must be the current admin

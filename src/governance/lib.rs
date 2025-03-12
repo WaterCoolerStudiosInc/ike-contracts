@@ -157,6 +157,7 @@ pub mod governance {
 
     #[ink(storage)]
     pub struct Governance {
+        pub admin: Option<AccountId>,
         pub gov_nft: AccountId,
         pub vault: AccountId,
         pub staking: AccountId,
@@ -515,7 +516,7 @@ pub mod governance {
             let caller = Self::env().caller();
             let governor = Self::env().account_id();
 
-            let mut council_ref = CouncilRef::new(governor, registry, vault, signers)
+            let mut council_ref = CouncilRef::new(caller, governor, registry, vault, signers)
                 .endowment(0)
                 .code_hash(council_hash)
                 .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
@@ -528,6 +529,7 @@ pub mod governance {
                 .instantiate();
 
             let staking_ref = StakingRef::new(
+                caller,
                 governance_token,
                 registry,
                 governor,
@@ -551,6 +553,7 @@ pub mod governance {
             nft_ref.set_admin(staking_address).unwrap();
 
             Self {
+                admin: Some(caller),
                 gov_nft: GovernanceNFTRef::to_account_id(&nft_ref),
                 vault,
                 council: CouncilRef::to_account_id(&council_ref),
@@ -563,6 +566,29 @@ pub mod governance {
                 proposals: Vec::new(),
                 voted: Mapping::new(),
                 prop_nonce: 1_u128,
+            }
+        }
+
+        #[ink(message)]
+        pub fn set_code_hash(&mut self, code_hash: [u8; 32]) -> Result<(), GovernanceError> {
+            self.only_admin()?;
+            self.set_code_internal(code_hash)
+        }
+
+        #[ink(message)]
+        pub fn transfer_admin_role(
+            &mut self,
+            new_admin: Option<AccountId>,
+        ) -> Result<(), GovernanceError> {
+            self.only_admin()?;
+            self.admin = new_admin;
+            Ok(())
+        }
+
+        fn only_admin(&self) -> Result<(), GovernanceError> {
+            match Some(self.env().caller()) == self.admin {
+                true => Ok(()),
+                false => Err(GovernanceError::Unauthorized),
             }
         }
     }

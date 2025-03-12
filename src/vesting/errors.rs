@@ -14,4 +14,5 @@ pub enum VestingError {
     InsufficientFunding,
     InvalidInput,
     TokenError(PSP22Error),
+    EnvError,
 }
