@@ -2333,6 +2333,8 @@ mod tests {
             cliff,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         // Add funding
@@ -2383,6 +2385,8 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         let sess = helpers::vesting_add_recipients(
@@ -2401,7 +2405,7 @@ mod tests {
     }
 
     #[test]
-    fn vesting_admin_cannot_add_recipient_once_active() -> Result<(), Box<dyn Error>> {
+    fn vesting_admin_can_add_recipient_even_after_active() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
 
@@ -2410,20 +2414,24 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         let sess = helpers::vesting_activate(ctx.sess, &ctx.vesting, &ctx.bob)?;
 
-        match helpers::vesting_add_recipients(
+        let sess = helpers::vesting_add_recipients(
             sess,
             &ctx.vesting,
             &ctx.bob,
             vec![&ctx.charlie],
             vec![&charlie_schedule],
-        ) {
-            Ok(_) => panic!("Should panic because vesting has been activated"),
-            Err(_) => Ok(()),
-        }
+        )?;
+
+        let (schedule, _sess) =
+            helpers::query_vesting_get_schedule(sess, &ctx.vesting, &ctx.charlie)?;
+        assert_eq!(schedule.unwrap(), charlie_schedule);
+        Ok(())
     }
 
     #[test]
@@ -2436,6 +2444,8 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         let sess = helpers::vesting_add_recipients(
@@ -2468,6 +2478,8 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         match helpers::vesting_add_recipients(
@@ -2492,6 +2504,8 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         let sess = helpers::vesting_add_recipients(
@@ -2526,6 +2540,8 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: false,
+            tax_withheld_bips: 0,
         };
 
         let sess = helpers::vesting_add_recipients(
@@ -2554,6 +2570,8 @@ mod tests {
             cliff: 0,
             offset: 0,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         let sess = helpers::vesting_add_recipients(
@@ -2588,6 +2606,8 @@ mod tests {
             cliff,
             offset,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         // Add funding
@@ -2616,13 +2636,15 @@ mod tests {
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
 
         let cliff = 100e12 as u128;
-        let offset = helpers::DAY;
+        let offset = helpers::DAY * 30;
 
         let charlie_schedule = helpers::Schedule {
             amount: 0,
             cliff,
             offset,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         // Add funding
@@ -2660,13 +2682,15 @@ mod tests {
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
 
         let amount = 100e12 as u128;
-        let offset = helpers::DAY;
+        let offset = helpers::DAY * 30;
 
         let charlie_schedule = helpers::Schedule {
             amount,
             cliff: 0,
             offset,
             duration: 0,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         // Add funding
@@ -2705,14 +2729,16 @@ mod tests {
 
         let amount = 100e12 as u128;
         let cliff = 50e12 as u128;
-        let offset = helpers::DAY;
-        let duration = helpers::DAY * 14;
+        let offset = helpers::DAY * 30;
+        let duration = helpers::DAY * 60;
 
         let charlie_schedule = helpers::Schedule {
             amount,
             cliff,
             offset,
             duration,
+            is_cancellable: true,
+            tax_withheld_bips: 0,
         };
 
         // Add funding

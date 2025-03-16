@@ -481,6 +481,8 @@ pub struct Schedule {
     pub cliff: u128,
     pub offset: u64,
     pub duration: u64,
+    pub is_cancellable: bool,
+    pub tax_withheld_bips: u16, // 10_000 bips = 100%
 }
 
 pub fn query_vesting_get_admin(
