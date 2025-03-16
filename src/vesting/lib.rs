@@ -4,20 +4,19 @@ mod errors;
 
 #[ink::contract]
 pub mod vesting {
+    pub const DAY: u64 = 86400 * 1000;
+    pub const INTERVAL_DURATION: u64 = 30 * DAY;
 
     use crate::errors::VestingError;
-    use ink::{
-        contract_ref,
-        prelude::vec::Vec,
-        storage::Mapping,
-    };
+    use ink::{contract_ref, prelude::vec::Vec, storage::Mapping};
     use psp22::PSP22;
 
     #[ink(event)]
     pub struct Claim {
         #[ink(topic)]
         recipient: AccountId,
-        amount: u128,
+        amount_received: u128,
+        tax_withheld: u128,
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -30,27 +29,35 @@ pub mod vesting {
         pub cliff: u128,
         pub offset: u64,
         pub duration: u64,
+        pub is_cancellable: bool,
+        pub tax_withheld_bips: u16, // 10_000 bips = 100%
     }
 
     #[ink(storage)]
     pub struct Vesting {
         pub token: AccountId,
         pub admin: Option<AccountId>,
+        pub tax_collector: AccountId,
         pub deployment_time: u64,
         pub schedules: Mapping<AccountId, Schedule>,
         pub funding_required: u128,
+        pub tax_withheld: u128,
         pub active: bool,
     }
 
     impl Vesting {
         #[ink(constructor)]
         pub fn new(token: AccountId) -> Self {
+            let caller = Self::env().caller();
+
             Self {
                 token,
-                admin: Some(Self::env().caller()),
+                admin: Some(caller),
+                tax_collector: caller,
                 deployment_time: Self::env().block_timestamp(),
                 schedules: Mapping::default(),
                 funding_required: 0,
+                tax_withheld: 0,
                 active: false,
             }
         }
@@ -64,6 +71,14 @@ pub mod vesting {
             Ok(admin)
         }
 
+        fn only_tax_collector(&self) -> Result<(), VestingError> {
+            if self.env().caller() != self.tax_collector {
+                return Err(VestingError::NotAuthorised);
+            }
+
+            Ok(())
+        }
+
         fn token_balance_of(&self, account: AccountId) -> u128 {
             let token: contract_ref!(PSP22) = self.token.into();
             token.balance_of(account)
@@ -75,6 +90,56 @@ pub mod vesting {
                 return Err(VestingError::TokenError(e));
             }
             Ok(())
+        }
+
+        fn vested_amount(&self, schedule: &Schedule, now: u64) -> u128 {
+            let completed_intervals = (now - self.deployment_time) / INTERVAL_DURATION;
+            let last_interval_completion =
+                self.deployment_time + (completed_intervals * INTERVAL_DURATION);
+
+            let start = self.deployment_time + schedule.offset;
+            let end = start + schedule.duration;
+
+            if last_interval_completion < start {
+                return 0;
+            }
+
+            let mut vested = schedule.cliff;
+
+            if last_interval_completion < end {
+                // Vest amount proportional to elapsed time
+                let time_elapsed = last_interval_completion - start;
+                let amount_proportional =
+                    time_elapsed as u128 * schedule.amount / schedule.duration as u128;
+                vested += amount_proportional;
+            } else {
+                // Vest full remaining amount
+                vested += schedule.amount;
+            }
+
+            vested
+        }
+
+        fn claim_with_tax_withheld(
+            &mut self,
+            recipient: AccountId,
+            vested: u128,
+            tax_withheld_bips: u16,
+        ) -> Result<(u128, u128), VestingError> {
+            let tax_withheld = vested * tax_withheld_bips as u128 / 10_000;
+            let payable = vested - tax_withheld;
+
+            self.tax_withheld += tax_withheld;
+            self.funding_required -= payable;
+            self.token_transfer_to(recipient, payable)?;
+
+            self.env().emit_event(Claim {
+                recipient,
+                amount_received: payable,
+                tax_withheld,
+            });
+
+            Ok((payable, tax_withheld))
         }
 
         #[ink(message)]
@@ -95,7 +160,6 @@ pub mod vesting {
         /// Adds schedules for recipients
         ///
         /// Caller must be the current admin
-        /// Can only call before vesting is active
         /// Can only have one schedule per recipient
         #[ink(message)]
         pub fn add_recipients(
@@ -104,11 +168,6 @@ pub mod vesting {
             schedules: Vec<Schedule>,
         ) -> Result<(), VestingError> {
             self.only_admin()?;
-
-            // Cannot add recipient after activation
-            if self.active {
-                return Err(VestingError::Active);
-            }
 
             if recipients.len() != schedules.len() {
                 return Err(VestingError::InvalidInput);
@@ -120,9 +179,11 @@ pub mod vesting {
                 if self.schedules.contains(recipient) {
                     return Err(VestingError::RecipientAlreadyExists);
                 }
+                if schedule.tax_withheld_bips > 10_000 {
+                    return Err(VestingError::InvalidInput);
+                }
 
                 additional_funding_required += schedule.amount + schedule.cliff;
-
                 self.schedules.insert(recipient, &schedule);
             }
 
@@ -149,22 +210,29 @@ pub mod vesting {
         ) -> Result<(), VestingError> {
             self.only_admin()?;
 
-            // Cannot remove recipient after activation
-            if self.active {
-                return Err(VestingError::Active);
-            }
-
             let mut removed_funding_required = 0u128;
 
             for recipient in recipients.iter() {
                 let schedule = self
                     .schedules
                     .get(recipient)
-                    .ok_or(VestingError::RecipientDoesNotExist)
-                    .unwrap();
+                    .ok_or(VestingError::RecipientDoesNotExist)?;
 
-                removed_funding_required += schedule.amount + schedule.cliff;
+                let vested = match self.active {
+                    false => 0,
+                    true => {
+                        if !schedule.is_cancellable {
+                            return Err(VestingError::NotCancellable);
+                        }
+                        self.vested_amount(&schedule, self.env().block_timestamp())
+                    }
+                };
 
+                if vested != 0 {
+                    self.claim_with_tax_withheld(*recipient, vested, schedule.tax_withheld_bips)?;
+                }
+
+                removed_funding_required += schedule.amount + schedule.cliff - vested;
                 self.schedules.remove(recipient);
             }
 
@@ -250,7 +318,7 @@ pub mod vesting {
         }
 
         #[ink(message)]
-        pub fn claim(&mut self) -> Result<u128, VestingError> {
+        pub fn claim(&mut self) -> Result<(u128, u128), VestingError> {
             let now = self.env().block_timestamp();
             let recipient = self.env().caller();
 
@@ -262,55 +330,52 @@ pub mod vesting {
             let mut schedule = self
                 .schedules
                 .get(recipient)
-                .ok_or(VestingError::RecipientDoesNotExist)
-                .unwrap();
+                .ok_or(VestingError::RecipientDoesNotExist)?;
 
+            let completed_intervals = (now - self.deployment_time) / INTERVAL_DURATION;
+            let last_interval_completion =
+                self.deployment_time + (completed_intervals * INTERVAL_DURATION);
             let start = self.deployment_time + schedule.offset;
-            let end = start + schedule.duration;
-
-            // Ensure vesting schedule has begun
-            if now < start {
+            if last_interval_completion < start {
                 return Err(VestingError::TooEarly);
             }
 
-            let mut payable: u128 = 0;
-
-            // Vest cliff if not already vested
-            if schedule.cliff > 0 {
-                payable += schedule.cliff;
-                schedule.cliff = 0;
-            }
-
-            if now < end {
-                // Vest amount proportional to elapsed time
-                let time_elapsed = now - start;
-                let amount_proportional =
-                    time_elapsed as u128 * schedule.amount / schedule.duration as u128;
-                payable += amount_proportional;
-                schedule.amount -= amount_proportional;
-                schedule.offset += time_elapsed;
-                schedule.duration -= time_elapsed;
-            } else {
-                // Vest full remaining amount
-                payable += schedule.amount;
-                schedule.amount = 0;
-                schedule.duration = 0;
-            }
-
+            let payable = self.vested_amount(&schedule, now);
             if payable == 0 {
                 return Err(VestingError::NoChange);
             }
 
+            let last_interval_completion = last_interval_completion.min(start + schedule.duration);
+            let time_elapsed = last_interval_completion - start;
+
+            schedule.amount -= payable - schedule.cliff;
+            schedule.cliff = 0;
+            schedule.offset += time_elapsed;
+            schedule.duration -= time_elapsed;
+
             self.schedules.insert(recipient, &schedule);
+            self.claim_with_tax_withheld(recipient, payable, schedule.tax_withheld_bips)
+        }
 
-            self.token_transfer_to(recipient, payable)?;
+        #[ink(message)]
+        pub fn tax_collector_transfer(&mut self, to: AccountId) -> Result<(), VestingError> {
+            self.only_tax_collector()?;
+            self.tax_collector = to;
+            Ok(())
+        }
 
-            Self::env().emit_event(Claim {
-                recipient,
-                amount: payable,
-            });
+        #[ink(message)]
+        pub fn collect_tax(&mut self, amount: u128) -> Result<(), VestingError> {
+            self.only_tax_collector()?;
 
-            Ok(payable)
+            if amount > self.tax_withheld {
+                return Err(VestingError::InsufficientFunding);
+            }
+
+            self.tax_withheld -= amount;
+            self.funding_required -= amount;
+
+            self.token_transfer_to(self.tax_collector, amount)
         }
     }
 }
