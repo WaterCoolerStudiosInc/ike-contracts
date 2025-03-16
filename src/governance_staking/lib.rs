@@ -592,6 +592,11 @@ pub mod staking {
         }
 
         #[ink(message)]
+        pub fn get_delegation_fees(&self) -> Bips {
+            self.delegation_fees
+        }
+
+        #[ink(message)]
         pub fn sync_reward_pool(&mut self) {
             let token: contract_ref!(PSP22) = self.governance_token.into();
             let balance = token.balance_of(self.env().account_id());
@@ -642,6 +647,9 @@ pub mod staking {
         #[ink(message, selector = 14)]
         pub fn update_delegation_fees(&mut self, fees: Bips) -> Result<(), StakingError> {
             self.only_governor()?;
+            if fees > BIPS {
+                return Err(StakingError::InvalidInput);
+            }
             self.delegation_fees = fees;
             Ok(())
         }
