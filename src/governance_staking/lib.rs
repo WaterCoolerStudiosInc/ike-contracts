@@ -97,7 +97,6 @@ pub mod staking {
         representative_stake_threshold: Balance,
         token_stake_amount: Balance,
         create_deposit: Balance,
-        existential_deposit: Balance,
         treasury: AccountId,
         delegation_fees: Bips,
     }
@@ -594,7 +593,6 @@ pub mod staking {
                 representative_stake_threshold: 0,
                 token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
                 create_deposit: 100_000_000_000_000_u128,
-                existential_deposit: 500_u128,
                 treasury: governance_council,
                 delegation_fees: 0,
             }
@@ -1049,8 +1047,9 @@ pub mod staking {
                 self.token_stake_amount,
             )?;
             let azero = Self::env().transferred_value();
+            let existential_deposit = self.env().minimum_balance();
 
-            if azero != self.create_deposit + self.existential_deposit {
+            if azero != self.create_deposit + existential_deposit {
                 return Err(StakingError::InvalidCreateDeposit);
             }
 
@@ -1062,12 +1061,8 @@ pub mod staking {
                 return Err(StakingError::AlreadyOnList);
             }
 
-            let new_agent = self.call_add_agent(
-                agent_admin,
-                validator,
-                self.create_deposit,
-                self.existential_deposit,
-            )?;
+            let new_agent =
+                self.call_add_agent(agent_admin, validator, self.create_deposit, existential_deposit)?;
 
             // Cast NFT Weight to new agent
             let cast = CastType::Direct(vec![(new_agent, BIPS)]);
