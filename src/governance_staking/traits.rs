@@ -24,4 +24,7 @@ pub trait Staking {
 
     #[ink(message, selector = 11)]
     fn disable_validator(&mut self, agent: AccountId, slash: bool) -> Result<(), StakingError>;
+
+    #[ink(message, selector = 15)]
+    fn remove_agent(&mut self, agent: AccountId) -> Result<(), StakingError>;
 }

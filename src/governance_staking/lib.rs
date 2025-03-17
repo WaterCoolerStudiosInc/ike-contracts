@@ -36,7 +36,6 @@ pub mod staking {
 
     pub const DAY: Time = 86400 * 1000;
     pub const WITHDRAW_DELAY: Time = 14 * DAY;
-    pub const MAX_VALIDATORS: u8 = 5;
     pub const BIPS: Bips = 10000000;
     const UPDATE_SELECTOR: Selector = Selector::new([0, 0, 0, 2]);
     const AGENT_SELECTOR: Selector = Selector::new([0, 0, 0, 4]);
@@ -1149,6 +1148,26 @@ pub mod staking {
             };
 
             self.do_unwrap_validator(agent, nft_id, recipient)
+        }
+
+        #[ink(message, selector = 15)]
+        pub fn remove_agent(&mut self, agent: AccountId) -> Result<(), StakingError> {
+            let caller = self.env().caller();
+            let agent_admin = self.offboard_agent_request.get(agent).map(|data| data.1);
+
+            self.offboard_agent_request.remove(agent); // housekeeping
+
+            // DISCUSS: make it a public fn?
+            if caller != self.governance_council && agent_admin != Some(caller) {
+                return Err(StakingError::Unauthorized);
+            }
+
+            let mut registry: contract_ref!(IRegistry) = self.registry.into();
+            if registry.remove_agent(agent).is_err() {
+                return Err(StakingError::RegistryError);
+            }
+
+            Ok(())
         }
 
         #[ink(message)]

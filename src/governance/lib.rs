@@ -526,7 +526,7 @@ pub mod governance {
             let caller = Self::env().caller();
             let governor = Self::env().account_id();
 
-            let mut council_ref = CouncilRef::new(caller, governor, registry, vault, signers)
+            let mut council_ref = CouncilRef::new(caller, governor, vault, signers)
                 .endowment(0)
                 .code_hash(council_hash)
                 .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])

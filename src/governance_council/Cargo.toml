@@ -14,21 +14,18 @@ scale-info = { version = "=2.11.2", default-features = false, features = [
 ], optional = true }
 scale-derive = { package = "parity-scale-codec-derive", version = "=3.6.12" }
 
-
-registry = { path = "../registry", default-features = false, features = [
-    "ink-as-dependency",
-] }
 governance_staking = { path = "../governance_staking", default-features = false, features = [
     "ink-as-dependency",
 ] }
 psp22 = { version = "=0.2.1", default-features = false }
+
 [lib]
 name = "governance_council"
 path = "lib.rs"
 
 [features]
 default = ["std"]
-std = ["ink/std", "scale/std", "scale-info", "scale-info/std", "registry/std"]
+std = ["ink/std", "scale/std", "scale-info", "scale-info/std", "governance_staking/std"]
 ink-as-dependency = []
 __ink_dylint_Storage = []
 __ink_dylint_Constructor = []

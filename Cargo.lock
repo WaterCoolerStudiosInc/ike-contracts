@@ -1006,7 +1006,6 @@ dependencies = [
  "parity-scale-codec",
  "parity-scale-codec-derive",
  "psp22",
- "registry",
  "scale-info",
 ]
 
