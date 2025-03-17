@@ -6,29 +6,29 @@ pub trait Staking {
     #[ink(message, selector = 1)]
     fn update_rewards_rate(&mut self, new_rate: u128) -> Result<(), StakingError>;
 
-    #[ink(message, selector = 12)]
+    #[ink(message, selector = 2)]
     fn update_validator_stake_requirement(
         &mut self,
         ike_deposit: Option<u128>,
         azero_deposit: Option<u128>,
     ) -> Result<(), StakingError>;
 
-    #[ink(message, selector = 13)]
+    #[ink(message, selector = 3)]
     fn update_representative_stake_threshold(&mut self, amount: u128) -> Result<(), StakingError>;
 
-    #[ink(message, selector = 14)]
+    #[ink(message, selector = 4)]
     fn update_delegation_fees(&mut self, fees: crate::Bips) -> Result<(), StakingError>;
 
-    #[ink(message, selector = 10)]
+    #[ink(message, selector = 14)]
     fn onboard_validator(
         &mut self,
         validator: AccountId,
         agent_admin: AccountId,
     ) -> Result<(), StakingError>;
 
-    #[ink(message, selector = 11)]
+    #[ink(message, selector = 15)]
     fn disable_validator(&mut self, agent: AccountId, slash: bool) -> Result<(), StakingError>;
 
-    #[ink(message, selector = 15)]
+    #[ink(message, selector = 17)]
     fn remove_agent(&mut self, agent: AccountId) -> Result<(), StakingError>;
 }

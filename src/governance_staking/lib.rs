@@ -644,7 +644,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 12)]
+        #[ink(message, selector = 2)]
         pub fn update_validator_stake_requirement(
             &mut self,
             ike_deposit: Option<Balance>,
@@ -663,7 +663,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 13)]
+        #[ink(message, selector = 3)]
         pub fn update_representative_stake_threshold(
             &mut self,
             amount: Balance,
@@ -673,7 +673,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 14)]
+        #[ink(message, selector = 4)]
         pub fn update_delegation_fees(&mut self, fees: Bips) -> Result<(), StakingError> {
             self.only_governor()?;
             if fees > BIPS {
@@ -683,7 +683,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 2)]
+        #[ink(message, selector = 5)]
         pub fn wrap_tokens(
             &mut self,
             token_value: Balance,
@@ -729,7 +729,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 3)]
+        #[ink(message, selector = 6)]
         pub fn update_cast(
             &mut self,
             nft_id: NftId,
@@ -743,7 +743,7 @@ pub mod staking {
             self.new_cast_distribution(nft_id, data.stake_weight, validator_cast)
         }
 
-        #[ink(message, selector = 4)]
+        #[ink(message, selector = 7)]
         pub fn start_vote_redelegate(
             &mut self,
             nft_id: NftId,
@@ -787,7 +787,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message)]
+        #[ink(message, selector = 8)]
         pub fn update_vote_redelegate(
             &mut self,
             nft_id: NftId,
@@ -810,7 +810,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 5)]
+        #[ink(message, selector = 9)]
         pub fn complete_vote_redelegate(&mut self, nft_id: NftId) -> Result<(), StakingError> {
             self.only_token_owner(nft_id)?;
             self.nft_proposal_lock(nft_id)?;
@@ -844,7 +844,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 6)]
+        #[ink(message, selector = 10)]
         pub fn add_stake_value(
             &mut self,
             token_value: Balance,
@@ -879,7 +879,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 7)]
+        #[ink(message, selector = 11)]
         pub fn claim_staking_rewards(
             &mut self,
             nft_id: NftId,
@@ -934,7 +934,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 8)]
+        #[ink(message, selector = 12)]
         pub fn create_unwrap_request(&mut self, nft_id: NftId) -> Result<(), StakingError> {
             self.only_token_owner(nft_id)?;
             self.nft_proposal_lock(nft_id)?;
@@ -999,7 +999,7 @@ pub mod staking {
             self.burn_psp34(caller, nft_id)
         }
 
-        #[ink(message, selector = 9)]
+        #[ink(message, selector = 13)]
         pub fn complete_unwrap_request(&mut self, nft_id: NftId) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
@@ -1022,7 +1022,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, payable, selector = 10)]
+        #[ink(message, payable, selector = 14)]
         pub fn onboard_validator(
             &mut self,
             validator: AccountId,
@@ -1093,7 +1093,7 @@ pub mod staking {
         //balances.existentialDeposit: 500
         // Step 2. Initialize Agent call with poolid and Account in nomination pool contract
 
-        #[ink(message, selector = 11)]
+        #[ink(message, selector = 15)]
         pub fn disable_validator(
             &mut self,
             agent: AccountId,
@@ -1130,7 +1130,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 14)]
+        #[ink(message, selector = 16)]
         pub fn unwrap_validator(
             &mut self,
             agent: AccountId,
@@ -1162,7 +1162,7 @@ pub mod staking {
             self.do_unwrap_validator(agent, nft_id, recipient)
         }
 
-        #[ink(message, selector = 15)]
+        #[ink(message, selector = 17)]
         pub fn remove_agent(&mut self, agent: AccountId) -> Result<(), StakingError> {
             let caller = self.env().caller();
             let agent_admin = self.offboard_agent_request.get(agent).map(|data| data.1);
