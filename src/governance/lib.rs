@@ -72,7 +72,7 @@ pub mod governance {
         TransferFunds(AccountId, Balance, AccountId),
         // Transfer psp22 token from governance
         NativeTokenTransfer(AccountId, Balance),
-        // update tokens per second for staker in staking contract
+        // update tokens per millisecond for staker in staking contract
         ChangeStakingRewardRate(u128),
         // Update the bond requirement [Ike-deposit, A0-deposit] to become a validator
         UpdateValidatorStakeRequirement(Option<Balance>, Option<Balance>),

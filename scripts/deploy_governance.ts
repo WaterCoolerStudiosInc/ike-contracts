@@ -24,13 +24,14 @@ async function main() {
   const gtoken_data = await getDeploymentData("governance_token");
   const governance = await getDeploymentData("governance");
   console.log("===== Contract Deployment =====");
+  const TOTAL_SUPPLY = 100_000_000_000_000_000_000_000_000n;
   const gtoken = await deployContract(
     api,
     account,
     gtoken_data.abi,
     gtoken_data.wasm,
-    "new",
-    []
+    "new_2",
+    [18, TOTAL_SUPPLY]
   );
   const council = await getDeploymentData("governance_council");
   const gov_staking = await getDeploymentData("governance_staking");
@@ -54,6 +55,8 @@ async function main() {
   const acc_threshold = 1000000;
   const REWARDS_PER_SECOND = 100000;
   console.log("===== GOVERNANCE CONTRACT DEPLOY =====");
+  const staking_reward_pool = TOTAL_SUPPLY / 10n;
+  const signers = [account];
   let result = await deployContract(
     api,
     account,
@@ -70,7 +73,9 @@ async function main() {
       exec_threshold,
       reject_threshold,
       acc_threshold,
+      staking_reward_pool,
       REWARDS_PER_SECOND,
+      signers,
     ]
   );
   console.log(result);

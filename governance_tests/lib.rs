@@ -31,12 +31,15 @@ mod tests {
     }
 
     pub const BIPS: u128 = 10000000;
-    const TOTAL_SUPPLY: u128 = 100_000_000_000_000_000_u128;
+    const TOTAL_SUPPLY: u128 = 100_000_000_000_000_000_000_000_000;
+    const CREATE_DEPOSIT: u128 = 10_000e12 as u128;
+    const IKE_VALIDATOR_BOND: u128 = 10_000e18 as u128;
+    const EXISTENTIAL_DEPOSIT: u128 = 1;
     const ACC_THRESHOLD: u128 = TOTAL_SUPPLY / 20;
     const REJECT_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const USER_SUPPLY: u128 = TOTAL_SUPPLY / 20;
-    const REWARDS_PER_SECOND: u128 = 100_000u128;
+    const REWARDS_PER_MILLISEC: u128 = 100_000u128;
 
     struct TestContext {
         sess: Session<MinimalRuntime>,
@@ -204,7 +207,7 @@ mod tests {
                 reject_threshold.to_string(),
                 acc_threshold.to_string(),
                 0.to_string(),
-                REWARDS_PER_SECOND.to_string(),
+                REWARDS_PER_MILLISEC.to_string(),
                 format!(
                     "{:?}",
                     vec![
@@ -1105,7 +1108,7 @@ mod tests {
             query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
         let (balance_in_staking, _) =
             query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
-        let total_rewards_2_days = REWARDS_PER_SECOND * 2 * DAY as u128;
+        let total_rewards_2_days = REWARDS_PER_MILLISEC * 2 * DAY as u128;
         let rewards_share_alice = total_rewards_2_days / 5;
         println!("{:?}{}", "alice rewards ", rewards_share_alice);
         println!("{}", USER_SUPPLY);
@@ -1298,7 +1301,7 @@ mod tests {
         let time_elapsed = time_after - time_before;
         assert_ne!(time_elapsed, 0);
 
-        let total_rewards = REWARDS_PER_SECOND * (time_elapsed as u128);
+        let total_rewards = REWARDS_PER_MILLISEC * (time_elapsed as u128);
         let delegation_reward = total_rewards * fees / 10_000_000;
 
         assert_eq!(
@@ -2986,7 +2989,7 @@ mod tests {
             String::from("PSP22::approve"),
             Some(vec![
                 ctx.stake_contract.to_string(),
-                100_000_000_000_500_u128.to_string(),
+                IKE_VALIDATOR_BOND.to_string(),
             ]),
             None,
             transcoder_governance_token(),
@@ -2998,7 +3001,7 @@ mod tests {
             &ctx.bob, // admin
             String::from("onboard_validator"),
             Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
-            Some(100_000_000_000_500_u128),
+            Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
             transcoder_governance_staking(),
         )
         .unwrap();
@@ -3020,7 +3023,7 @@ mod tests {
             String::from("PSP22::approve"),
             Some(vec![
                 ctx.stake_contract.to_string(),
-                100_000_000_000_500_u128.to_string(),
+                IKE_VALIDATOR_BOND.to_string(),
             ]),
             None,
             transcoder_governance_token(),
@@ -3032,7 +3035,7 @@ mod tests {
             &ctx.bob, // admin
             String::from("onboard_validator"),
             Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
-            Some(100_000_000_000_500_u128),
+            Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
             transcoder_governance_staking(),
         )
         .unwrap();
@@ -3100,7 +3103,7 @@ mod tests {
             String::from("PSP22::approve"),
             Some(vec![
                 ctx.stake_contract.to_string(),
-                100_000_000_000_500_u128.to_string(),
+                IKE_VALIDATOR_BOND.to_string(),
             ]),
             None,
             transcoder_governance_token(),
@@ -3112,7 +3115,7 @@ mod tests {
             &ctx.bob, // admin
             String::from("onboard_validator"),
             Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
-            Some(100_000_000_000_500_u128),
+            Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
             transcoder_governance_staking(),
         )
         .unwrap();

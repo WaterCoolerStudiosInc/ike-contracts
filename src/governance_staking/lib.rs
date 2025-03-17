@@ -79,7 +79,7 @@ pub mod staking {
         reward_token_balance: Balance,
         staked_token_balance: Balance,
         unstaked_token_balance: Balance,
-        rewards_per_second: Balance,
+        rewards_per_millisec: Balance,
         reward_stake_accumulation: Balance,
         accumulated_rewards: Balance,
         last_accumulation_update: Time,
@@ -95,9 +95,8 @@ pub mod staking {
         offboard_agent_request: Mapping<AccountId, (Time, AccountId, NftId)>,
         deployed_validators: Vec<Validator>,
         representative_stake_threshold: Balance,
-        token_stake_amount: Balance,
+        ike_validator_bond: Balance,
         create_deposit: Balance,
-        existential_deposit: Balance,
         treasury: AccountId,
         delegation_fees: Bips,
     }
@@ -381,7 +380,7 @@ pub mod staking {
 
         fn update_stake_accumulation(&mut self, curr_time: Time) -> Result<(), StakingError> {
             self.accumulated_rewards +=
-                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
+                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_millisec;
 
             self.reward_stake_accumulation +=
                 self.staked_token_balance * ((curr_time - self.last_accumulation_update) as u128);
@@ -576,7 +575,7 @@ pub mod staking {
                 reward_token_balance,
                 staked_token_balance: 0_u128,
                 unstaked_token_balance: 0,
-                rewards_per_second: interest_rate,
+                rewards_per_millisec: interest_rate,
                 reward_stake_accumulation: 0,
                 accumulated_rewards: 0,
                 last_accumulation_update: now,
@@ -591,18 +590,17 @@ pub mod staking {
                 last_reward_claim: Mapping::new(),
                 offboard_agent_request: Mapping::new(),
                 deployed_validators: Vec::new(),
-                representative_stake_threshold: 0,
-                token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
-                create_deposit: 100_000_000_000_000_u128,
-                existential_deposit: 500_u128,
-                treasury: governance_council,
-                delegation_fees: 0,
+                representative_stake_threshold: 10_000_000_000_000_000_000_000, // 10k (18 decimals)
+                ike_validator_bond: 10_000_000_000_000_000_000_000,             // 10k (18 decimals)
+                create_deposit: 10_000_000_000_000_000,                         // 10k (12 decimals)
+                treasury: governor,
+                delegation_fees: 500_000, // 5%
             }
         }
 
         #[ink(message)]
         pub fn get_interest_rate(&self) -> Balance {
-            self.rewards_per_second
+            self.rewards_per_millisec
         }
 
         #[ink(message)]
@@ -640,7 +638,7 @@ pub mod staking {
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
-            self.rewards_per_second = new_rate;
+            self.rewards_per_millisec = new_rate;
             Ok(())
         }
 
@@ -653,7 +651,7 @@ pub mod staking {
             self.only_governor()?;
 
             if let Some(amount) = ike_deposit {
-                self.token_stake_amount = amount;
+                self.ike_validator_bond = amount;
             }
 
             if let Some(amount) = azero_deposit {
@@ -876,6 +874,15 @@ pub mod staking {
                 self.call_increment_weights(nft_id, token_value, token_value)?;
             }
 
+            Self::emit_event(
+                Self::env(),
+                Event::StakeAdded(StakeAdded {
+                    staker: caller,
+                    amount: token_value,
+                    nft: nft_id,
+                }),
+            );
+
             Ok(())
         }
 
@@ -895,7 +902,7 @@ pub mod staking {
             if self.reward_token_balance <= reward {
                 self.sync_reward_pool(); // optional - can remove to save gas
                 if self.reward_token_balance <= reward {
-                    self.rewards_per_second = 0;
+                    self.rewards_per_millisec = 0;
                     reward = self.reward_token_balance;
                 }
             }
@@ -952,7 +959,7 @@ pub mod staking {
             if self.reward_token_balance <= reward {
                 self.sync_reward_pool(); // optional - can remove to save gas
                 if self.reward_token_balance <= reward {
-                    self.rewards_per_second = 0;
+                    self.rewards_per_millisec = 0;
                     reward = self.reward_token_balance;
                 }
             }
@@ -996,6 +1003,14 @@ pub mod staking {
             self.redelegate_requests.remove(nft_id);
             self.cast_distribution.remove(nft_id);
 
+            Self::emit_event(
+                Self::env(),
+                Event::UnwrapRequestCreated(UnwrapRequestCreated {
+                    staker: caller,
+                    nft: nft_id,
+                }),
+            );
+
             self.burn_psp34(caller, nft_id)
         }
 
@@ -1019,6 +1034,15 @@ pub mod staking {
             self.unstake_requests.remove(nft_id);
             self.transfer_psp22_from(&Self::env().account_id(), &caller, data.token_value)?;
 
+            Self::emit_event(
+                Self::env(),
+                Event::StakeRemoved(StakeRemoved {
+                    staker: caller,
+                    amount: data.token_value,
+                    nft: nft_id,
+                }),
+            );
+
             Ok(())
         }
 
@@ -1039,18 +1063,19 @@ pub mod staking {
             self.transfer_psp22_from(
                 &agent_admin,
                 &Self::env().account_id(),
-                self.token_stake_amount,
+                self.ike_validator_bond,
             )?;
-            self.staked_token_balance += self.token_stake_amount;
+            self.staked_token_balance += self.ike_validator_bond;
 
             let minted_nft = self.mint_psp34(
                 Self::env().account_id(),
-                self.token_stake_amount,
-                self.token_stake_amount,
+                self.ike_validator_bond,
+                self.ike_validator_bond,
             )?;
             let azero = Self::env().transferred_value();
+            let existential_deposit = self.env().minimum_balance();
 
-            if azero != self.create_deposit + self.existential_deposit {
+            if azero != self.create_deposit + existential_deposit {
                 return Err(StakingError::InvalidCreateDeposit);
             }
 
@@ -1066,12 +1091,12 @@ pub mod staking {
                 agent_admin,
                 validator,
                 self.create_deposit,
-                self.existential_deposit,
+                existential_deposit,
             )?;
 
             // Cast NFT Weight to new agent
             let cast = CastType::Direct(vec![(new_agent, BIPS)]);
-            self.new_cast_distribution(minted_nft, self.token_stake_amount, cast)?;
+            self.new_cast_distribution(minted_nft, self.ike_validator_bond, cast)?;
 
             self.deployed_validators.push(Validator {
                 validator,
