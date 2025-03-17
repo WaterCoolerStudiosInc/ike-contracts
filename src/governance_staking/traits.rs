@@ -20,7 +20,11 @@ pub trait Staking {
     fn update_delegation_fees(&mut self, fees: crate::Bips) -> Result<(), StakingError>;
 
     #[ink(message, selector = 10)]
-    fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError>;
+    fn onboard_validator(
+        &mut self,
+        validator: AccountId,
+        agent_admin: AccountId,
+    ) -> Result<(), StakingError>;
 
     #[ink(message, selector = 11)]
     fn disable_validator(&mut self, agent: AccountId, slash: bool) -> Result<(), StakingError>;

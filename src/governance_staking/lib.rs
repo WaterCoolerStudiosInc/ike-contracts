@@ -1023,12 +1023,24 @@ pub mod staking {
         }
 
         #[ink(message, payable, selector = 10)]
-        pub fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError> {
+        pub fn onboard_validator(
+            &mut self,
+            validator: AccountId,
+            agent_admin: AccountId,
+        ) -> Result<(), StakingError> {
             let caller = Self::env().caller();
+            if caller != self.governor && Some(caller) != self.admin {
+                return Err(StakingError::Unauthorized);
+            }
+
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
-            self.transfer_psp22_from(&caller, &Self::env().account_id(), self.token_stake_amount)?;
+            self.transfer_psp22_from(
+                &agent_admin,
+                &Self::env().account_id(),
+                self.token_stake_amount,
+            )?;
             self.staked_token_balance += self.token_stake_amount;
 
             let minted_nft = self.mint_psp34(
@@ -1051,7 +1063,7 @@ pub mod staking {
             }
 
             let new_agent = self.call_add_agent(
-                caller,
+                agent_admin,
                 validator,
                 self.create_deposit,
                 self.existential_deposit,
@@ -1064,7 +1076,7 @@ pub mod staking {
             self.deployed_validators.push(Validator {
                 validator,
                 agent: new_agent,
-                admin: caller,
+                admin: agent_admin,
                 nft_id: minted_nft,
             });
 
