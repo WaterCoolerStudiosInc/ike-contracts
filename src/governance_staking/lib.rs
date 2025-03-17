@@ -594,7 +594,7 @@ pub mod staking {
                 ike_validator_bond: 10_000_000_000_000_000_000_000,             // 10k (18 decimals)
                 create_deposit: 10_000_000_000_000_000,                         // 10k (12 decimals)
                 treasury: governor,
-                delegation_fees: 0,
+                delegation_fees: 500_000, // 5%
             }
         }
 
