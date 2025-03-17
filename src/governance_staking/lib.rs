@@ -590,10 +590,10 @@ pub mod staking {
                 last_reward_claim: Mapping::new(),
                 offboard_agent_request: Mapping::new(),
                 deployed_validators: Vec::new(),
-                representative_stake_threshold: 0,
-                ike_validator_bond: 100_000_u128, // FIXME: doesn't consider the decimals
-                create_deposit: 100_000_000_000_000_u128,
-                treasury: governance_council,
+                representative_stake_threshold: 10_000_000_000_000_000_000_000, // 10k (18 decimals)
+                ike_validator_bond: 10_000_000_000_000_000_000_000, // 10k (18 decimals)
+                create_deposit: 10_000_000_000_000_000, // 10k (12 decimals)
+                treasury: governor,
                 delegation_fees: 0,
             }
         }
