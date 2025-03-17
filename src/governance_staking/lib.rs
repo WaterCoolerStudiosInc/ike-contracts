@@ -93,6 +93,7 @@ pub mod staking {
         voting_delegations_nonce: Mapping<NftId, Nonce>,
         unstake_requests: Mapping<NftId, UnstakeRequest>,
         last_reward_claim: Mapping<NftId, (Balance, Time)>,
+        offboard_agent_request: Mapping<AccountId, (Time, AccountId, NftId)>,
         deployed_validators: Vec<Validator>,
         representative_stake_threshold: Balance,
         token_stake_amount: Balance,
@@ -461,6 +462,24 @@ pub mod staking {
             Ok(())
         }
 
+        fn do_unwrap_validator(
+            &mut self,
+            agent: AccountId,
+            nft_id: NftId,
+            recipient: AccountId,
+        ) -> Result<(), StakingError> {
+            self.transfer_psp34(&recipient, nft_id)?;
+
+            self.deployed_validators = self
+                .deployed_validators
+                .iter()
+                .filter(|v| v.agent != agent)
+                .cloned()
+                .collect();
+
+            Ok(())
+        }
+
         fn is_self_delegator(&self, nft_id: NftId) -> bool {
             if self.voting_delegations.contains(nft_id) {
                 return false;
@@ -571,6 +590,7 @@ pub mod staking {
                 voting_delegations_nonce: Mapping::new(),
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
+                offboard_agent_request: Mapping::new(),
                 deployed_validators: Vec::new(),
                 representative_stake_threshold: 0,
                 token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
@@ -1069,32 +1089,66 @@ pub mod staking {
             slash: bool,
         ) -> Result<(), StakingError> {
             let caller = Self::env().caller();
-            if caller != self.governance_council {
-                return Err(StakingError::InvalidPermissions);
-            }
 
             let validator_info = self
                 .deployed_validators
                 .iter()
                 .find(|p| p.agent == agent)
                 .ok_or(StakingError::InvalidInput)?;
-            self.call_disable_validator(agent)?;
 
-            let recipient = match slash {
-                true => self.treasury,
-                false => validator_info.admin,
-            };
+            if caller == self.governance_council {
+                self.call_disable_validator(agent)?;
 
-            self.transfer_psp34(&recipient, validator_info.nft_id)?;
+                let recipient = match slash {
+                    true => self.treasury,
+                    false => validator_info.admin,
+                };
 
-            self.deployed_validators = self
-                .deployed_validators
-                .iter()
-                .filter(|v| v.agent != agent)
-                .cloned()
-                .collect();
+                self.do_unwrap_validator(agent, validator_info.nft_id, recipient)?;
+            } else if caller == validator_info.admin {
+                self.call_disable_validator(agent)?;
+
+                // Add lock-in period for agent admin
+                let now = self.env().block_timestamp();
+                self.offboard_agent_request
+                    .insert(agent, &(now, validator_info.admin, validator_info.nft_id));
+            } else {
+                return Err(StakingError::InvalidPermissions);
+            }
 
             Ok(())
+        }
+
+        #[ink(message, selector = 14)]
+        pub fn unwrap_validator(
+            &mut self,
+            agent: AccountId,
+            slash: Option<bool>,
+        ) -> Result<(), StakingError> {
+            let caller = self.env().caller();
+
+            let (time, agent_admin, nft_id) = self
+                .offboard_agent_request
+                .get(agent)
+                .ok_or(StakingError::InvalidRequest)?;
+
+            let recipient = if caller == self.governance_council {
+                match slash {
+                    Some(true) => self.treasury,
+                    Some(false) => agent_admin,
+                    None => return Err(StakingError::InvalidInput),
+                }
+            } else if caller == agent_admin {
+                let now = self.env().block_timestamp();
+                if now < time + WITHDRAW_DELAY {
+                    return Err(StakingError::InvalidTimeWindow);
+                }
+                agent_admin
+            } else {
+                return Err(StakingError::InvalidPermissions);
+            };
+
+            self.do_unwrap_validator(agent, nft_id, recipient)
         }
 
         #[ink(message)]
