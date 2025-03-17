@@ -79,7 +79,7 @@ pub mod staking {
         reward_token_balance: Balance,
         staked_token_balance: Balance,
         unstaked_token_balance: Balance,
-        rewards_per_second: Balance,
+        rewards_per_millisec: Balance,
         reward_stake_accumulation: Balance,
         accumulated_rewards: Balance,
         last_accumulation_update: Time,
@@ -380,7 +380,7 @@ pub mod staking {
 
         fn update_stake_accumulation(&mut self, curr_time: Time) -> Result<(), StakingError> {
             self.accumulated_rewards +=
-                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_second;
+                ((curr_time - self.last_accumulation_update) as u128) * self.rewards_per_millisec;
 
             self.reward_stake_accumulation +=
                 self.staked_token_balance * ((curr_time - self.last_accumulation_update) as u128);
@@ -575,7 +575,7 @@ pub mod staking {
                 reward_token_balance,
                 staked_token_balance: 0_u128,
                 unstaked_token_balance: 0,
-                rewards_per_second: interest_rate,
+                rewards_per_millisec: interest_rate,
                 reward_stake_accumulation: 0,
                 accumulated_rewards: 0,
                 last_accumulation_update: now,
@@ -600,7 +600,7 @@ pub mod staking {
 
         #[ink(message)]
         pub fn get_interest_rate(&self) -> Balance {
-            self.rewards_per_second
+            self.rewards_per_millisec
         }
 
         #[ink(message)]
@@ -638,7 +638,7 @@ pub mod staking {
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
-            self.rewards_per_second = new_rate;
+            self.rewards_per_millisec = new_rate;
             Ok(())
         }
 
@@ -893,7 +893,7 @@ pub mod staking {
             if self.reward_token_balance <= reward {
                 self.sync_reward_pool(); // optional - can remove to save gas
                 if self.reward_token_balance <= reward {
-                    self.rewards_per_second = 0;
+                    self.rewards_per_millisec = 0;
                     reward = self.reward_token_balance;
                 }
             }
@@ -950,7 +950,7 @@ pub mod staking {
             if self.reward_token_balance <= reward {
                 self.sync_reward_pool(); // optional - can remove to save gas
                 if self.reward_token_balance <= reward {
-                    self.rewards_per_second = 0;
+                    self.rewards_per_millisec = 0;
                     reward = self.reward_token_balance;
                 }
             }

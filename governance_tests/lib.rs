@@ -36,7 +36,7 @@ mod tests {
     const REJECT_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const EXEC_THRESHOLD: u128 = TOTAL_SUPPLY / 10;
     const USER_SUPPLY: u128 = TOTAL_SUPPLY / 20;
-    const REWARDS_PER_SECOND: u128 = 100_000u128;
+    const REWARDS_PER_MILLISEC: u128 = 100_000u128;
 
     struct TestContext {
         sess: Session<MinimalRuntime>,
@@ -204,7 +204,7 @@ mod tests {
                 reject_threshold.to_string(),
                 acc_threshold.to_string(),
                 0.to_string(),
-                REWARDS_PER_SECOND.to_string(),
+                REWARDS_PER_MILLISEC.to_string(),
                 format!(
                     "{:?}",
                     vec![
@@ -1105,7 +1105,7 @@ mod tests {
             query_token_balance(sess, &ctx.gov_token, &ctx.alice).unwrap();
         let (balance_in_staking, _) =
             query_token_balance(sess, &ctx.gov_token, &ctx.stake_contract).unwrap();
-        let total_rewards_2_days = REWARDS_PER_SECOND * 2 * DAY as u128;
+        let total_rewards_2_days = REWARDS_PER_MILLISEC * 2 * DAY as u128;
         let rewards_share_alice = total_rewards_2_days / 5;
         println!("{:?}{}", "alice rewards ", rewards_share_alice);
         println!("{}", USER_SUPPLY);
