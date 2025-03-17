@@ -37,6 +37,7 @@ pub enum PropType {
     ChangeStakingRewardRate(u128),
     UpdateValidatorStakeRequirement(Option<u128>, Option<u128>),
     UpdateRespresentativeStakeThreshold(u128),
+    UpdateDelegationFees(u128),
     AddCouncilMember(AccountId),
     ReplaceCouncilMember(AccountId, AccountId),
     RemoveCouncilMember(AccountId),
@@ -441,6 +442,21 @@ pub fn query_allowance(
     let result: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
     //println!("{:?}",&prop.clone().unwrap());
     Ok((result.unwrap(), sess))
+}
+
+pub fn query_delegation_fees(
+    mut sess: Session<MinimalRuntime>,
+    staking: AccountId,
+) -> Result<(u128, Session<MinimalRuntime>), Box<dyn Error>> {
+    sess.call_with_address(
+        staking,
+        "get_delegation_fees",
+        NO_ARGS,
+        None,
+    )?;
+
+    let fees: Result<u128, drink::errors::LangError> = sess.last_call_return().unwrap();
+    Ok((fees.unwrap(), sess))
 }
 
 pub fn query_council_members(

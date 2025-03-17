@@ -92,13 +92,14 @@ pub mod staking {
         redelegate_requests: Mapping<NftId, (Time, NftId)>,
         voting_delegations_nonce: Mapping<NftId, Nonce>,
         unstake_requests: Mapping<NftId, UnstakeRequest>,
-        last_reward_claim: Mapping<NftId, Time>,
+        last_reward_claim: Mapping<NftId, (Balance, Time)>,
         deployed_validators: Vec<Validator>,
         representative_stake_threshold: Balance,
         token_stake_amount: Balance,
         create_deposit: Balance,
         existential_deposit: Balance,
         treasury: AccountId,
+        delegation_fees: Bips,
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
@@ -322,6 +323,8 @@ pub mod staking {
             stake_weight: u128,
             vote_weight: u128,
         ) -> Result<(), StakingError> {
+            self.accumulate_reward_for_nft(nft_id)?;
+
             self.nft
                 .increment_weights(nft_id, stake_weight, vote_weight)
                 .map_err(StakingError::NFTError)
@@ -369,6 +372,8 @@ pub mod staking {
             nft_id: NftId,
             vote_weight: u128,
         ) -> Result<(), StakingError> {
+            self.accumulate_reward_for_nft(nft_id)?;
+
             self.nft
                 .decrement_vote_weight(nft_id, vote_weight)
                 .map_err(StakingError::NFTError)
@@ -384,24 +389,41 @@ pub mod staking {
             Ok(())
         }
 
-        fn calculate_reward_share(
-            &self,
-            curr_time: Time,
-            last_update: Time,
-            stake_balance: Balance,
-        ) -> Balance {
-            debug_println!("{}{}", curr_time, " CURRTIME");
-            debug_println!("{}{}", last_update, " UPDATE");
-            debug_println!("{}{}", stake_balance, " STAKE");
-            debug_println!("{}{}", self.accumulated_rewards, " ACCUMULATED");
-            debug_println!("{}{}", self.reward_stake_accumulation, " REWARD");
+        // It must be called before any operation that changes NFT's stake or vote weight
+        fn accumulate_reward_for_nft(&mut self, nft_id: NftId) -> Result<Balance, StakingError> {
+            let curr_time = self.env().block_timestamp();
 
-            let user_stake_weight = stake_balance * (curr_time.saturating_sub(last_update) as u128);
-            self.pro_rata(
-                self.accumulated_rewards,
-                user_stake_weight,
-                self.reward_stake_accumulation,
-            )
+            let data = self.get_governance_data(nft_id)?;
+            let (mut reward, last_update) = self
+                .last_reward_claim
+                .get(nft_id)
+                .unwrap_or((0, data.block_created));
+
+            if curr_time <= last_update {
+                return Ok(reward);
+            }
+
+            let reward_pool = self.accumulated_rewards;
+            let reward_stake_accumulation = self.reward_stake_accumulation; // shadow
+
+            // Reward from stake weight
+            let user_stake_weight = data.stake_weight * ((curr_time - last_update) as u128);
+            let reward_from_stake_weight =
+                self.pro_rata(reward_pool, user_stake_weight, reward_stake_accumulation);
+            let reward_from_stake_weight =
+                self.pro_rata(reward_from_stake_weight, BIPS - self.delegation_fees, BIPS);
+
+            // Reward from vote weight
+            let user_vote_weight = data.vote_weight * ((curr_time - last_update) as u128);
+            let reward_from_vote_weight =
+                self.pro_rata(reward_pool, user_vote_weight, reward_stake_accumulation);
+            let reward_from_vote_weight =
+                self.pro_rata(reward_from_vote_weight, self.delegation_fees, BIPS);
+
+            reward += reward_from_stake_weight + reward_from_vote_weight;
+            self.last_reward_claim.insert(nft_id, &(reward, curr_time));
+
+            Ok(reward)
         }
 
         fn transfer_psp34(&mut self, to: &AccountId, nft_id: Balance) -> Result<(), StakingError> {
@@ -555,6 +577,7 @@ pub mod staking {
                 create_deposit: 100_000_000_000_000_u128,
                 existential_deposit: 500_u128,
                 treasury: governance_council,
+                delegation_fees: 0,
             }
         }
 
@@ -576,6 +599,11 @@ pub mod staking {
         #[ink(message)]
         pub fn get_reward_pool(&self) -> Balance {
             self.reward_token_balance
+        }
+
+        #[ink(message)]
+        pub fn get_delegation_fees(&self) -> Bips {
+            self.delegation_fees
         }
 
         #[ink(message)]
@@ -623,6 +651,16 @@ pub mod staking {
         ) -> Result<(), StakingError> {
             self.only_governor()?;
             self.representative_stake_threshold = amount;
+            Ok(())
+        }
+
+        #[ink(message, selector = 14)]
+        pub fn update_delegation_fees(&mut self, fees: Bips) -> Result<(), StakingError> {
+            self.only_governor()?;
+            if fees > BIPS {
+                return Err(StakingError::InvalidInput);
+            }
+            self.delegation_fees = fees;
             Ok(())
         }
 
@@ -792,12 +830,11 @@ pub mod staking {
             &mut self,
             token_value: Balance,
             nft_id: NftId,
-            withdraw_current_yield: bool,
         ) -> Result<(), StakingError> {
             let caller = Self::env().caller();
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
-            self.claim_staking_rewards(nft_id, withdraw_current_yield)?; // should come before incrementing stake_weight
+            self.accumulate_reward_for_nft(nft_id)?;
 
             self.transfer_psp22_from(&caller, &Self::env().account_id(), token_value)?;
             self.staked_token_balance += token_value;
@@ -833,14 +870,8 @@ pub mod staking {
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
-            let data = self.get_governance_data(nft_id)?;
-
-            let last_claim = self
-                .last_reward_claim
-                .get(nft_id)
-                .unwrap_or(data.block_created);
-            let mut reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
-            self.last_reward_claim.insert(nft_id, &now);
+            let mut reward = self.accumulate_reward_for_nft(nft_id)?;
+            self.last_reward_claim.insert(nft_id, &(0, now));
 
             if self.reward_token_balance <= reward {
                 self.sync_reward_pool(); // optional - can remove to save gas
@@ -896,11 +927,8 @@ pub mod staking {
             let data = self.get_governance_data(nft_id)?;
             self.remove_cast_distribution(nft_id, data.stake_weight)?;
 
-            let last_claim = self
-                .last_reward_claim
-                .get(nft_id)
-                .unwrap_or(data.block_created);
-            let mut reward = self.calculate_reward_share(now, last_claim, data.stake_weight);
+            let mut reward = self.accumulate_reward_for_nft(nft_id)?;
+            // self.last_reward_claim.insert(nft_id, &(0, now)); // optional - save gas
 
             if self.reward_token_balance <= reward {
                 self.sync_reward_pool(); // optional - can remove to save gas
@@ -948,7 +976,6 @@ pub mod staking {
             // optional-housekeeping
             self.redelegate_requests.remove(nft_id);
             self.cast_distribution.remove(nft_id);
-            self.last_reward_claim.insert(nft_id, &now);
 
             self.burn_psp34(caller, nft_id)
         }

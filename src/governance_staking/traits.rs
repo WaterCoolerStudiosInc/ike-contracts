@@ -16,6 +16,9 @@ pub trait Staking {
     #[ink(message, selector = 13)]
     fn update_representative_stake_threshold(&mut self, amount: u128) -> Result<(), StakingError>;
 
+    #[ink(message, selector = 14)]
+    fn update_delegation_fees(&mut self, fees: crate::Bips) -> Result<(), StakingError>;
+
     #[ink(message, selector = 10)]
     fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError>;
 

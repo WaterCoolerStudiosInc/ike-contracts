@@ -486,6 +486,95 @@ mod tests {
         Ok(ctx)
     }
 
+    fn wrap_token(mut ctx: TestContext, user: AccountId, amount: u128, delegation: Option<u128>) -> Result<TestContext, Box<dyn Error>> {
+        let (_, agents, sess) = helpers::get_agents(ctx.sess, &ctx.registry)?;
+        let cast = CastType::Direct(vec![
+            (agents[0].address.clone(), BIPS / 2),
+            (agents[1].address.clone(), BIPS / 2),
+        ]);
+
+        let sess = call_function(
+            sess,
+            &ctx.gov_token,
+            &user,
+            String::from("PSP22::approve"),
+            Some(vec![ctx.stake_contract.to_string(), amount.to_string()]),
+            None,
+            transcoder_governance_token(),
+        )?;
+
+        let delegation = match delegation {
+            None => "None".to_string(),
+            Some(v) => format!("Some({v})"),
+        };
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract,
+            &user,
+            String::from("wrap_tokens"),
+            Some(vec![
+                amount.to_string(),
+                "None".to_string(),
+                cast.to_string(),
+                delegation,
+            ]),
+            None,
+            transcoder_governance_staking(),
+        )?;
+
+        ctx.sess = sess;
+        Ok(ctx)
+    }
+
+    fn set_delegation_fees(mut ctx: TestContext, user: AccountId, nft_id: u128, fees: u128) -> Result<TestContext, Box<dyn Error>> {
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &user,
+            String::from("IGovernance::create_proposal"),
+            Some(vec![
+                helpers::PropType::UpdateDelegationFees(fees).to_string(),
+                nft_id.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )?;
+
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, nft_id).unwrap();
+
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &user,
+            String::from("IGovernance::vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                nft_id.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )?;
+
+        let sess = update_days(sess, 10_u64);
+        
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &user,
+            String::from("IGovernance::complete_proposal"),
+            Some(vec![proposal.prop_id.to_string()]),
+            None,
+            transcoder_governance(),
+        )?;
+
+        ctx.sess = sess;
+        Ok(ctx)
+    }
+    
     #[test]
     fn multi_sig() -> Result<(), Box<dyn Error>> {
         //let ctx = multi_sig_test_setup();
@@ -564,7 +653,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -653,7 +742,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -745,7 +834,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -835,7 +924,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 6_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 6_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -931,7 +1020,7 @@ mod tests {
             &ctx.stake_contract,
             &ctx.bob,
             String::from("add_stake_value"),
-            Some(vec![5000_u128.to_string(), 1_u128.to_string(), false.to_string()]),
+            Some(vec![5000_u128.to_string(), 1_u128.to_string()]),
             None,
             transcoder_governance_staking(),
         )
@@ -1147,6 +1236,98 @@ mod tests {
             transcoder_governance_staking(),
         )
         .unwrap();
+
+        Ok(())
+    }
+    
+    #[test]
+    fn delegation_fees_works() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        
+        let alice = ctx.alice.clone();
+        let bob = ctx.bob.clone();
+
+        let time_before = ctx.sess.chain_api().get_timestamp();
+
+        ctx = wrap_token(ctx, alice.clone(), USER_SUPPLY, None)?; // id: 1
+        ctx = wrap_token(ctx, bob.clone(), USER_SUPPLY, Some(1))?; // id: 2
+
+        // set delegation fees to 10%
+        let fees = 1_000_000;
+        ctx = set_delegation_fees(ctx, alice.clone(), 1, fees)?;
+
+        let (alice_balance_before, sess) =
+            helpers::query_token_balance(ctx.sess, &ctx.gov_token, &alice)?;
+
+        let (bob_balance_before, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &bob)?;
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract, 
+            &alice, 
+            String::from("claim_staking_rewards"), 
+            Some(vec![
+                1.to_string(),
+                true.to_string(),
+            ]), 
+            None, 
+            transcoder_governance_staking()
+        )?;
+
+        let sess = call_function(
+            sess,
+            &ctx.stake_contract, 
+            &bob, 
+            String::from("claim_staking_rewards"), 
+            Some(vec![
+                2.to_string(),
+                true.to_string(),
+            ]), 
+            None, 
+            transcoder_governance_staking()
+        )?;
+
+        let (alice_balance_after, sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &alice)?;
+
+        let (bob_balance_after, mut sess) =
+            helpers::query_token_balance(sess, &ctx.gov_token, &bob)?;
+
+        let time_after = sess.chain_api().get_timestamp();
+        let time_elapsed = time_after - time_before;
+        assert_ne!(time_elapsed, 0);
+
+        let total_rewards = REWARDS_PER_SECOND * (time_elapsed as u128);
+        let delegation_reward = total_rewards * fees / 10_000_000;
+
+        assert_eq!(
+            (total_rewards + delegation_reward) / 2,
+            alice_balance_after - alice_balance_before
+        );
+
+        assert_eq!(
+            (total_rewards - delegation_reward) / 2,
+            bob_balance_after - bob_balance_before
+        );
+
+        Ok(())
+    }
+    
+    #[test]
+    fn set_delegation_fees_works() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        
+        let alice = ctx.alice.clone();
+        let bob = ctx.bob.clone();
+
+        ctx = wrap_token(ctx, alice.clone(), USER_SUPPLY, None)?; // id: 1
+        ctx = wrap_token(ctx, bob.clone(), USER_SUPPLY, Some(1))?; // id: 2
+
+        let ctx = set_delegation_fees(ctx, alice.clone(), 1, 1000)?;
+
+        let (fees, _) = helpers::query_delegation_fees(ctx.sess, ctx.stake_contract.clone())?;
+        assert_eq!(fees, 1000);
 
         Ok(())
     }
