@@ -591,8 +591,8 @@ pub mod staking {
                 offboard_agent_request: Mapping::new(),
                 deployed_validators: Vec::new(),
                 representative_stake_threshold: 10_000_000_000_000_000_000_000, // 10k (18 decimals)
-                ike_validator_bond: 10_000_000_000_000_000_000_000, // 10k (18 decimals)
-                create_deposit: 10_000_000_000_000_000, // 10k (12 decimals)
+                ike_validator_bond: 10_000_000_000_000_000_000_000,             // 10k (18 decimals)
+                create_deposit: 10_000_000_000_000_000,                         // 10k (12 decimals)
                 treasury: governor,
                 delegation_fees: 0,
             }
@@ -874,6 +874,15 @@ pub mod staking {
                 self.call_increment_weights(nft_id, token_value, token_value)?;
             }
 
+            Self::emit_event(
+                Self::env(),
+                Event::StakeAdded(StakeAdded {
+                    staker: caller,
+                    amount: token_value,
+                    nft: nft_id,
+                }),
+            );
+
             Ok(())
         }
 
@@ -994,6 +1003,14 @@ pub mod staking {
             self.redelegate_requests.remove(nft_id);
             self.cast_distribution.remove(nft_id);
 
+            Self::emit_event(
+                Self::env(),
+                Event::UnwrapRequestCreated(UnwrapRequestCreated {
+                    staker: caller,
+                    nft: nft_id,
+                }),
+            );
+
             self.burn_psp34(caller, nft_id)
         }
 
@@ -1016,6 +1033,15 @@ pub mod staking {
             self.unstaked_token_balance -= data.token_value;
             self.unstake_requests.remove(nft_id);
             self.transfer_psp22_from(&Self::env().account_id(), &caller, data.token_value)?;
+
+            Self::emit_event(
+                Self::env(),
+                Event::StakeRemoved(StakeRemoved {
+                    staker: caller,
+                    amount: data.token_value,
+                    nft: nft_id,
+                }),
+            );
 
             Ok(())
         }
@@ -1061,8 +1087,12 @@ pub mod staking {
                 return Err(StakingError::AlreadyOnList);
             }
 
-            let new_agent =
-                self.call_add_agent(agent_admin, validator, self.create_deposit, existential_deposit)?;
+            let new_agent = self.call_add_agent(
+                agent_admin,
+                validator,
+                self.create_deposit,
+                existential_deposit,
+            )?;
 
             // Cast NFT Weight to new agent
             let cast = CastType::Direct(vec![(new_agent, BIPS)]);
