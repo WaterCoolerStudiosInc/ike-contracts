@@ -95,7 +95,7 @@ pub mod staking {
         offboard_agent_request: Mapping<AccountId, (Time, AccountId, NftId)>,
         deployed_validators: Vec<Validator>,
         representative_stake_threshold: Balance,
-        token_stake_amount: Balance,
+        ike_validator_bond: Balance,
         create_deposit: Balance,
         treasury: AccountId,
         delegation_fees: Bips,
@@ -591,7 +591,7 @@ pub mod staking {
                 offboard_agent_request: Mapping::new(),
                 deployed_validators: Vec::new(),
                 representative_stake_threshold: 0,
-                token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
+                ike_validator_bond: 100_000_u128, // FIXME: doesn't consider the decimals
                 create_deposit: 100_000_000_000_000_u128,
                 treasury: governance_council,
                 delegation_fees: 0,
@@ -651,7 +651,7 @@ pub mod staking {
             self.only_governor()?;
 
             if let Some(amount) = ike_deposit {
-                self.token_stake_amount = amount;
+                self.ike_validator_bond = amount;
             }
 
             if let Some(amount) = azero_deposit {
@@ -1037,14 +1037,14 @@ pub mod staking {
             self.transfer_psp22_from(
                 &agent_admin,
                 &Self::env().account_id(),
-                self.token_stake_amount,
+                self.ike_validator_bond,
             )?;
-            self.staked_token_balance += self.token_stake_amount;
+            self.staked_token_balance += self.ike_validator_bond;
 
             let minted_nft = self.mint_psp34(
                 Self::env().account_id(),
-                self.token_stake_amount,
-                self.token_stake_amount,
+                self.ike_validator_bond,
+                self.ike_validator_bond,
             )?;
             let azero = Self::env().transferred_value();
             let existential_deposit = self.env().minimum_balance();
@@ -1066,7 +1066,7 @@ pub mod staking {
 
             // Cast NFT Weight to new agent
             let cast = CastType::Direct(vec![(new_agent, BIPS)]);
-            self.new_cast_distribution(minted_nft, self.token_stake_amount, cast)?;
+            self.new_cast_distribution(minted_nft, self.ike_validator_bond, cast)?;
 
             self.deployed_validators.push(Validator {
                 validator,
