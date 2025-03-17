@@ -20,14 +20,12 @@ mod governance_council {
     };
 
     use governance_staking::traits::Staking;
-    use registry::traits::IRegistry;
 
     #[ink(storage)]
     pub struct Council {
         pub admin: Option<AccountId>,
         pub governor: AccountId,
         pub gov_staking: AccountId,
-        pub registry: AccountId,
         pub signers: Vec<AccountId>,
         pub threshold: u16,
         pub proposals: Mapping<[u8; 32], Proposal>,
@@ -39,7 +37,6 @@ mod governance_council {
         SignerNotFound,
         SignerAlreadyExists,
         VaultFailure,
-        RegistryFailure,
         Unauthorized,
         InvalidInput,
         UsedNonce,
@@ -161,8 +158,8 @@ mod governance_council {
         }
 
         fn complete_removal(&self, validator: AccountId) -> Result<(), CouncilError> {
-            let mut registry: contract_ref!(IRegistry) = self.registry.into();
-            registry
+            let mut gov_staking: contract_ref!(Staking) = self.gov_staking.into();
+            gov_staking
                 .remove_agent(validator)
                 .map_err(|_| CouncilError::VaultFailure)
         }
@@ -225,14 +222,12 @@ mod governance_council {
         pub fn new(
             admin: AccountId,
             governor: AccountId,
-            registry: AccountId,
             gov_staking: AccountId,
             initial_signers: Vec<AccountId>,
         ) -> Self {
             Self {
                 admin: Some(admin),
                 governor,
-                registry,
                 gov_staking,
                 signers: initial_signers,
                 threshold: 3,

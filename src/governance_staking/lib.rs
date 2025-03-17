@@ -36,7 +36,6 @@ pub mod staking {
 
     pub const DAY: Time = 86400 * 1000;
     pub const WITHDRAW_DELAY: Time = 14 * DAY;
-    pub const MAX_VALIDATORS: u8 = 5;
     pub const BIPS: Bips = 10000000;
     const UPDATE_SELECTOR: Selector = Selector::new([0, 0, 0, 2]);
     const AGENT_SELECTOR: Selector = Selector::new([0, 0, 0, 4]);
@@ -93,6 +92,7 @@ pub mod staking {
         voting_delegations_nonce: Mapping<NftId, Nonce>,
         unstake_requests: Mapping<NftId, UnstakeRequest>,
         last_reward_claim: Mapping<NftId, (Balance, Time)>,
+        offboard_agent_request: Mapping<AccountId, (Time, AccountId, NftId)>,
         deployed_validators: Vec<Validator>,
         representative_stake_threshold: Balance,
         token_stake_amount: Balance,
@@ -461,6 +461,24 @@ pub mod staking {
             Ok(())
         }
 
+        fn do_unwrap_validator(
+            &mut self,
+            agent: AccountId,
+            nft_id: NftId,
+            recipient: AccountId,
+        ) -> Result<(), StakingError> {
+            self.transfer_psp34(&recipient, nft_id)?;
+
+            self.deployed_validators = self
+                .deployed_validators
+                .iter()
+                .filter(|v| v.agent != agent)
+                .cloned()
+                .collect();
+
+            Ok(())
+        }
+
         fn is_self_delegator(&self, nft_id: NftId) -> bool {
             if self.voting_delegations.contains(nft_id) {
                 return false;
@@ -571,6 +589,7 @@ pub mod staking {
                 voting_delegations_nonce: Mapping::new(),
                 unstake_requests: Mapping::new(),
                 last_reward_claim: Mapping::new(),
+                offboard_agent_request: Mapping::new(),
                 deployed_validators: Vec::new(),
                 representative_stake_threshold: 0,
                 token_stake_amount: 100_000_u128, // FIXME: doesn't consider the decimals
@@ -625,7 +644,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 12)]
+        #[ink(message, selector = 2)]
         pub fn update_validator_stake_requirement(
             &mut self,
             ike_deposit: Option<Balance>,
@@ -644,7 +663,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 13)]
+        #[ink(message, selector = 3)]
         pub fn update_representative_stake_threshold(
             &mut self,
             amount: Balance,
@@ -654,7 +673,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 14)]
+        #[ink(message, selector = 4)]
         pub fn update_delegation_fees(&mut self, fees: Bips) -> Result<(), StakingError> {
             self.only_governor()?;
             if fees > BIPS {
@@ -664,7 +683,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 2)]
+        #[ink(message, selector = 5)]
         pub fn wrap_tokens(
             &mut self,
             token_value: Balance,
@@ -710,7 +729,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 3)]
+        #[ink(message, selector = 6)]
         pub fn update_cast(
             &mut self,
             nft_id: NftId,
@@ -724,7 +743,7 @@ pub mod staking {
             self.new_cast_distribution(nft_id, data.stake_weight, validator_cast)
         }
 
-        #[ink(message, selector = 4)]
+        #[ink(message, selector = 7)]
         pub fn start_vote_redelegate(
             &mut self,
             nft_id: NftId,
@@ -768,7 +787,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message)]
+        #[ink(message, selector = 8)]
         pub fn update_vote_redelegate(
             &mut self,
             nft_id: NftId,
@@ -791,7 +810,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 5)]
+        #[ink(message, selector = 9)]
         pub fn complete_vote_redelegate(&mut self, nft_id: NftId) -> Result<(), StakingError> {
             self.only_token_owner(nft_id)?;
             self.nft_proposal_lock(nft_id)?;
@@ -825,7 +844,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 6)]
+        #[ink(message, selector = 10)]
         pub fn add_stake_value(
             &mut self,
             token_value: Balance,
@@ -860,7 +879,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 7)]
+        #[ink(message, selector = 11)]
         pub fn claim_staking_rewards(
             &mut self,
             nft_id: NftId,
@@ -915,7 +934,7 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, selector = 8)]
+        #[ink(message, selector = 12)]
         pub fn create_unwrap_request(&mut self, nft_id: NftId) -> Result<(), StakingError> {
             self.only_token_owner(nft_id)?;
             self.nft_proposal_lock(nft_id)?;
@@ -980,7 +999,7 @@ pub mod staking {
             self.burn_psp34(caller, nft_id)
         }
 
-        #[ink(message, selector = 9)]
+        #[ink(message, selector = 13)]
         pub fn complete_unwrap_request(&mut self, nft_id: NftId) -> Result<(), StakingError> {
             let now = Self::env().block_timestamp();
             let caller = Self::env().caller();
@@ -1003,13 +1022,25 @@ pub mod staking {
             Ok(())
         }
 
-        #[ink(message, payable, selector = 10)]
-        pub fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError> {
+        #[ink(message, payable, selector = 14)]
+        pub fn onboard_validator(
+            &mut self,
+            validator: AccountId,
+            agent_admin: AccountId,
+        ) -> Result<(), StakingError> {
             let caller = Self::env().caller();
+            if caller != self.governor && Some(caller) != self.admin {
+                return Err(StakingError::Unauthorized);
+            }
+
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
-            self.transfer_psp22_from(&caller, &Self::env().account_id(), self.token_stake_amount)?;
+            self.transfer_psp22_from(
+                &agent_admin,
+                &Self::env().account_id(),
+                self.token_stake_amount,
+            )?;
             self.staked_token_balance += self.token_stake_amount;
 
             let minted_nft = self.mint_psp34(
@@ -1032,7 +1063,7 @@ pub mod staking {
             }
 
             let new_agent = self.call_add_agent(
-                caller,
+                agent_admin,
                 validator,
                 self.create_deposit,
                 self.existential_deposit,
@@ -1045,7 +1076,7 @@ pub mod staking {
             self.deployed_validators.push(Validator {
                 validator,
                 agent: new_agent,
-                admin: caller,
+                admin: agent_admin,
                 nft_id: minted_nft,
             });
 
@@ -1062,37 +1093,91 @@ pub mod staking {
         //balances.existentialDeposit: 500
         // Step 2. Initialize Agent call with poolid and Account in nomination pool contract
 
-        #[ink(message, selector = 11)]
+        #[ink(message, selector = 15)]
         pub fn disable_validator(
             &mut self,
             agent: AccountId,
             slash: bool,
         ) -> Result<(), StakingError> {
             let caller = Self::env().caller();
-            if caller != self.governance_council {
-                return Err(StakingError::InvalidPermissions);
-            }
 
             let validator_info = self
                 .deployed_validators
                 .iter()
                 .find(|p| p.agent == agent)
                 .ok_or(StakingError::InvalidInput)?;
-            self.call_disable_validator(agent)?;
 
-            let recipient = match slash {
-                true => self.treasury,
-                false => validator_info.admin,
+            if caller == self.governance_council {
+                self.call_disable_validator(agent)?;
+
+                let recipient = match slash {
+                    true => self.treasury,
+                    false => validator_info.admin,
+                };
+
+                self.do_unwrap_validator(agent, validator_info.nft_id, recipient)?;
+            } else if caller == validator_info.admin {
+                self.call_disable_validator(agent)?;
+
+                // Add lock-in period for agent admin
+                let now = self.env().block_timestamp();
+                self.offboard_agent_request
+                    .insert(agent, &(now, validator_info.admin, validator_info.nft_id));
+            } else {
+                return Err(StakingError::InvalidPermissions);
+            }
+
+            Ok(())
+        }
+
+        #[ink(message, selector = 16)]
+        pub fn unwrap_validator(
+            &mut self,
+            agent: AccountId,
+            slash: Option<bool>,
+        ) -> Result<(), StakingError> {
+            let caller = self.env().caller();
+
+            let (time, agent_admin, nft_id) = self
+                .offboard_agent_request
+                .get(agent)
+                .ok_or(StakingError::InvalidRequest)?;
+
+            let recipient = if caller == self.governance_council {
+                match slash {
+                    Some(true) => self.treasury,
+                    Some(false) => agent_admin,
+                    None => return Err(StakingError::InvalidInput),
+                }
+            } else if caller == agent_admin {
+                let now = self.env().block_timestamp();
+                if now < time + WITHDRAW_DELAY {
+                    return Err(StakingError::InvalidTimeWindow);
+                }
+                agent_admin
+            } else {
+                return Err(StakingError::InvalidPermissions);
             };
 
-            self.transfer_psp34(&recipient, validator_info.nft_id)?;
+            self.do_unwrap_validator(agent, nft_id, recipient)
+        }
 
-            self.deployed_validators = self
-                .deployed_validators
-                .iter()
-                .filter(|v| v.agent != agent)
-                .cloned()
-                .collect();
+        #[ink(message, selector = 17)]
+        pub fn remove_agent(&mut self, agent: AccountId) -> Result<(), StakingError> {
+            let caller = self.env().caller();
+            let agent_admin = self.offboard_agent_request.get(agent).map(|data| data.1);
+
+            self.offboard_agent_request.remove(agent); // housekeeping
+
+            // DISCUSS: make it a public fn?
+            if caller != self.governance_council && agent_admin != Some(caller) {
+                return Err(StakingError::Unauthorized);
+            }
+
+            let mut registry: contract_ref!(IRegistry) = self.registry.into();
+            if registry.remove_agent(agent).is_err() {
+                return Err(StakingError::RegistryError);
+            }
 
             Ok(())
         }

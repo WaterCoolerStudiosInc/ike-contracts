@@ -2995,9 +2995,9 @@ mod tests {
         let sess = call_function(
             sess,
             &ctx.stake_contract,
-            &ctx.alice,
+            &ctx.bob, // admin
             String::from("onboard_validator"),
-            Some(vec![new_validator.to_string()]),
+            Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
             Some(100_000_000_000_500_u128),
             transcoder_governance_staking(),
         )
@@ -3029,9 +3029,9 @@ mod tests {
         let sess = call_function(
             sess,
             &ctx.stake_contract,
-            &ctx.alice,
+            &ctx.bob, // admin
             String::from("onboard_validator"),
-            Some(vec![new_validator.to_string()]),
+            Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
             Some(100_000_000_000_500_u128),
             transcoder_governance_staking(),
         )
@@ -3109,9 +3109,9 @@ mod tests {
         let sess = call_function(
             sess,
             &ctx.stake_contract,
-            &ctx.alice,
+            &ctx.bob, // admin
             String::from("onboard_validator"),
-            Some(vec![new_validator.to_string()]),
+            Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
             Some(100_000_000_000_500_u128),
             transcoder_governance_staking(),
         )

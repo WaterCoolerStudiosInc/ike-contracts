@@ -80,6 +80,8 @@ pub mod governance {
         UpdateRespresentativeStakeThreshold(Balance),
         // Update the delegation fees in staking contract
         UpdateDelegationFees(u128),
+        // Onboard a validator [validator, agent_admin]
+        AddValidator(AccountId, AccountId),
         // Add to council
         AddCouncilMember(AccountId),
         // remove then add to council
@@ -363,6 +365,17 @@ pub mod governance {
                 .map_err(|_| GovernanceError::StakingError)
         }
 
+        fn add_validator(
+            &self,
+            validator: AccountId,
+            agent_admin: AccountId,
+        ) -> Result<(), GovernanceError> {
+            let mut staking: contract_ref!(Staking) = self.staking.into();
+            staking
+                .onboard_validator(validator, agent_admin)
+                .map_err(|_| GovernanceError::StakingError)
+        }
+
         fn update_reject_threshold(&mut self, update: Weight) {
             self.rejection_threshold = update;
         }
@@ -468,6 +481,9 @@ pub mod governance {
                     self.update_representative_stake_threshold(amount)?
                 }
                 PropType::UpdateDelegationFees(fees) => self.update_delegation_fees(fees)?,
+                PropType::AddValidator(validator, agent_admin) => {
+                    self.add_validator(validator, agent_admin)?
+                }
                 PropType::SetCodeHash(code_hash) => self.set_code_internal(code_hash)?,
                 PropType::UnlockTransfer() => self.unlock_transfer()?,
                 PropType::LockTransfer() => self.lock_transfer()?,
@@ -526,7 +542,7 @@ pub mod governance {
             let caller = Self::env().caller();
             let governor = Self::env().account_id();
 
-            let mut council_ref = CouncilRef::new(caller, governor, registry, vault, signers)
+            let mut council_ref = CouncilRef::new(caller, governor, vault, signers)
                 .endowment(0)
                 .code_hash(council_hash)
                 .salt_bytes(&[5_u8.to_le_bytes().as_ref(), caller.as_ref()].concat()[..4])
