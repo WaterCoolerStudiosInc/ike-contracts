@@ -507,10 +507,10 @@ pub mod staking {
                 .ok_or(StakingError::NotFound)
         }
 
-        fn only_token_owner(&self, nft_id: NftId) -> Result<(), StakingError> {
+        fn only_token_owner(&self, nft_id: NftId, strict: bool) -> Result<(), StakingError> {
             let caller = self.env().caller();
             match self.nft.owner_of_id(nft_id) {
-                Some(owner) if owner == self.env().account_id() => {
+                Some(owner) if !strict && owner == self.env().account_id() => {
                     // A validator nft
                     if let Some(v) = self.deployed_validators.iter().find(|v| v.nft_id == nft_id) {
                         if v.admin == caller {
@@ -733,7 +733,7 @@ pub mod staking {
             nft_id: NftId,
             validator_cast: CastType,
         ) -> Result<(), StakingError> {
-            self.only_token_owner(nft_id)?;
+            self.only_token_owner(nft_id, true)?;
 
             let data = self.get_governance_data(nft_id)?;
             // deallocate current cast weights
@@ -747,7 +747,7 @@ pub mod staking {
             nft_id: NftId,
             new_delegatee: NftId,
         ) -> Result<(), StakingError> {
-            self.only_token_owner(nft_id)?;
+            self.only_token_owner(nft_id, false)?;
             self.nft_proposal_lock(nft_id)?;
             let now = Self::env().block_timestamp();
 
@@ -791,7 +791,7 @@ pub mod staking {
             nft_id: NftId,
             new_delegatee: NftId,
         ) -> Result<(), StakingError> {
-            self.only_token_owner(nft_id)?;
+            self.only_token_owner(nft_id, false)?;
 
             let Some((time, _)) = self.redelegate_requests.get(nft_id) else {
                 return Err(StakingError::InvalidRequest);
@@ -810,7 +810,7 @@ pub mod staking {
 
         #[ink(message, selector = 9)]
         pub fn complete_vote_redelegate(&mut self, nft_id: NftId) -> Result<(), StakingError> {
-            self.only_token_owner(nft_id)?;
+            self.only_token_owner(nft_id, false)?;
             self.nft_proposal_lock(nft_id)?;
 
             let (time, delegatee) = self
@@ -892,7 +892,7 @@ pub mod staking {
             nft_id: NftId,
             withdraw_yield: bool,
         ) -> Result<(), StakingError> {
-            self.only_token_owner(nft_id)?;
+            self.only_token_owner(nft_id, false)?;
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
@@ -943,7 +943,7 @@ pub mod staking {
 
         #[ink(message, selector = 12)]
         pub fn create_unwrap_request(&mut self, nft_id: NftId) -> Result<(), StakingError> {
-            self.only_token_owner(nft_id)?;
+            self.only_token_owner(nft_id, true)?;
             self.nft_proposal_lock(nft_id)?;
 
             let caller = Self::env().caller();
