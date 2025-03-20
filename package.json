@@ -26,8 +26,5 @@
     "deployments/**/share_token/**/*",
     "deployments/**/vault/**/*",
     "!deployments/development/**/*"
-  ],
-  "dependencies": {
-    "@water-cooler-studios/ike-contracts": "^0.1.0"
-  }
+  ]
 }
