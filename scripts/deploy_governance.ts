@@ -283,11 +283,11 @@ async function main() {
 
   // Write deployment metadata into associated chainId subdirectory
   await writeContractAddresses(chain.network, {
-    gov_token,
-    gov_nft,
+    "governance_token": gov_token,
+    "governance_nft": gov_nft,
     vesting,
-    gov_staking,
-    gov_council,
+    "governance_staking": gov_staking,
+    "governance_council": gov_council,
     governance,
   })
 }
