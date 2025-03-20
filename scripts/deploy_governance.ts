@@ -37,18 +37,16 @@ async function transfer_gov_tokens(
     [to, amount, []],
   )
 
-  // FIXME: The call is failing (argument not getting recognized)
-  // const get_balance_result = await contractQuery(
-  //   api,
-  //   '',
-  //   gov_token_instance,
-  //   'PSP22::balance_of',
-  //   {}
-  //   [to]
-  // )
+  const get_balance_result = await contractQuery(
+    api,
+    '',
+    gov_token_instance,
+    'PSP22::balance_of',
+    {},
+    [to]
+  )
   
-  // return decodeOutput(get_balance_result, gov_token_instance, 'PSP22::balance_of').output
-  return 0n;
+  return decodeOutput(get_balance_result, gov_token_instance, 'PSP22::balance_of').output
 }
 
 async function registry_transfer_role(
