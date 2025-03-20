@@ -58,15 +58,14 @@ async function registry_transfer_role(
   role: string,
   assignee: string,
 ) {
-  // FIXME: The call is failing (function is not being identified)
-  // await contractTx(
-  //   api,
-  //   account,
-  //   registry_instance,
-  //   'iRegistry::transfer_role',
-  //   {},
-  //   [role, assignee],
-  // )
+  await contractTx(
+    api,
+    account,
+    registry_instance,
+    'iRegistry::transfer_role',
+    {},
+    [role, assignee],
+  )
 }
 
 async function main() {
@@ -245,18 +244,18 @@ async function main() {
   )
 
   // IRegistry::transfer_role
-  const registry_instance = new ContractPromise(api, vault.abi, vault.address)
+  const registry_instance = new ContractPromise(api, registry.abi, registry.address)
   console.log(`\n[Registry] Transfer 'AddAgent' role to the staking contract (${gov_staking.address})`)
-  await registry_transfer_role(api, registry_instance, account, 'RoleType::AddAgent', gov_staking.address)
+  await registry_transfer_role(api, registry_instance, account, 'AddAgent', gov_staking.address)
 
   console.log(`[Registry] Transfer 'UpdateAgents' role to the staking contract (${gov_staking.address})`)
-  await registry_transfer_role(api, registry_instance, account, 'RoleType::UpdateAgents', gov_staking.address)
+  await registry_transfer_role(api, registry_instance, account, 'UpdateAgents', gov_staking.address)
 
   console.log(`[Registry] Transfer 'DisableAgent' role to the staking contract (${gov_staking.address})`)
-  await registry_transfer_role(api, registry_instance, account, 'RoleType::DisableAgent', gov_staking.address)
+  await registry_transfer_role(api, registry_instance, account, 'DisableAgent', gov_staking.address)
 
   console.log(`[Registry] Transfer 'RemoveAgent' role to the staking contract (${gov_staking.address})`)
-  await registry_transfer_role(api, registry_instance, account, 'RoleType::RemoveAgent', gov_staking.address)
+  await registry_transfer_role(api, registry_instance, account, 'RemoveAgent', gov_staking.address)
 
 
   console.log('\n===== Contract Locations =====')
