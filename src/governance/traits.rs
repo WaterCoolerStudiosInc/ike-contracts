@@ -48,4 +48,11 @@ pub trait IGovernance {
 
     #[ink(message)]
     fn cancel_proposal(&mut self, prop_id: PropId) -> Result<(), GovernanceError>;
+
+    #[ink(message, selector = 100)]
+    fn consume_validator_whitelist(
+        &mut self,
+        validator: AccountId,
+        agent_admin: AccountId,
+    ) -> Result<(), GovernanceError>;
 }

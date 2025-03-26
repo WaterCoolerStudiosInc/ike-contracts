@@ -551,6 +551,27 @@ pub mod staking {
                 false => Ok(()),
             }
         }
+
+        fn consume_validator_whitelist(
+            &self,
+            validator: AccountId,
+            agent_admin: AccountId,
+        ) -> Result<(), StakingError> {
+            let selector = Selector::new([0, 0, 0, 100]);
+
+            let res = build_call::<DefaultEnvironment>()
+                .call(self.governor)
+                .exec_input(
+                    ExecutionInput::new(selector)
+                        .push_arg(validator)
+                        .push_arg(agent_admin),
+                )
+                .transferred_value(0)
+                .returns::<Result<(), u8>>()
+                .invoke();
+
+            res.map_err(|_| StakingError::InvalidRequest)
+        }
     }
 
     impl Staking {
@@ -1047,24 +1068,14 @@ pub mod staking {
         }
 
         #[ink(message, payable, selector = 14)]
-        pub fn onboard_validator(
-            &mut self,
-            validator: AccountId,
-            agent_admin: AccountId,
-        ) -> Result<(), StakingError> {
+        pub fn onboard_validator(&mut self, validator: AccountId) -> Result<(), StakingError> {
             let caller = Self::env().caller();
-            if caller != self.governor && Some(caller) != self.admin {
-                return Err(StakingError::Unauthorized);
-            }
-
             let now = Self::env().block_timestamp();
             self.update_stake_accumulation(now)?;
 
-            self.transfer_psp22_from(
-                &agent_admin,
-                &Self::env().account_id(),
-                self.ike_validator_bond,
-            )?;
+            self.consume_validator_whitelist(validator, caller)?;
+
+            self.transfer_psp22_from(&caller, &Self::env().account_id(), self.ike_validator_bond)?;
             self.staked_token_balance += self.ike_validator_bond;
 
             let minted_nft = self.mint_psp34(
@@ -1087,12 +1098,8 @@ pub mod staking {
                 return Err(StakingError::AlreadyOnList);
             }
 
-            let new_agent = self.call_add_agent(
-                agent_admin,
-                validator,
-                self.create_deposit,
-                existential_deposit,
-            )?;
+            let new_agent =
+                self.call_add_agent(caller, validator, self.create_deposit, existential_deposit)?;
 
             // Cast NFT Weight to new agent
             let cast = CastType::Direct(vec![(new_agent, BIPS)]);
@@ -1101,7 +1108,7 @@ pub mod staking {
             self.deployed_validators.push(Validator {
                 validator,
                 agent: new_agent,
-                admin: agent_admin,
+                admin: caller,
                 nft_id: minted_nft,
             });
 
