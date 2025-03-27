@@ -2389,6 +2389,28 @@ mod tests {
     }
 
     #[test]
+    fn whitelist_validator_works() {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let new_validator = AccountId::new([106u8; 32]);
+
+        let agent_admin = ctx.alice.clone();
+        ctx = whitelist_validator(ctx, new_validator.clone(), agent_admin.clone()).unwrap();
+
+        // check (validator, agent_admin) pair is whitelisted
+        ctx.sess.call_with_address(
+            ctx.governance.clone(), 
+            "is_validator_whitelisted", 
+            &[new_validator.to_string(), agent_admin.to_string()], 
+            None
+        ).unwrap();
+
+        let result: Result<bool, drink::errors::LangError> =
+            ctx.sess.last_call_return().unwrap();
+        
+        assert!(result.unwrap())
+    }
+
+    #[test]
     fn unlock_nft_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD / 2).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
@@ -3032,6 +3054,37 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn validator_onboarding_fails_without_whitelist() -> Result<(), Box<dyn Error>> {
+        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let new_validator = AccountId::new([106u8; 32]);
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.alice,
+            String::from("PSP22::approve"),
+            Some(vec![
+                ctx.stake_contract.to_string(),
+                IKE_VALIDATOR_BOND.to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let res = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("onboard_validator"),
+            Some(vec![new_validator.to_string()]),
+            Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
+            transcoder_governance_staking(),
+        );
+        assert!(res.is_err());
+        Ok(())
+    }
+    
     //Todo Query validator Status
     #[test]
     fn disable_validator() -> Result<(), Box<dyn Error>> {

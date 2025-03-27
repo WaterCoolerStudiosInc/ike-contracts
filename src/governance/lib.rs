@@ -613,6 +613,15 @@ pub mod governance {
         }
 
         #[ink(message)]
+        pub fn is_validator_whitelisted(
+            &self, 
+            validator: AccountId, 
+            agent_admin: AccountId
+        ) -> bool {
+            self.validator_whitelist.contains((validator, agent_admin))
+        }
+
+        #[ink(message)]
         pub fn transfer_admin_role(
             &mut self,
             new_admin: Option<AccountId>,
