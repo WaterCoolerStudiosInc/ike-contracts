@@ -173,6 +173,7 @@ pub mod governance {
         pub voting_period: Time,
         pub proposals: Vec<Proposal>,
         pub voted: Mapping<(PropId, NftId), ()>,
+        pub validator_whitelist: Mapping<(AccountId, AccountId), ()>, // key: [validator, agent_admin]
         pub prop_nonce: PropId,
     }
 
@@ -366,14 +367,13 @@ pub mod governance {
         }
 
         fn add_validator(
-            &self,
+            &mut self,
             validator: AccountId,
             agent_admin: AccountId,
         ) -> Result<(), GovernanceError> {
-            let mut staking: contract_ref!(Staking) = self.staking.into();
-            staking
-                .onboard_validator(validator, agent_admin)
-                .map_err(|_| GovernanceError::StakingError)
+            self.validator_whitelist
+                .insert((validator, agent_admin), &());
+            Ok(())
         }
 
         fn update_reject_threshold(&mut self, update: Weight) {
@@ -591,6 +591,7 @@ pub mod governance {
                 voting_period: 7 * DAY,
                 proposals: Vec::new(),
                 voted: Mapping::new(),
+                validator_whitelist: Mapping::new(),
                 prop_nonce: 1_u128,
             }
         }
@@ -599,6 +600,25 @@ pub mod governance {
         pub fn set_code_hash(&mut self, code_hash: [u8; 32]) -> Result<(), GovernanceError> {
             self.only_admin()?;
             self.set_code_internal(code_hash)
+        }
+
+        #[ink(message)]
+        pub fn whitelist_validator(
+            &mut self,
+            validator: AccountId,
+            agent_admin: AccountId,
+        ) -> Result<(), GovernanceError> {
+            self.only_admin()?;
+            self.add_validator(validator, agent_admin)
+        }
+
+        #[ink(message)]
+        pub fn is_validator_whitelisted(
+            &self, 
+            validator: AccountId, 
+            agent_admin: AccountId
+        ) -> bool {
+            self.validator_whitelist.contains((validator, agent_admin))
         }
 
         #[ink(message)]
@@ -838,6 +858,25 @@ pub mod governance {
                     Ok(())
                 }
             }
+        }
+
+        #[ink(message, selector = 100)]
+        fn consume_validator_whitelist(
+            &mut self,
+            validator: AccountId,
+            agent_admin: AccountId,
+        ) -> Result<(), GovernanceError> {
+            let caller = self.env().caller();
+            if caller != self.staking {
+                return Err(GovernanceError::Unauthorized);
+            }
+
+            if !self.validator_whitelist.contains((validator, agent_admin)) {
+                return Err(GovernanceError::InvalidInput);
+            }
+
+            self.validator_whitelist.remove((validator, agent_admin));
+            Ok(())
         }
     }
 }

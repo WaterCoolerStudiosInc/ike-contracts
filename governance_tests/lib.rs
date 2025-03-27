@@ -577,6 +577,25 @@ mod tests {
         ctx.sess = sess;
         Ok(ctx)
     }
+
+    fn whitelist_validator(
+        mut ctx: TestContext,
+        validator: AccountId, 
+        agent_admin: AccountId
+    ) -> Result<TestContext, Box<dyn Error>> {
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("whitelist_validator"),
+            Some(vec![validator.to_string(), agent_admin.to_string()]),
+            None,
+            transcoder_governance(),
+        )?;
+
+        ctx.sess = sess;
+        Ok(ctx)
+    }
     
     #[test]
     fn multi_sig() -> Result<(), Box<dyn Error>> {
@@ -2370,6 +2389,28 @@ mod tests {
     }
 
     #[test]
+    fn whitelist_validator_works() {
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let new_validator = AccountId::new([106u8; 32]);
+
+        let agent_admin = ctx.alice.clone();
+        ctx = whitelist_validator(ctx, new_validator.clone(), agent_admin.clone()).unwrap();
+
+        // check (validator, agent_admin) pair is whitelisted
+        ctx.sess.call_with_address(
+            ctx.governance.clone(), 
+            "is_validator_whitelisted", 
+            &[new_validator.to_string(), agent_admin.to_string()], 
+            None
+        ).unwrap();
+
+        let result: Result<bool, drink::errors::LangError> =
+            ctx.sess.last_call_return().unwrap();
+        
+        assert!(result.unwrap())
+    }
+
+    #[test]
     fn unlock_nft_proposal() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD / 2).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
@@ -2979,8 +3020,11 @@ mod tests {
 
     #[test]
     fn validator_onboarding() -> Result<(), Box<dyn Error>> {
-        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         let new_validator = AccountId::new([106u8; 32]);
+
+        let agent_admin = ctx.alice.clone();
+        ctx = whitelist_validator(ctx, new_validator.clone(), agent_admin)?;
 
         let sess = call_function(
             ctx.sess,
@@ -2998,9 +3042,9 @@ mod tests {
         let sess = call_function(
             sess,
             &ctx.stake_contract,
-            &ctx.bob, // admin
+            &ctx.alice,
             String::from("onboard_validator"),
-            Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
+            Some(vec![new_validator.to_string()]),
             Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
             transcoder_governance_staking(),
         )
@@ -3010,11 +3054,45 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn validator_onboarding_fails_without_whitelist() -> Result<(), Box<dyn Error>> {
+        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let new_validator = AccountId::new([106u8; 32]);
+
+        let sess = call_function(
+            ctx.sess,
+            &ctx.gov_token,
+            &ctx.alice,
+            String::from("PSP22::approve"),
+            Some(vec![
+                ctx.stake_contract.to_string(),
+                IKE_VALIDATOR_BOND.to_string(),
+            ]),
+            None,
+            transcoder_governance_token(),
+        )
+        .unwrap();
+        let res = call_function(
+            sess,
+            &ctx.stake_contract,
+            &ctx.alice,
+            String::from("onboard_validator"),
+            Some(vec![new_validator.to_string()]),
+            Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
+            transcoder_governance_staking(),
+        );
+        assert!(res.is_err());
+        Ok(())
+    }
+    
     //Todo Query validator Status
     #[test]
     fn disable_validator() -> Result<(), Box<dyn Error>> {
-        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         let new_validator = AccountId::new([106u8; 32]);
+
+        let agent_admin = ctx.alice.clone();
+        ctx = whitelist_validator(ctx, new_validator.clone(), agent_admin)?;
 
         let sess = call_function(
             ctx.sess,
@@ -3032,9 +3110,9 @@ mod tests {
         let sess = call_function(
             sess,
             &ctx.stake_contract,
-            &ctx.bob, // admin
+            &ctx.alice,
             String::from("onboard_validator"),
-            Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
+            Some(vec![new_validator.to_string()]),
             Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
             transcoder_governance_staking(),
         )
@@ -3093,8 +3171,11 @@ mod tests {
 
     #[test]
     fn disable_validator_with_slashing() -> Result<(), Box<dyn Error>> {
-        let ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
+        let mut ctx = setup(ACC_THRESHOLD, REJECT_THRESHOLD, EXEC_THRESHOLD).unwrap();
         let new_validator = AccountId::new([106u8; 32]);
+
+        let agent_admin = ctx.alice.clone();
+        ctx = whitelist_validator(ctx, new_validator.clone(), agent_admin)?;
 
         let sess = call_function(
             ctx.sess,
@@ -3112,9 +3193,9 @@ mod tests {
         let sess = call_function(
             sess,
             &ctx.stake_contract,
-            &ctx.bob, // admin
+            &ctx.alice,
             String::from("onboard_validator"),
-            Some(vec![new_validator.to_string(), ctx.alice.to_string()]),
+            Some(vec![new_validator.to_string()]),
             Some(CREATE_DEPOSIT + EXISTENTIAL_DEPOSIT),
             transcoder_governance_staking(),
         )
