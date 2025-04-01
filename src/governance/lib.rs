@@ -77,7 +77,7 @@ pub mod governance {
         // Update the bond requirement [Ike-deposit, A0-deposit] to become a validator
         UpdateValidatorStakeRequirement(Option<Balance>, Option<Balance>),
         // Update the threshold stake required to become a self-delegator
-        UpdateRespresentativeStakeThreshold(Balance),
+        UpdateRepresentativeStakeThreshold(Balance),
         // Update the delegation fees in staking contract
         UpdateDelegationFees(u128),
         // Onboard a validator [validator, agent_admin]
@@ -477,7 +477,7 @@ pub mod governance {
                 PropType::UpdateValidatorStakeRequirement(ike, a0) => {
                     self.update_validator_stake_requirement(ike, a0)?
                 }
-                PropType::UpdateRespresentativeStakeThreshold(amount) => {
+                PropType::UpdateRepresentativeStakeThreshold(amount) => {
                     self.update_representative_stake_threshold(amount)?
                 }
                 PropType::UpdateDelegationFees(fees) => self.update_delegation_fees(fees)?,
