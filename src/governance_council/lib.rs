@@ -171,17 +171,20 @@ mod governance_council {
             }
         }
 
-        fn create_new_proposal(&mut self, hash: [u8; 32], creator: AccountId, action: &Action) {
+        fn create_new_proposal(
+            &mut self,
+            hash: [u8; 32],
+            creator: AccountId,
+            action: &Action,
+        ) -> Result<(), CouncilError> {
             debug_println!("{}", "add new proposal");
 
-            self.proposals.insert(
-                hash,
-                &Proposal {
-                    action: action.clone(),
-                    threshold: self.threshold,
-                    proposers: vec![creator],
-                },
-            );
+            let proposal = Proposal {
+                action: action.clone(),
+                threshold: self.threshold,
+                proposers: vec![creator],
+            };
+
             Self::emit_event(
                 Self::env(),
                 Event::ProposalCreated(ProposalCreated {
@@ -192,6 +195,18 @@ mod governance_council {
                     },
                 }),
             );
+
+            if self.threshold <= 1 {
+                self.execute(&proposal.action)?;
+                Self::emit_event(
+                    Self::env(),
+                    Event::ProposalExecuted(ProposalExecuted { proposal }),
+                );
+            } else {
+                self.proposals.insert(hash, &proposal);
+            }
+
+            Ok(())
         }
 
         fn is_signer(&self, acc: &AccountId) -> bool {
@@ -326,7 +341,7 @@ mod governance_council {
             }
 
             match self.proposals.get(hash) {
-                None => self.create_new_proposal(hash, caller, &action),
+                None => self.create_new_proposal(hash, caller, &action)?,
                 Some(mut proposal) => {
                     let curr_proposers = &mut proposal.proposers;
 
@@ -338,7 +353,7 @@ mod governance_council {
                         return Err(CouncilError::Unauthorized);
                     }
 
-                    if curr_proposers.len() as u16 + 1_u16 == proposal.threshold {
+                    if curr_proposers.len() as u16 + 1_u16 >= proposal.threshold {
                         debug_println!("{}", "executing");
                         self.proposals.remove(hash);
                         self.execute(&proposal.action)?;
