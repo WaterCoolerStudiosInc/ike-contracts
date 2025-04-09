@@ -41,6 +41,7 @@ mod governance_council {
         InvalidInput,
         UsedNonce,
         EnvError,
+        StorageOverflow,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -286,18 +287,27 @@ mod governance_council {
             self.only_governor()?;
 
             match self.get_signer_index(&signer) {
-                None => Err(CouncilError::SignerNotFound),
+                None => return Err(CouncilError::SignerNotFound),
                 Some(index) => {
                     self.signers.remove(index);
                     Self::emit_event(Self::env(), Event::SignerRemoved(SignerRemoved { signer }));
-                    Ok(())
                 }
             }
+
+            let len = self.signers.len();
+            if len < self.threshold as usize {
+                self.threshold = len.try_into().map_err(|_| CouncilError::StorageOverflow)?;
+            }
+
+            Ok(())
         }
 
         #[ink(message, selector = 3)]
         fn update_threshold(&mut self, new_threshold: u16) -> Result<(), CouncilError> {
             self.only_governor()?;
+            if new_threshold as usize > self.signers.len(){
+                return Err(CouncilError::InvalidInput);
+            }
             self.threshold = new_threshold;
             Ok(())
         }
