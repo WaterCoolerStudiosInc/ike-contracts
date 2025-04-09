@@ -2285,7 +2285,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
+                helpers::PropType::UpdateRepresentativeStakeThreshold(100_000_000_999_u128).to_string(),
                 1.to_string(),
             ]),
             None,
@@ -2332,6 +2332,62 @@ mod tests {
     }
 
     #[test]
+    fn update_threshold_can_execute_without_reaching_quoram() -> Result<(), Box<dyn Error>> {
+        let mut ctx = setup(ACC_THRESHOLD, USER_SUPPLY, EXEC_THRESHOLD).unwrap();
+        ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
+        let sess = call_function(
+            ctx.sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("IGovernance::create_proposal"),
+            Some(vec![
+                helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
+                1.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let (proposal, sess) =
+            helpers::query_governance_get_proposal_by_nft(sess, &ctx.governance, 1_u128).unwrap();
+        println!("proposal: {:?}", proposal);
+        let sess = update_days(sess, 3_u64);
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.bob,
+            String::from("IGovernance::vote"),
+            Some(vec![
+                proposal.prop_id.to_string(),
+                2.to_string(),
+                Vote::Pro.to_string(),
+            ]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+        let sess = update_days(sess, 10_u64);
+
+        let (_, sess) = helpers::query_governance_get_all_proposals(sess, &ctx.governance)?;
+        let sess = call_function(
+            sess,
+            &ctx.governance,
+            &ctx.alice,
+            String::from("IGovernance::get_active_proposal_status_by_nft"),
+            Some(vec![1.to_string()]),
+            None,
+            transcoder_governance(),
+        )
+        .unwrap();
+
+        let rr: Result<bool, drink::errors::LangError> = sess.last_call_return().unwrap();
+        let is_active = rr.unwrap();
+        assert!(is_active);
+
+        Ok(())
+    }
+    
+    #[test]
     fn expired_proposal_cannot_be_executed() -> Result<(), Box<dyn Error>> {
         let mut ctx = setup(ACC_THRESHOLD, USER_SUPPLY, EXEC_THRESHOLD).unwrap();
         ctx = wrap_tokens(ctx, USER_SUPPLY).unwrap();
@@ -2342,7 +2398,7 @@ mod tests {
             &ctx.alice,
             String::from("IGovernance::create_proposal"),
             Some(vec![
-                helpers::PropType::UpdateExecThreshhold(100_000_000_999_u128).to_string(),
+                helpers::PropType::UpdateRepresentativeStakeThreshold(100_000_000_999_u128).to_string(),
                 1.to_string(),
             ]),
             None,
