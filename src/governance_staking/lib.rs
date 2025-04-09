@@ -191,6 +191,7 @@ pub mod staking {
             if a == 0 || b == 0 {
                 return 0;
             }
+            assert_ne!(c, 0, "Unreachable; qed");
             let result = BigUint::from(a) * BigUint::from(b) / BigUint::from(c);
             BigUint::to_u128(&result).expect("overflow")
         }
