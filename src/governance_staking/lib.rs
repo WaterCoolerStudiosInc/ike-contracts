@@ -87,6 +87,7 @@ pub mod staking {
         governance_token: AccountId,
         nft: GovernanceNFTRef,
         cast_distribution: Mapping<NftId, Vec<(AccountId, Bips)>>,
+        cast_distribution_dust: Mapping<NftId, Balance>,
         voting_delegations: Mapping<NftId, (NftId, Nonce)>, // (delegatee, nonce)
         redelegate_requests: Mapping<NftId, (Time, NftId)>,
         voting_delegations_nonce: Mapping<NftId, Nonce>,
@@ -198,6 +199,7 @@ pub mod staking {
 
         pub fn update_registry_weights(
             &mut self,
+            nft_id: NftId,
             agents: &[(AccountId, Bips)],
             mut value: Balance,
             increase: bool,
@@ -215,30 +217,39 @@ pub mod staking {
                 false => vec![],
             };
 
+            let accumulated_dusted = self.cast_distribution_dust.get(nft_id).unwrap_or(0);
+            value += accumulated_dusted;
+
             for agent in agents.iter() {
                 sum += agent.1;
 
                 let amt = self.pro_rata(value, agent.1, BIPS);
+                
+                // The `amt` will go unutilized if the agent is disabled or we need to run an 
+                // eager (in the case of removing the cast) second/multiple iterations to consume it
+                value -= amt;
                 if safe_check && !self.is_disabled(agent.0, &current_agents) {
                     update_list.push(WeightUpdate {
                         agent: agent.0,
                         weight: amt,
                         increase,
                     });
-                    value -= amt;
                 }
             }
             if sum != BIPS {
                 return Err(StakingError::InvalidInput);
             }
 
-            // Add remaining (dust) value to the 1st agent from the `agents` list if it's part of the updated_list
-            match update_list.first() {
-                Some(WeightUpdate { agent, .. }) if agent == &agents[0].0 => {
-                    update_list[0].weight += value
-                }
-                _ => {}
-            };
+            // Add remaining (dust) value to the `cast_distribution_dust` storage for later use
+            if value == accumulated_dusted {
+                // No change. Old dust was not consumed at all
+            } else if value == 0 {
+                // Zero dust left. clean up storage
+                self.cast_distribution_dust.remove(nft_id);
+            } else {
+                // New dust value
+                self.cast_distribution_dust.insert(nft_id, &value);
+            }
 
             if let Err(e) = self.call_registry_update(update_list) {
                 return Err(StakingError::InternalError(e));
@@ -263,7 +274,7 @@ pub mod staking {
             };
 
             self.cast_distribution.insert(nft_id, &weights);
-            self.update_registry_weights(&weights, value, true, safe_check)
+            self.update_registry_weights(nft_id, &weights, value, true, safe_check)
         }
 
         pub fn add_cast_distribution(
@@ -275,7 +286,7 @@ pub mod staking {
                 .cast_distribution
                 .get(nft_id)
                 .ok_or(StakingError::InvalidInput)?;
-            self.update_registry_weights(&cast, value, true, true)
+            self.update_registry_weights(nft_id, &cast, value, true, true)
         }
 
         pub fn remove_cast_distribution(
@@ -287,7 +298,7 @@ pub mod staking {
                 .cast_distribution
                 .get(nft_id)
                 .ok_or(StakingError::InvalidInput)?;
-            self.update_registry_weights(&cast, value, false, true)
+            self.update_registry_weights(nft_id, &cast, value, false, true)
         }
 
         fn emit_event<EE>(emitter: EE, event: Event)
@@ -605,6 +616,7 @@ pub mod staking {
                 governance_token,
                 nft: governance_nft,
                 cast_distribution: Mapping::new(),
+                cast_distribution_dust: Mapping::new(),
                 voting_delegations: Mapping::new(),
                 redelegate_requests: Mapping::new(),
                 voting_delegations_nonce: Mapping::new(),
@@ -1025,6 +1037,7 @@ pub mod staking {
             // optional-housekeeping
             self.redelegate_requests.remove(nft_id);
             self.cast_distribution.remove(nft_id);
+            self.cast_distribution_dust.remove(nft_id);
 
             Self::emit_event(
                 Self::env(),
