@@ -886,7 +886,6 @@ pub mod staking {
                     self.call_increment_weights(delegatee, 0, token_value)?;
                 }
                 self.call_increment_weights(nft_id, token_value, 0)?;
-                self.voting_delegations.insert(nft_id, &(delegatee, nonce));
             } else if self.redelegate_requests.contains(nft_id) {
                 // To avoid breaking 1-role-1-representative constraint and double-voting;
                 // new voting_weight is activated alongside redelegation-completion
