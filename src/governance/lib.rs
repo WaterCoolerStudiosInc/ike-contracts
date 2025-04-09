@@ -102,6 +102,8 @@ pub mod governance {
         UpdateRejectThreshhold(Weight),
         // update execution threshold for proposals
         UpdateExecThreshhold(Weight),
+        // update max proposals that can be live at a time
+        UpdateMaxProposals(u16),
         // update governance code logic
         SetCodeHash([u8; 32]),
         // Unlock Transfer for governance nft
@@ -169,6 +171,7 @@ pub mod governance {
         pub execution_threshold: Weight,
         pub rejection_threshold: Weight,
         pub acceptance_threshold: Weight,
+        pub max_proposals: u16,
         pub voting_delay: Time,
         pub voting_period: Time,
         pub proposals: Vec<Proposal>,
@@ -388,6 +391,12 @@ pub mod governance {
             self.acceptance_threshold = update;
         }
 
+        fn update_max_proposals(&mut self, max_proposals: u16) {
+            if max_proposals != 0 {
+                self.max_proposals = max_proposals;
+            }
+        }
+
         fn update_voting_period(&mut self, update: Time) {
             self.voting_period = update;
         }
@@ -460,6 +469,7 @@ pub mod governance {
                     debug_println!("executing delay update {}", update);
                     self.update_voting_delay(update)
                 }
+                PropType::UpdateMaxProposals(max_proposals) => self.update_max_proposals(max_proposals),
                 PropType::VotePeriodUpdate(update) => self.update_voting_period(update),
                 PropType::AddCouncilMember(member) => self.add_council_member(&member)?,
                 PropType::ReplaceCouncilMember(member, replacement) => {
@@ -587,6 +597,7 @@ pub mod governance {
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
                 acceptance_threshold: acc_threshold,
+                max_proposals: 100,
                 voting_delay: 2 * DAY,
                 voting_period: 7 * DAY,
                 proposals: Vec::new(),
@@ -676,6 +687,11 @@ pub mod governance {
         }
 
         #[ink(message)]
+        fn get_max_proposals(&self) -> u16 {
+            self.max_proposals
+        }
+
+        #[ink(message)]
         fn get_proposal_by_id(&self, id: PropId) -> Option<Proposal> {
             self.proposals.iter().find(|p| p.prop_id == id).cloned()
         }
@@ -718,7 +734,7 @@ pub mod governance {
             if self.query_vote_weight(nft_id) < self.acceptance_threshold {
                 return Err(GovernanceError::InvalidVoteWeight);
             }
-            if self.proposals.len() == 100 {
+            if self.proposals.len() >= self.max_proposals as usize {
                 return Err(GovernanceError::MaxProposals);
             }
 
