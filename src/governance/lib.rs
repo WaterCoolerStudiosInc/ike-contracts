@@ -255,6 +255,13 @@ pub mod governance {
                 ProposalState::Created
             } else if current_time < prop.vote_end {
                 ProposalState::Active
+            } else if let PropType::UpdateExecThreshhold(_) = prop.prop_type {
+                // special handling to mitigate the risk of bricking the governance. It doesn't
+                // check for execution threshold. So it can always execute if majority votes aye.
+                match prop.pro_vote_count > prop.con_vote_count {
+                    true => ProposalState::Executable,
+                    false => ProposalState::Expired,
+                }
             } else if self.is_executable(prop.pro_vote_count, prop.con_vote_count) {
                 ProposalState::Executable
             } else {
