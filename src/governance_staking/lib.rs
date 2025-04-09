@@ -790,7 +790,8 @@ pub mod staking {
                     return Err(StakingError::NoChange);
                 }
                 if self.is_still_same_pool(current_delegatee, nonce) {
-                    self.decrease_vote_weight(current_delegatee, data.vote_weight)?;
+                    // stake weight of the user should be passed here as it is their corresponding vote weight
+                    self.decrease_vote_weight(current_delegatee, data.stake_weight)?;
                 }
                 self.voting_delegations.remove(nft_id);
             } else if new_delegatee == nft_id {
@@ -989,7 +990,8 @@ pub mod staking {
             let delegations = self.voting_delegations.get(nft_id);
             if let Some((delegatee, nonce)) = delegations {
                 if self.is_still_same_pool(delegatee, nonce) {
-                    self.decrease_vote_weight(delegatee, data.vote_weight)?
+                    // stake weight of the user should be passed here as it is their corresponding vote weight
+                    self.decrease_vote_weight(delegatee, data.stake_weight)?
                 }
                 self.voting_delegations.remove(nft_id); // optional-housekeeping
             }
