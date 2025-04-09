@@ -304,7 +304,7 @@ mod governance_council {
 
         #[ink(message, selector = 3)]
         fn update_threshold(&mut self, new_threshold: u16) -> Result<(), CouncilError> {
-            self.only_governor()?;
+            self.only_governor().or_else(|_| self.only_admin())?;
             if new_threshold as usize > self.signers.len(){
                 return Err(CouncilError::InvalidInput);
             }
