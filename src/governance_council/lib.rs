@@ -266,6 +266,31 @@ mod governance_council {
             self.admin = new_admin;
             Ok(())
         }
+
+        #[ink(message)]
+        pub fn get_admin(&self) -> Option<AccountId> {
+            self.admin
+        }
+
+        #[ink(message)]
+        pub fn get_governor(&self) -> AccountId {
+            self.governor
+        }
+
+        #[ink(message)]
+        pub fn get_staking(&self) -> AccountId {
+            self.gov_staking
+        }
+
+        #[ink(message)]
+        pub fn get_threshold(&self) -> u16 {
+            self.threshold
+        }
+
+        #[ink(message)]
+        pub fn get_proposal(&self, hash: [u8; 32]) -> Option<Proposal> {
+            self.proposals.get(hash)
+        }
     }
 
     impl ICouncil for Council {
