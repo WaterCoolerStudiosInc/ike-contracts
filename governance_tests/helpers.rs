@@ -36,7 +36,7 @@ pub enum PropType {
     NativeTokenTransfer(AccountId, u128),
     ChangeStakingRewardRate(u128),
     UpdateValidatorStakeRequirement(Option<u128>, Option<u128>),
-    UpdateRespresentativeStakeThreshold(u128),
+    UpdateRepresentativeStakeThreshold(u128),
     UpdateDelegationFees(u128),
     AddValidator(AccountId, AccountId),
     AddCouncilMember(AccountId),

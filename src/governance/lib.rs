@@ -77,7 +77,7 @@ pub mod governance {
         // Update the bond requirement [Ike-deposit, A0-deposit] to become a validator
         UpdateValidatorStakeRequirement(Option<Balance>, Option<Balance>),
         // Update the threshold stake required to become a self-delegator
-        UpdateRespresentativeStakeThreshold(Balance),
+        UpdateRepresentativeStakeThreshold(Balance),
         // Update the delegation fees in staking contract
         UpdateDelegationFees(u128),
         // Onboard a validator [validator, agent_admin]
@@ -102,6 +102,8 @@ pub mod governance {
         UpdateRejectThreshhold(Weight),
         // update execution threshold for proposals
         UpdateExecThreshhold(Weight),
+        // update max proposals that can be live at a time
+        UpdateMaxProposals(u16),
         // update governance code logic
         SetCodeHash([u8; 32]),
         // Unlock Transfer for governance nft
@@ -169,6 +171,7 @@ pub mod governance {
         pub execution_threshold: Weight,
         pub rejection_threshold: Weight,
         pub acceptance_threshold: Weight,
+        pub max_proposals: u16,
         pub voting_delay: Time,
         pub voting_period: Time,
         pub proposals: Vec<Proposal>,
@@ -252,6 +255,13 @@ pub mod governance {
                 ProposalState::Created
             } else if current_time < prop.vote_end {
                 ProposalState::Active
+            } else if let PropType::UpdateExecThreshhold(_) = prop.prop_type {
+                // special handling to mitigate the risk of bricking the governance. It doesn't
+                // check for execution threshold. So it can always execute if majority votes aye.
+                match prop.pro_vote_count > prop.con_vote_count {
+                    true => ProposalState::Executable,
+                    false => ProposalState::Expired,
+                }
             } else if self.is_executable(prop.pro_vote_count, prop.con_vote_count) {
                 ProposalState::Executable
             } else {
@@ -388,6 +398,12 @@ pub mod governance {
             self.acceptance_threshold = update;
         }
 
+        fn update_max_proposals(&mut self, max_proposals: u16) {
+            if max_proposals != 0 {
+                self.max_proposals = max_proposals;
+            }
+        }
+
         fn update_voting_period(&mut self, update: Time) {
             self.voting_period = update;
         }
@@ -460,6 +476,7 @@ pub mod governance {
                     debug_println!("executing delay update {}", update);
                     self.update_voting_delay(update)
                 }
+                PropType::UpdateMaxProposals(max_proposals) => self.update_max_proposals(max_proposals),
                 PropType::VotePeriodUpdate(update) => self.update_voting_period(update),
                 PropType::AddCouncilMember(member) => self.add_council_member(&member)?,
                 PropType::ReplaceCouncilMember(member, replacement) => {
@@ -477,7 +494,7 @@ pub mod governance {
                 PropType::UpdateValidatorStakeRequirement(ike, a0) => {
                     self.update_validator_stake_requirement(ike, a0)?
                 }
-                PropType::UpdateRespresentativeStakeThreshold(amount) => {
+                PropType::UpdateRepresentativeStakeThreshold(amount) => {
                     self.update_representative_stake_threshold(amount)?
                 }
                 PropType::UpdateDelegationFees(fees) => self.update_delegation_fees(fees)?,
@@ -587,6 +604,7 @@ pub mod governance {
                 execution_threshold: exec_threshold,
                 rejection_threshold: reject_threshold,
                 acceptance_threshold: acc_threshold,
+                max_proposals: 100,
                 voting_delay: 2 * DAY,
                 voting_period: 7 * DAY,
                 proposals: Vec::new(),
@@ -676,6 +694,11 @@ pub mod governance {
         }
 
         #[ink(message)]
+        fn get_max_proposals(&self) -> u16 {
+            self.max_proposals
+        }
+
+        #[ink(message)]
         fn get_proposal_by_id(&self, id: PropId) -> Option<Proposal> {
             self.proposals.iter().find(|p| p.prop_id == id).cloned()
         }
@@ -718,7 +741,7 @@ pub mod governance {
             if self.query_vote_weight(nft_id) < self.acceptance_threshold {
                 return Err(GovernanceError::InvalidVoteWeight);
             }
-            if self.proposals.len() == 100 {
+            if self.proposals.len() >= self.max_proposals as usize {
                 return Err(GovernanceError::MaxProposals);
             }
 

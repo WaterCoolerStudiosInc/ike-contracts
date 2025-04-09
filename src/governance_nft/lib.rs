@@ -78,6 +78,11 @@ mod governance_nft {
             }
         }
 
+        #[ink(message)]
+        pub fn get_admin(&self) -> AccountId {
+            self.admin
+        }
+
         // A helper function translating a vector of PSP34Events into the proper
         // ink event types (defined internally in this contract) and emitting them.
         fn emit_events(&self, events: ink::prelude::vec::Vec<PSP34Event>) {
@@ -139,10 +144,6 @@ mod governance_nft {
         #[ink(message, selector = 31337)]
         fn get_governance_data(&self, id: u128) -> Option<GovernanceData> {
             self.token_governance_data.get(id)
-        }
-
-        fn get_admin(&self) -> AccountId {
-            self.admin
         }
 
         #[ink(message, selector = 89)]

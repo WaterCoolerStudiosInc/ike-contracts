@@ -26,6 +26,9 @@ pub trait IGovernance {
     fn get_acceptance_threshold(&self) -> u128;
 
     #[ink(message)]
+    fn get_max_proposals(&self) -> u16;
+
+    #[ink(message)]
     fn get_proposal_by_id(&self, id: PropId) -> Option<Proposal>;
 
     #[ink(message)]

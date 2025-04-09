@@ -41,6 +41,7 @@ mod governance_council {
         InvalidInput,
         UsedNonce,
         EnvError,
+        StorageOverflow,
     }
 
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -171,17 +172,20 @@ mod governance_council {
             }
         }
 
-        fn create_new_proposal(&mut self, hash: [u8; 32], creator: AccountId, action: &Action) {
+        fn create_new_proposal(
+            &mut self,
+            hash: [u8; 32],
+            creator: AccountId,
+            action: &Action,
+        ) -> Result<(), CouncilError> {
             debug_println!("{}", "add new proposal");
 
-            self.proposals.insert(
-                hash,
-                &Proposal {
-                    action: action.clone(),
-                    threshold: self.threshold,
-                    proposers: vec![creator],
-                },
-            );
+            let proposal = Proposal {
+                action: action.clone(),
+                threshold: self.threshold,
+                proposers: vec![creator],
+            };
+
             Self::emit_event(
                 Self::env(),
                 Event::ProposalCreated(ProposalCreated {
@@ -192,6 +196,18 @@ mod governance_council {
                     },
                 }),
             );
+
+            if self.threshold <= 1 {
+                self.execute(&proposal.action)?;
+                Self::emit_event(
+                    Self::env(),
+                    Event::ProposalExecuted(ProposalExecuted { proposal }),
+                );
+            } else {
+                self.proposals.insert(hash, &proposal);
+            }
+
+            Ok(())
         }
 
         fn is_signer(&self, acc: &AccountId) -> bool {
@@ -250,6 +266,31 @@ mod governance_council {
             self.admin = new_admin;
             Ok(())
         }
+
+        #[ink(message)]
+        pub fn get_admin(&self) -> Option<AccountId> {
+            self.admin
+        }
+
+        #[ink(message)]
+        pub fn get_governor(&self) -> AccountId {
+            self.governor
+        }
+
+        #[ink(message)]
+        pub fn get_staking(&self) -> AccountId {
+            self.gov_staking
+        }
+
+        #[ink(message)]
+        pub fn get_threshold(&self) -> u16 {
+            self.threshold
+        }
+
+        #[ink(message)]
+        pub fn get_proposal(&self, hash: [u8; 32]) -> Option<Proposal> {
+            self.proposals.get(hash)
+        }
     }
 
     impl ICouncil for Council {
@@ -271,18 +312,27 @@ mod governance_council {
             self.only_governor()?;
 
             match self.get_signer_index(&signer) {
-                None => Err(CouncilError::SignerNotFound),
+                None => return Err(CouncilError::SignerNotFound),
                 Some(index) => {
                     self.signers.remove(index);
                     Self::emit_event(Self::env(), Event::SignerRemoved(SignerRemoved { signer }));
-                    Ok(())
                 }
             }
+
+            let len = self.signers.len();
+            if len < self.threshold as usize {
+                self.threshold = len.try_into().map_err(|_| CouncilError::StorageOverflow)?;
+            }
+
+            Ok(())
         }
 
         #[ink(message, selector = 3)]
         fn update_threshold(&mut self, new_threshold: u16) -> Result<(), CouncilError> {
-            self.only_governor()?;
+            self.only_governor().or_else(|_| self.only_admin())?;
+            if new_threshold as usize > self.signers.len(){
+                return Err(CouncilError::InvalidInput);
+            }
             self.threshold = new_threshold;
             Ok(())
         }
@@ -326,7 +376,7 @@ mod governance_council {
             }
 
             match self.proposals.get(hash) {
-                None => self.create_new_proposal(hash, caller, &action),
+                None => self.create_new_proposal(hash, caller, &action)?,
                 Some(mut proposal) => {
                     let curr_proposers = &mut proposal.proposers;
 
@@ -338,7 +388,7 @@ mod governance_council {
                         return Err(CouncilError::Unauthorized);
                     }
 
-                    if curr_proposers.len() as u16 + 1_u16 == proposal.threshold {
+                    if curr_proposers.len() as u16 + 1_u16 >= proposal.threshold {
                         debug_println!("{}", "executing");
                         self.proposals.remove(hash);
                         self.execute(&proposal.action)?;
